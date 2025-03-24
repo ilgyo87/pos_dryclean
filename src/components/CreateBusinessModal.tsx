@@ -1,5 +1,5 @@
 // src/components/CreateBusinessModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Modal, 
   View, 
@@ -13,6 +13,7 @@ import {
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { styles } from './../styles/components/createBusinessStyles';
+import { useAuthenticator } from "@aws-amplify/ui-react-native";
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -27,37 +28,94 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
   onBusinessCreated 
 }) => {
   const [businessName, setBusinessName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  
+  // New states for phone number validation
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+  const [phoneExists, setPhoneExists] = useState(false);
+  const [phoneCheckComplete, setPhoneCheckComplete] = useState(false);
+
+  const { user } = useAuthenticator();
+
+  // Check phone number exists when it changes
+  const checkPhoneExists = async (phone: string) => {
+    if (!phone || phone.trim().length < 10) return; // Don't check until we have a valid phone
+    
+    try {
+      setIsCheckingPhone(true);
+      
+      // Query for businesses with this phone number
+      const result = await client.models.Business.list({
+        filter: { phoneNumber: { eq: phone.trim() } }
+      });
+      
+      // Update state based on results
+      const exists = result.data && result.data.length > 0;
+      setPhoneExists(exists);
+      setPhoneCheckComplete(true);
+      
+      // Optionally show alert
+      if (exists) {
+        Alert.alert('Business Exists', 'A business with this phone number already exists.');
+      }
+    } catch (error) {
+      console.error('Error checking phone number:', error);
+    } finally {
+      setIsCheckingPhone(false);
+    }
+  };
+
+  // Check if all required fields are filled and phone number is valid
+  useEffect(() => {
+    const allFieldsFilled = 
+      businessName.trim() !== '' && 
+      firstName.trim() !== '' && 
+      lastName.trim() !== '' && 
+      phoneNumber.trim() !== '' && 
+      address.trim() !== '' && 
+      city.trim() !== '' && 
+      state.trim() !== '' && 
+      zipCode.trim() !== '';
+    
+    // Only valid if all fields are filled AND either phone check isn't complete yet OR phone doesn't exist
+    setIsFormValid(allFieldsFilled && (!phoneCheckComplete || !phoneExists));
+  }, [businessName, firstName, lastName, phoneNumber, address, city, state, zipCode, phoneCheckComplete, phoneExists]);
 
   const handleCreateBusiness = async () => {
-    // Validate inputs
-    if (!businessName.trim()) {
-      Alert.alert('Error', 'Business name is required');
-      return;
-    }
-    
-    if (!phoneNumber.trim()) {
-      Alert.alert('Error', 'Phone number is required');
-      return;
-    }
-
+    // No need for field validation here since the button is disabled when isFormValid is false
     setIsLoading(true);
     
     try {
+      // Do one final check for existing phone number
+      const checkResult = await client.models.Business.list({
+        filter: { phoneNumber: { eq: phoneNumber.trim() } }
+      });
+      
+      if (checkResult.data && checkResult.data.length > 0) {
+        Alert.alert('Error', 'A business with this phone number already exists.');
+        setIsLoading(false);
+        return;
+      }
+      
       // Create business in Amplify
       const result = await client.models.Business.create({
         name: businessName.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim(),
         address: address.trim(),
         city: city.trim(),
         state: state.trim(),
         zipCode: zipCode.trim(),
-        owner: 'current-user' // You'll need to replace this with the actual user ID
+        owner: user?.username
       });
       
       if (result.errors) {
@@ -69,6 +127,8 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
       
       // Reset form
       setBusinessName('');
+      setFirstName('');
+      setLastName('');
       setPhoneNumber('');
       setAddress('');
       setCity('');
@@ -88,91 +148,123 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
       animationType="slide"
       transparent={true}
       visible={visible}
-      onRequestClose={() => {}}
+      onRequestClose={() => {
+        // Handle back button press on Android
+      }}
     >
       <View style={styles.centeredView}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <View style={styles.modalView}>
             <Text style={styles.modalTitle}>Create Your Business</Text>
-            <Text style={styles.modalSubtitle}>
-              You don't have a business yet. Let's create one to get started.
-            </Text>
+            <Text style={styles.modalSubtitle}>Let's get started with your dry cleaning business</Text>
             
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Business Name *</Text>
               <TextInput
                 style={styles.input}
+                placeholder="Enter your business name"
                 value={businessName}
                 onChangeText={setBusinessName}
-                placeholder="Enter business name"
-                autoCapitalize="words"
+              />
+            </View>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>First Name *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your first name"
+                value={firstName}
+                onChangeText={setFirstName}
+              />
+            </View>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Last Name *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your last name"
+                value={lastName}
+                onChangeText={setLastName}
               />
             </View>
             
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Phone Number *</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  phoneCheckComplete && (phoneExists ? { borderColor: 'red', borderWidth: 1 } : { borderColor: 'green', borderWidth: 1 })
+                ]}
+                placeholder="Enter business phone number"
                 value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                placeholder="Enter phone number"
+                onChangeText={(text) => {
+                  setPhoneNumber(text);
+                  // Reset the check states when user types
+                  setPhoneCheckComplete(false);
+                  setPhoneExists(false);
+                }}
+                onBlur={() => checkPhoneExists(phoneNumber)}
                 keyboardType="phone-pad"
               />
+              {isCheckingPhone && <Text>Checking phone number...</Text>}
+              {phoneCheckComplete && phoneExists && (
+                <Text style={{ color: 'red' }}>Business with this phone already exists</Text>
+              )}
+              {phoneCheckComplete && !phoneExists && phoneNumber.trim().length >= 10 && (
+                <Text style={{ color: 'green' }}>Business phone number available</Text>
+              )}
             </View>
             
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Street Address</Text>
+              <Text style={styles.inputLabel}>Address *</Text>
               <TextInput
                 style={styles.input}
+                placeholder="Enter street address"
                 value={address}
                 onChangeText={setAddress}
-                placeholder="Enter street address"
               />
             </View>
             
             <View style={styles.rowContainer}>
-              <View style={[styles.inputContainer, styles.cityInput]}>
-                <Text style={styles.inputLabel}>City</Text>
+              <View style={styles.cityInput}>
+                <Text style={styles.inputLabel}>City *</Text>
                 <TextInput
                   style={styles.input}
+                  placeholder="City"
                   value={city}
                   onChangeText={setCity}
-                  placeholder="City"
                 />
               </View>
               
-              <View style={[styles.inputContainer, styles.stateInput]}>
-                <Text style={styles.inputLabel}>State</Text>
+              <View style={styles.stateInput}>
+                <Text style={styles.inputLabel}>State *</Text>
                 <TextInput
                   style={styles.input}
+                  placeholder="State"
                   value={state}
                   onChangeText={setState}
-                  placeholder="State"
-                  maxLength={2}
-                  autoCapitalize="characters"
                 />
               </View>
               
-              <View style={[styles.inputContainer, styles.zipInput]}>
-                <Text style={styles.inputLabel}>ZIP Code</Text>
+              <View style={styles.zipInput}>
+                <Text style={styles.inputLabel}>ZIP *</Text>
                 <TextInput
                   style={styles.input}
+                  placeholder="ZIP"
                   value={zipCode}
                   onChangeText={setZipCode}
-                  placeholder="ZIP"
                   keyboardType="numeric"
-                  maxLength={5}
                 />
               </View>
             </View>
             
-            <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
+            <TouchableOpacity 
+              style={[styles.button, (!isFormValid || isLoading) && styles.buttonDisabled]} 
               onPress={handleCreateBusiness}
-              disabled={isLoading}
+              disabled={!isFormValid || isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text style={styles.buttonText}>Create Business</Text>
               )}

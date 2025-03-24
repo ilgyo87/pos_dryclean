@@ -6,6 +6,8 @@ const schema = a.schema({
     .model({
       id: a.id().required(),
       name: a.string().required(),
+      firstName: a.string().required(),
+      lastName: a.string().required(),
       phoneNumber: a.string().required(),
       address: a.string(),
       city: a.string(),
@@ -22,7 +24,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Employee Model
