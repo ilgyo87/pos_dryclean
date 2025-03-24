@@ -87,4 +87,16 @@ export const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
     },
+    // New styles for QR code generation
+    loadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    loadingText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
+        marginLeft: 10,
+    }
 });

@@ -11,6 +11,7 @@ import CreateBusinessModal from './components/CreateBusinessModal';
 import DashboardScreen from './screens/DashboardScreen';
 import outputs from "../amplify_outputs.json";
 import TransactionScreen from './screens/TransactionScreen';
+import CustomerEditScreen from './screens/CustomerEditScreen';
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);
@@ -22,16 +23,6 @@ const Stack = createNativeStackNavigator();
 function SignOutButton() {
   const { signOut } = useAuthenticator();
   return <Button title="Sign Out" onPress={signOut} />;
-}
-
-// Welcome screen component
-function WelcomeScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Welcome to Dry Cleaning POS</Text>
-      <Text>Please create a business to continue</Text>
-    </View>
-  );
 }
 
 // Main application content
@@ -133,6 +124,16 @@ function AppContent() {
               options={{
                 headerShown: true,
                 title: "TRANSACTIONS",
+                headerRight: () => <SignOutButton />
+              }}
+            />
+            <Stack.Screen
+              name="CustomerEdit"
+              component={CustomerEditScreen}
+              initialParams={{ businessId }}
+              options={{
+                headerShown: true,
+                title: "CUSTOMER",
                 headerRight: () => <SignOutButton />
               }}
             />

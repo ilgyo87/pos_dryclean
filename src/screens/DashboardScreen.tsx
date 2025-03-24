@@ -10,10 +10,11 @@ import { useAuthenticator } from "@aws-amplify/ui-react-native";
 // Initialize Amplify client
 const client = generateClient<Schema>();
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ route }: { route: any }) {
+  const { businessId, businessName: initialBusinessName } = route.params || {};
   const { user } = useAuthenticator();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const [businessName, setBusinessName] = useState('');
+  const [businessName, setBusinessName] = useState(initialBusinessName || '');
   
   // Fetch business name when component mounts
   useEffect(() => {
@@ -33,23 +34,36 @@ export default function DashboardScreen() {
       }
     };
     
-    if (user?.username) {
+    if (user?.username && !initialBusinessName) {
       fetchBusinessName();
     }
-  }, [user]);
+  }, [user, initialBusinessName]);
   
   const menuItems = [
     { title: 'Product Management', screen: 'ProductManagement', icon: '📦' },
     { title: 'Employee Management', screen: 'EmployeeManagement', icon: '👥' },
     { title: 'Appointments', screen: 'Appointments', icon: '📅' },
     { title: 'Order Management', screen: 'OrderManagement', icon: '📋' },
-    { title: 'Customers', screen: 'Customers', icon: '👤' },
+    { title: 'Customers', screen: 'CustomerEdit', icon: '👤' },
     { title: 'Reports', screen: 'Reports', icon: '📊' },
     { title: 'Settings', screen: 'Settings', icon: '⚙️' },
   ];
 
   const navigateToScreen = (screenName: string) => {
-    navigation.navigate(screenName);
+    // For the CustomerEdit screen, pass the businessId parameter
+    if (screenName === 'CustomerEdit') {
+      navigation.navigate(screenName, { 
+        businessId: businessId || '',
+        // No customerId means creating a new customer
+      });
+    } else if (screenName === 'Transactions') {
+      navigation.navigate(screenName, {
+        businessId: businessId || '',
+        businessName: businessName || ''
+      });
+    } else {
+      navigation.navigate(screenName);
+    }
   };
   
   return (

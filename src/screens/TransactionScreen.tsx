@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
+// src/screens/TransactionScreen.tsx
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
   TextInput, 
   TouchableOpacity, 
-  StyleSheet, 
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -15,7 +15,8 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import CreateCustomerModal from '../components/CreateCustomerModal';
 import { useAuthenticator } from "@aws-amplify/ui-react-native";
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation, NavigationProp, ParamListBase } from '@react-navigation/native';
+import { styles } from '../styles/screens/transactionStyles';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -25,8 +26,6 @@ interface Customer {
   firstName: string;
   lastName: string;
   phoneNumber: string;
-  email?: string;
-  address?: string;
 }
 
 // Define a type for the route parameters
@@ -35,27 +34,90 @@ type TransactionScreenRouteParams = {
   businessName: string;
 };
 
-const TransactionsScreen = () => {
-  // Get route and params using useRoute hook
+const TransactionsScreen: React.FC = () => {
   const route = useRoute();
-  const { businessId, businessName } = route.params as TransactionScreenRouteParams;
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
+  const { businessId } = route.params as TransactionScreenRouteParams;
   const [searchText, setSearchText] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true
   const [modalVisible, setModalVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const { user } = useAuthenticator();
   
-  // Handle search/enter button
-
+  // Fetch all customers for the current business on component mount
+  useEffect(() => {
+    fetchCustomers();
+  }, [businessId]);
   
-  // Handle new customer button - simply open the modal
-  const handleNewCustomer = () => {
+  // Function to fetch all customers for current business
+  const fetchCustomers = async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const result = await client.models.Customer.list({
+        filter: { businessID: { eq: businessId } }
+      });
+      
+      if (result.data) {
+        const customerData = result.data.map(customer => ({
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          phoneNumber: customer.phoneNumber
+        }));
+        
+        setCustomers(customerData as Customer[]);
+        setFilteredCustomers(customerData as Customer[]);
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      Alert.alert('Error', 'Failed to load customers. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle real-time filtering as user types
+  const handleSearchTextChange = (text: string): void => {
+    setSearchText(text);
+    
+    if (!text.trim()) {
+      // If search is empty, show all customers
+      setFilteredCustomers(customers);
+      return;
+    }
+    
+    // Filter customers based on search text
+    const searchTerm = text.trim().toLowerCase();
+    const filtered = customers.filter(customer => 
+      customer.firstName?.toLowerCase().includes(searchTerm) ||
+      customer.lastName?.toLowerCase().includes(searchTerm) ||
+      customer.phoneNumber?.includes(searchTerm)
+    );
+    
+    setFilteredCustomers(filtered);
+  };
+  
+  // Handle Enter key when there's just one customer
+  const handleKeyPress = ({ nativeEvent }: { nativeEvent: { key: string } }): void => {
+    if (nativeEvent.key === 'Enter' && filteredCustomers.length === 1) {
+      handleSelectCustomer(filteredCustomers[0]);
+    }
+  };
+  
+  // Handle new customer button - open the modal
+  const handleNewCustomer = (): void => {
     setModalVisible(true);
   };
 
-  const handleSearch = async () => {
-    if (!searchText.trim()) return;
+  // Handle search button press
+  const handleSearch = async (): Promise<void> => {
+    if (!searchText.trim()) {
+      // If search is empty, show all customers
+      fetchCustomers();
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -70,11 +132,8 @@ const TransactionsScreen = () => {
         { email: { contains: searchTerm } }
       ];
       
-      // Build the complete filter
-      let filter: any = { or: searchConditions };
-      
       // Add business filter since we always have a business ID
-      filter = {
+      const filter = {
         and: [
           { or: searchConditions },
           { businessID: { eq: businessId } }
@@ -90,35 +149,38 @@ const TransactionsScreen = () => {
           firstName: customer.firstName,
           lastName: customer.lastName,
           phoneNumber: customer.phoneNumber,
-          email: customer.email || undefined, // Convert null to undefined
-          address: customer.address || undefined, // Convert null to undefined
-          businessID: customer.businessID,
+          email: customer.email || undefined,
+          address: customer.address || undefined,
         }));
         
-        setCustomers(customerData as unknown as Customer[]);
+        setCustomers(customerData as Customer[]);
+        setFilteredCustomers(customerData as Customer[]);
       }
     } catch (error) {
       console.error('Error searching customers:', error);
       Alert.alert('Error', 'Failed to search customers. Please try again.');
     } finally {
       setIsLoading(false);
-      setSearchText('');
     }
   };
   
   // Handle customer creation from modal
-  const handleCustomerCreated = (customerId: string, customerName: string) => {
-    Alert.alert('Success', `Customer ${customerName} created successfully!`);
+  const handleCustomerCreated = (customerId: string, customerName: string): void => {
+    // Close the modal first
+    setModalVisible(false);
     
-    // Reload the customer list
-    handleSearch();
+    // Then show success message and refresh the list
+    Alert.alert('Success', `Customer ${customerName} created successfully!`);
+    fetchCustomers();
   };
   
   // Handle customer selection for transaction
-  const handleSelectCustomer = (customer: Customer) => {
-    console.log('Selected customer:', customer);
-    // You would typically navigate to the order screen here
-    // navigation.navigate('CreateOrder', { customer });
+  const handleSelectCustomer = (customer: Customer): void => {
+    // Navigate to the transaction selection screen
+    navigation.navigate('TransactionSelection', {
+      customer,
+      businessId
+    });
   };
   
   return (
@@ -130,10 +192,11 @@ const TransactionsScreen = () => {
             ref={inputRef}
             style={styles.searchInput}
             value={searchText}
-            onChangeText={setSearchText}
+            onChangeText={handleSearchTextChange}
             placeholder="Name, Phone Number, or Email"
             returnKeyType="search"
             onSubmitEditing={handleSearch}
+            onKeyPress={handleKeyPress}
             autoCapitalize="none"
           />
           <TouchableOpacity 
@@ -164,9 +227,9 @@ const TransactionsScreen = () => {
           <View style={styles.emptyState}>
             <Text>Loading customers...</Text>
           </View>
-        ) : customers.length > 0 ? (
+        ) : filteredCustomers.length > 0 ? (
           <FlatList
-            data={customers}
+            data={filteredCustomers}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -176,27 +239,18 @@ const TransactionsScreen = () => {
                 <Text style={styles.customerName}>
                   {item.firstName} {item.lastName}
                 </Text>
-                <Text style={styles.customerDetails}>
-                  {item.phoneNumber} {item.email ? `• ${item.email}` : ''}
-                </Text>
-                {item.address ? (
-                  <Text style={styles.customerAddress}>
-                    {item.address}
-                  </Text>
-                ) : null}
               </TouchableOpacity>
             )}
           />
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>
-              No customers to display. Search for a customers or create a new one.
+              No customers to display. Search for a customer or create a new one.
             </Text>
           </View>
         )}
       </KeyboardAvoidingView>
       
-      {/* Customer creation modal - always available regardless of business state */}
       <CreateCustomerModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -207,92 +261,5 @@ const TransactionsScreen = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  header: {
-    flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e4e8',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 4,
-    paddingHorizontal: 12,
-    fontSize: 16,
-  },
-  searchButton: {
-    backgroundColor: '#0066cc',
-    paddingHorizontal: 16,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  newCustomerButton: {
-    backgroundColor: '#34a853',
-    paddingHorizontal: 16,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 4,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  customersContainer: {
-    flex: 1,
-  },
-  customerItem: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e4e8',
-  },
-  customerName: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  customerDetails: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 2,
-  },
-  customerAddress: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontStyle: 'italic',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-});
 
 export default TransactionsScreen;

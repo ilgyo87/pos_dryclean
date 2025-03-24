@@ -20,7 +20,9 @@ const schema = a.schema({
       employees: a.hasMany("Employee", "businessID"),
       customers: a.hasMany("Customer", "businessID"),
       garments: a.hasMany("Garment", "businessID"),
-      loyaltyPrograms: a.hasMany("Loyalty", "businessID")
+      loyaltyPrograms: a.hasMany("Loyalty", "businessID"),
+      qrCodeImageUrl: a.string(),
+      website: a.string(),
     })
     .authorization((allow) => [
       allow.owner(),
@@ -37,7 +39,8 @@ const schema = a.schema({
       role: a.string().required(),
       businessID: a.id().required(),
       business: a.belongsTo("Business", "businessID"),
-      transactions: a.hasMany("Transaction", "employeeID")
+      transactions: a.hasMany("Transaction", "employeeID"),
+      qrCodeImageUrl: a.string(),
     })
     .authorization((allow) => [
       allow.owner(),
@@ -53,7 +56,12 @@ const schema = a.schema({
       phoneNumber: a.phone().required(),
       email: a.email(),
       address: a.string(),
+      city: a.string(),
+      state: a.string(),
+      zipCode: a.string(),
+      notes: a.string(),
       profileImageUrl: a.string(),
+      qrCodeImageUrl: a.string(),
       globalId: a.string(),
       businessID: a.id().required(),
       business: a.belongsTo("Business", "businessID"),
@@ -80,24 +88,7 @@ const schema = a.schema({
       business: a.belongsTo("Business", "businessID"),
       customerID: a.id().required(),
       customer: a.belongsTo("Customer", "customerID"),
-      history: a.hasMany("GarmentHistory", "garmentID"),
-      transactionItems: a.hasMany("TransactionItem", "garmentID")
-    })
-    .authorization((allow) => [
-      allow.owner(),
-      allow.authenticated().to(['get', 'list'])
-    ]),
-
-  // Garment History Model
-  GarmentHistory: a
-    .model({
-      id: a.id().required(),
-      garmentID: a.id().required(),
-      status: a.string().required(),
-      changedAt: a.datetime().required(),
-      changedBy: a.id().required(),
-      notes: a.string(),
-      garment: a.belongsTo("Garment", "garmentID")
+      qrCodeImageUrl: a.string(),
     })
     .authorization((allow) => allow.owner()),
 
@@ -108,8 +99,9 @@ const schema = a.schema({
       businessID: a.id().required(),
       name: a.string().required(),
       description: a.string(),
-      basePrice: a.float().required(),
-      estimatedDuration: a.integer().required(),
+      price: a.float().required(),
+      estimatedTime: a.integer(),
+      category: a.string(),
       business: a.belongsTo("Business", "businessID"),
       transactionItems: a.hasMany("TransactionItem", "serviceID")
     })
@@ -133,6 +125,7 @@ const schema = a.schema({
   Transaction: a
     .model({
       id: a.id().required(),
+      orderId: a.string().required(),
       businessID: a.id().required(),
       customerID: a.id().required(),
       employeeID: a.id().required(),
@@ -154,16 +147,14 @@ const schema = a.schema({
     .model({
       id: a.id().required(),
       transactionID: a.id().required(),
-      serviceID: a.id().required(),
-      productID: a.id().required(),
-      garmentID: a.id(),
+      serviceID: a.id(),
+      productID: a.id(),
       quantity: a.integer().required(),
       price: a.float().required(),
-      status: a.string().required(),
+      notes: a.string(),
       transaction: a.belongsTo("Transaction", "transactionID"),
       service: a.belongsTo("Service", "serviceID"),
-      product: a.belongsTo("Product", "productID"),
-      garment: a.belongsTo("Garment", "garmentID")
+      product: a.belongsTo("Product", "productID")
     })
     .authorization((allow) => allow.owner()),
 
@@ -173,8 +164,8 @@ const schema = a.schema({
       id: a.id().required(),
       transactionID: a.id().required(),
       amount: a.float().required(),
-      method: a.string().required(),
-      status: a.string().required(),
+      paymentMethod: a.string().required(),
+      paymentDate: a.datetime().required(),
       transaction: a.belongsTo("Transaction", "transactionID")
     })
     .authorization((allow) => allow.owner()),
@@ -190,7 +181,17 @@ const schema = a.schema({
       customer: a.belongsTo("Customer", "customerID"),
       business: a.belongsTo("Business", "businessID")
     })
-    .authorization((allow) => allow.owner())
+    .authorization((allow) => allow.owner()),
+
+  // Counter Model
+  Counter: a
+    .model({
+      id: a.id().required(), // Use a predictable ID like "orderCounter" for your business
+      businessID: a.id().required(),
+      currentValue: a.integer().required(),
+      business: a.belongsTo("Business", "businessID")
+    })
+    .authorization((allow) => allow.owner()),
 });
 
 export type Schema = ClientSchema<typeof schema>;

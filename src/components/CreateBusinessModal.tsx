@@ -14,6 +14,10 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { styles } from './../styles/components/createBusinessStyles';
 import { useAuthenticator } from "@aws-amplify/ui-react-native";
+// Import QR code utilities
+import { generateQRCodeData, saveQRCodeToS3 } from '../utils/qrCodeGenerator';
+// For QR code generation
+import QRCode from 'qrcode';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -42,6 +46,9 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [phoneExists, setPhoneExists] = useState(false);
   const [phoneCheckComplete, setPhoneCheckComplete] = useState(false);
+  
+  // New state for QR code generation
+  const [generatingQRCode, setGeneratingQRCode] = useState(false);
 
   const { user } = useAuthenticator();
 
@@ -89,6 +96,36 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
     setIsFormValid(allFieldsFilled && (!phoneCheckComplete || !phoneExists));
   }, [businessName, firstName, lastName, phoneNumber, address, city, state, zipCode, phoneCheckComplete, phoneExists]);
 
+  // Generate QR code for the business
+  const generateBusinessQRCode = async (businessId: string, businessData: any): Promise<string | null> => {
+    try {
+      setGeneratingQRCode(true);
+      
+      // Generate QR code data
+      const qrData = generateQRCodeData('Business', businessData);
+      
+      // Convert QR data to image
+      const qrCodeUrl = await QRCode.toDataURL(qrData);
+      
+      // Convert the data URL to a Blob
+      const response = await fetch(qrCodeUrl);
+      const blob = await response.blob();
+      
+      // Save QR code image to S3
+      return await saveQRCodeToS3(
+        'Business', 
+        businessId, 
+        businessId, // Business ID is used for both entity ID and business ID
+        blob
+      );
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      return null;
+    } finally {
+      setGeneratingQRCode(false);
+    }
+  };
+
   const handleCreateBusiness = async () => {
     // No need for field validation here since the button is disabled when isFormValid is false
     setIsLoading(true);
@@ -120,6 +157,24 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
       
       if (result.errors) {
         throw new Error(result.errors.map(e => e.message).join(', '));
+      }
+      
+      // Generate QR code for the new business
+      const businessData = {
+        id: result.data?.id ?? '',
+        name: result.data?.name ?? '',
+        phoneNumber: result.data?.phoneNumber ?? '',
+        address: result.data?.address ?? '',
+        city: result.data?.city ?? '',
+        state: result.data?.state ?? '',
+        zipCode: result.data?.zipCode ?? ''
+      };
+      
+      // Generate and save the QR code
+      const qrCodeUrl = await generateBusinessQRCode(result.data?.id ?? '', businessData);
+      
+      if (!qrCodeUrl) {
+        console.warn('QR code generation failed, but business was created');
       }
       
       // Call the callback with the new business info
@@ -259,12 +314,17 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
             </View>
             
             <TouchableOpacity 
-              style={[styles.button, (!isFormValid || isLoading) && styles.buttonDisabled]} 
+              style={[styles.button, (!isFormValid || isLoading || generatingQRCode) && styles.buttonDisabled]} 
               onPress={handleCreateBusiness}
-              disabled={!isFormValid || isLoading}
+              disabled={!isFormValid || isLoading || generatingQRCode}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#ffffff" />
+              {isLoading || generatingQRCode ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color="#ffffff" />
+                  <Text style={styles.loadingText}>
+                    {generatingQRCode ? 'Generating QR Code...' : 'Creating Business...'}
+                  </Text>
+                </View>
               ) : (
                 <Text style={styles.buttonText}>Create Business</Text>
               )}
