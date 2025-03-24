@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import CreateBusinessModal from './components/CreateBusinessModal';
 import DashboardScreen from './screens/DashboardScreen';
 import outputs from "../amplify_outputs.json";
+import TransactionScreen from './screens/TransactionScreen';
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);
@@ -36,6 +37,8 @@ function WelcomeScreen() {
 // Main application content
 function AppContent() {
   const [hasBusinesses, setHasBusinesses] = useState<boolean | null>(null);
+  const [businessId, setBusinessId] = useState<string>('');
+  const [businessName, setBusinessName] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const { authStatus, user } = useAuthenticator();
   const [dashboardKey, setDashboardKey] = useState(0);
@@ -67,6 +70,13 @@ function AppContent() {
       console.log("Business check result:", JSON.stringify(result));
       const hasBusiness = result.data && result.data.length > 0;
       console.log("Has businesses:", hasBusiness);
+      
+      if (hasBusiness && result.data && result.data.length > 0) {
+        // Store the business ID and name
+        setBusinessId(result.data[0].id);
+        setBusinessName(result.data[0].name);
+      }
+      
       setHasBusinesses(hasBusiness);
       setLoading(false);
     } catch (error) {
@@ -76,11 +86,13 @@ function AppContent() {
     }
   };
 
-  const handleBusinessCreated = (businessId: string, businessName: string) => {
+  const handleBusinessCreated = (newBusinessId: string, newBusinessName: string) => {
+    setBusinessId(newBusinessId);
+    setBusinessName(newBusinessName);
     setHasBusinesses(true);
     // Force dashboard to re-mount completely using the key
     setDashboardKey(prev => prev + 1);
-    console.log(`Business created: ${businessName} (${businessId})`);
+    console.log(`Business created: ${newBusinessName} (${newBusinessId})`);
   };
 
   function WelcomeScreen() {
@@ -101,17 +113,30 @@ function AppContent() {
       {/* Main application navigation */}
       <Stack.Navigator>
         {hasBusinesses ? (
-          // Only render Dashboard when we have businesses
-          <Stack.Screen
-            key={dashboardKey} // Force remount when business is created
-            name="Dashboard"
-            component={DashboardScreen}
-            options={{
-              headerShown: true,
-              title: "DASHBOARD",
-              headerRight: () => <SignOutButton />
-            }}
-          />
+          // Only render screens when we have businesses
+          <>
+            <Stack.Screen
+              key={dashboardKey} // Force remount when business is created
+              name="Dashboard"
+              component={DashboardScreen}
+              initialParams={{ businessId, businessName }}
+              options={{
+                headerShown: true,
+                title: "DASHBOARD",
+                headerRight: () => <SignOutButton />
+              }}
+            />
+            <Stack.Screen
+              name="Transactions"
+              component={TransactionScreen}
+              initialParams={{ businessId, businessName }}
+              options={{
+                headerShown: true,
+                title: "TRANSACTIONS",
+                headerRight: () => <SignOutButton />
+              }}
+            />
+          </>
         ) : (
           // Add a placeholder screen when no businesses
           <Stack.Screen

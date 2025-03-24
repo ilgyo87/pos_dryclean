@@ -62,7 +62,10 @@ export default function DashboardScreen() {
       </View>
 
       {/* Start Transaction Button */}
-      <TouchableOpacity style={styles.startButton}>
+      <TouchableOpacity 
+        style={styles.startButton}
+        onPress={() => navigateToScreen('Transactions')}
+      >
         <Text style={styles.startButtonText}>START TRANSACTION</Text>
       </TouchableOpacity>
 
