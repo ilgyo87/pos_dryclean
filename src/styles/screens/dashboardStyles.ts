@@ -53,8 +53,6 @@ export const styles = StyleSheet.create({
       fontWeight: 'bold',
     },
     menuGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
       padding: 10,
       justifyContent: 'space-between',
     },

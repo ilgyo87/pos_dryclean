@@ -11,51 +11,33 @@ import { useAuthenticator } from "@aws-amplify/ui-react-native";
 const client = generateClient<Schema>();
 
 export default function DashboardScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const [businessName, setBusinessName] = useState('loading...');
-  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuthenticator();
-
-  // Add this useEffect to listen to navigation focus events
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('Dashboard screen focused, refreshing data');
-      fetchBusinessData();
-    });
-    return unsubscribe;
-  }, [navigation]);
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const [businessName, setBusinessName] = useState('');
   
+  // Fetch business name when component mounts
   useEffect(() => {
-    // Fetch the business data when component mounts
-    fetchBusinessData();
-  }, []);
-
-  const fetchBusinessData = async () => {
-    try {
-      setIsLoading(true);
-      console.log("Fetching business data for dashboard...");
-      
-      // Fetch businesses for the current user
-      const result = await client.models.Business.list({
-        filter: { owner: { eq: user?.username } }
-      });
-      
-      // If businesses exist, use the first one
-      if (result.data && result.data.length > 0) {
-        console.log("Found business:", result.data[0].name);
-        setBusinessName(result.data[0].name);
-      } else {
-        setBusinessName('My Business'); // Fallback name
+    const fetchBusinessName = async () => {
+      try {
+        console.log("Fetching business name...");
+        const result = await client.models.Business.list({
+          filter: { owner: { eq: user?.username } }
+        });
+        
+        if (result.data && result.data.length > 0) {
+          console.log("Found business:", result.data[0].name);
+          setBusinessName(result.data[0].name);
+        }
+      } catch (error) {
+        console.error('Error fetching business name:', error);
       }
-    } catch (error) {
-      console.error('Error fetching business data:', error);
-      setBusinessName('My Business'); // Fallback name
-    } finally {
-      setIsLoading(false);
+    };
+    
+    if (user?.username) {
+      fetchBusinessName();
     }
-  };
-
-  // Rest of your code remains the same...
+  }, [user]);
+  
   const menuItems = [
     { title: 'Product Management', screen: 'ProductManagement', icon: '📦' },
     { title: 'Employee Management', screen: 'EmployeeManagement', icon: '👥' },
@@ -67,7 +49,7 @@ export default function DashboardScreen() {
   ];
 
   const navigateToScreen = (screenName: string) => {
-    console.log(`Navigate to ${screenName}`);
+    navigation.navigate(screenName);
   };
   
   return (
@@ -81,22 +63,25 @@ export default function DashboardScreen() {
 
       {/* Start Transaction Button */}
       <TouchableOpacity style={styles.startButton}>
-        <Text style={styles.startButtonText}>Start Transaction</Text>
+        <Text style={styles.startButtonText}>START TRANSACTION</Text>
       </TouchableOpacity>
 
-      <View style={styles.menuGrid}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
+      {/* Menu Grid */}
+      <FlatList
+        data={menuItems}
+        numColumns={2}
+        keyExtractor={(item) => item.title}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
             style={styles.menuItem}
             onPress={() => navigateToScreen(item.screen)}
           >
             <Text style={styles.menuIcon}>{item.icon}</Text>
             <Text style={styles.menuTitle}>{item.title}</Text>
           </TouchableOpacity>
-        ))}
-      </View>
+        )}
+        contentContainerStyle={styles.menuGrid}
+      />
     </View>
   );
 }
-
