@@ -10,8 +10,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import CreateBusinessModal from './components/CreateBusinessModal';
 import DashboardScreen from './screens/DashboardScreen';
 import outputs from "../amplify_outputs.json";
-import TransactionScreen from './screens/TransactionScreen';
+import TransactionScreen from './screens/CustomerSearchScreen';
 import CustomerEditScreen from './screens/CustomerEditScreen';
+import CustomerSearchScreen from './screens/CustomerSearchScreen';
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);
@@ -61,13 +62,13 @@ function AppContent() {
       console.log("Business check result:", JSON.stringify(result));
       const hasBusiness = result.data && result.data.length > 0;
       console.log("Has businesses:", hasBusiness);
-      
+
       if (hasBusiness && result.data && result.data.length > 0) {
         // Store the business ID and name
         setBusinessId(result.data[0].id);
         setBusinessName(result.data[0].name);
       }
-      
+
       setHasBusinesses(hasBusiness);
       setLoading(false);
     } catch (error) {
@@ -119,11 +120,11 @@ function AppContent() {
             />
             <Stack.Screen
               name="Transactions"
-              component={TransactionScreen}
+              component={CustomerSearchScreen}
               initialParams={{ businessId, businessName }}
               options={{
                 headerShown: true,
-                title: "TRANSACTIONS",
+                title: "CUSTOMERS",
                 headerRight: () => <SignOutButton />
               }}
             />

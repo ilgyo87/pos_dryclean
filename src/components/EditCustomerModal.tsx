@@ -171,19 +171,23 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
     try {
       if (isNewCustomer) {
         // Create a new customer
-        const result = await client.models.Customer.create({
+        const createInput: any = {
           firstName: customer.firstName,
           lastName: customer.lastName,
           phoneNumber: customer.phoneNumber,
-          email: customer.email || null,
-          address: customer.address || null,
-          city: customer.city || null,
-          state: customer.state || null,
-          zipCode: customer.zipCode || null,
-          notes: customer.notes || null,
-          globalId: customer.globalId || null,
           businessID: businessId,
-        });
+        };
+  
+        // Only add optional fields if they have values
+        if (customer.email && customer.email.trim() !== '') createInput.email = customer.email;
+        if (customer.address && customer.address.trim() !== '') createInput.address = customer.address;
+        if (customer.city && customer.city.trim() !== '') createInput.city = customer.city;
+        if (customer.state && customer.state.trim() !== '') createInput.state = customer.state;
+        if (customer.zipCode && customer.zipCode.trim() !== '') createInput.zipCode = customer.zipCode;
+        if (customer.notes && customer.notes.trim() !== '') createInput.notes = customer.notes;
+        if (customer.globalId && customer.globalId.trim() !== '') createInput.globalId = customer.globalId;
+  
+        const result = await client.models.Customer.create(createInput);
         
         if (result.errors) {
           throw new Error(result.errors.map(e => e.message).join(', '));
@@ -193,21 +197,25 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
         onSave(fullName);
       } else if (customer.id) {
         // Update existing customer
-        const result = await client.models.Customer.update({
+        const updateInput: any = {
           id: customer.id,
           firstName: customer.firstName,
           lastName: customer.lastName,
           phoneNumber: customer.phoneNumber,
-          email: customer.email || null,
-          address: customer.address || null,
-          city: customer.city || null,
-          state: customer.state || null,
-          zipCode: customer.zipCode || null,
-          notes: customer.notes || null,
-          // Don't update these fields
-          // globalId: customer.globalId,
-          // businessID: customer.businessID,
-        });
+        };
+  
+        // Only add optional fields if they have values
+        if (customer.email && customer.email.trim() !== '') updateInput.email = customer.email;
+        if (customer.address && customer.address.trim() !== '') updateInput.address = customer.address;
+        if (customer.city && customer.city.trim() !== '') updateInput.city = customer.city;
+        if (customer.state && customer.state.trim() !== '') updateInput.state = customer.state;
+        if (customer.zipCode && customer.zipCode.trim() !== '') updateInput.zipCode = customer.zipCode;
+        if (customer.notes && customer.notes.trim() !== '') updateInput.notes = customer.notes;
+        // Don't update these fields
+        // globalId: customer.globalId,
+        // businessID: customer.businessID,
+  
+        const result = await client.models.Customer.update(updateInput);
         
         if (result.errors) {
           throw new Error(result.errors.map(e => e.message).join(', '));

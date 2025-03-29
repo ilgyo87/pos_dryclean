@@ -86,23 +86,22 @@ export const saveQRCodeToS3 = async (
   qrCodeImageData: Blob
 ): Promise<string> => {
   try {
-    // Create the path for storing the QR code
-    const s3Key = `qrcodes/${businessId}/${entityType.toLowerCase()}/${entityId}.png`;
+    // Create the path for storing the QR code based on storage resource configuration
+    // Using entity_id path structure as defined in storage resource
+    const s3Key = `qrcodes/${businessId}/${entityType.toLowerCase()}_${entityId}.png`;
     
     // Upload the QR code image to S3
     await uploadData({
       key: s3Key,
       data: qrCodeImageData,
       options: {
-        contentType: 'image/png',
-        // Use the default bucket (drycleanStorage)
+        contentType: 'image/png'
       }
     });
     
     // Get the URL of the uploaded QR code
     const urlResult = await getUrl({
-      key: s3Key,
-      // Default options
+      key: s3Key
     });
     
     const url = urlResult.url.toString();
@@ -248,13 +247,12 @@ export const deleteQRCodeFromS3 = async (
     const entity = await getEntityData<BaseEntityData>(entityType, entityId);
     
     if (entity && entity.qrCodeImageUrl) {
-      // Extract the key from the URL (everything after the bucket name)
-      const s3Key = `qrcodes/${businessId}/${entityType.toLowerCase()}/${entityId}.png`;
+      // Use the same key structure as in saveQRCodeToS3
+      const s3Key = `qrcodes/${businessId}/${entityType.toLowerCase()}_${entityId}.png`;
       
       // Delete the QR code from S3
       await remove({
-        key: s3Key,
-        // Uses the default bucket
+        key: s3Key
       });
       
       // Update the entity to remove the QR code URL

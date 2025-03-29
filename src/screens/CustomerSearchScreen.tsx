@@ -1,4 +1,4 @@
-// src/screens/TransactionScreen.tsx
+// src/screens/CustomerSearchScreen.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
@@ -26,18 +26,20 @@ interface Customer {
   firstName: string;
   lastName: string;
   phoneNumber: string;
+  email?: string;
+  address?: string;
 }
 
 // Define a type for the route parameters
-type TransactionScreenRouteParams = {
+type CustomerSearchScreenRouteParams = {
   businessId: string;
   businessName: string;
 };
 
-const TransactionsScreen: React.FC = () => {
+const CustomerSearchScreen: React.FC = () => {
   const route = useRoute();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
-  const { businessId } = route.params as TransactionScreenRouteParams;
+  const { businessId } = route.params as CustomerSearchScreenRouteParams;
   const [searchText, setSearchText] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
@@ -64,7 +66,9 @@ const TransactionsScreen: React.FC = () => {
           id: customer.id,
           firstName: customer.firstName,
           lastName: customer.lastName,
-          phoneNumber: customer.phoneNumber
+          phoneNumber: customer.phoneNumber,
+          email: customer.email || undefined,
+          address: customer.address || undefined
         }));
         
         setCustomers(customerData as Customer[]);
@@ -93,7 +97,8 @@ const TransactionsScreen: React.FC = () => {
     const filtered = customers.filter(customer => 
       customer.firstName?.toLowerCase().includes(searchTerm) ||
       customer.lastName?.toLowerCase().includes(searchTerm) ||
-      customer.phoneNumber?.includes(searchTerm)
+      customer.phoneNumber?.includes(searchTerm) ||
+      (customer.email && customer.email.toLowerCase().includes(searchTerm))
     );
     
     setFilteredCustomers(filtered);
@@ -262,4 +267,4 @@ const TransactionsScreen: React.FC = () => {
   );
 };
 
-export default TransactionsScreen;
+export default CustomerSearchScreen;

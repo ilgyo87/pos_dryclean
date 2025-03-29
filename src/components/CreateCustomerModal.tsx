@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import * as QRCodeGenerator from '../utils/qrCodeGenerator';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -44,6 +45,7 @@ const CreateCustomerModal = ({
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
 
   // Reset form when modal opens with potential initial data
   useEffect(() => {
@@ -54,6 +56,7 @@ const CreateCustomerModal = ({
       setEmail('');
       setAddress('');
       setIsSubmitting(false);
+      setIsGeneratingQR(false);
     }
   }, [visible, initialData]);
 
@@ -86,14 +89,56 @@ const CreateCustomerModal = ({
       return false;
     }
     
-    // Basic phone validation - must have at least 10 digits
-    const phoneDigits = phoneNumber.replace(/\D/g, '');
-    if (phoneDigits.length < 10) {
-      Alert.alert('Error', 'Please enter a valid phone number');
+    // New validation for email
+    if (!email.trim()) {
+      Alert.alert('Error', 'Email is required');
       return false;
     }
     
+    // Basic email validation using regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return false;
+    }
+
     return true;
+  };
+
+  // Generate QR code for the customer
+  const generateCustomerQRCode = async (customerId: string) => {
+    try {
+      setIsGeneratingQR(true);
+      
+      // Get the latest customer data
+      const response = await client.models.Customer.get({ id: customerId });
+      if (!response.data) throw new Error('Customer data not found');
+      
+      // Generate QR code data
+      const qrData = QRCodeGenerator.generateQRCodeData('Customer', response.data);
+      
+      // Convert to blob - this would typically use a library like react-native-qrcode-svg 
+      // to generate the image, but for this example, we're creating a placeholder
+      const textEncoder = new TextEncoder();
+      const qrDataArray = textEncoder.encode(qrData);
+      const qrCodeBlob = new Blob([qrDataArray], { type: 'image/png' });
+      
+      // Save QR code to S3
+      const qrCodeUrl = await QRCodeGenerator.saveQRCodeToS3(
+        'Customer',
+        customerId,
+        businessId,
+        qrCodeBlob
+      );
+      
+      console.log('QR code generated successfully:', qrCodeUrl);
+      return qrCodeUrl;
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      throw error;
+    } finally {
+      setIsGeneratingQR(false);
+    }
   };
 
   const handleCreateCustomer = async () => {
@@ -106,12 +151,22 @@ const CreateCustomerModal = ({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim(),
-        email: email.trim() || undefined,
+        email: email.trim(), // Now required
         address: address.trim() || undefined,
         businessID: businessId
       });
 
       console.log('Customer created:', result);
+      
+      // Generate QR code for the new customer
+      if (result.data && result.data.id) {
+        try {
+          await generateCustomerQRCode(result.data.id);
+        } catch (qrError) {
+          console.warn('Error generating QR code:', qrError);
+          // Continue with customer creation even if QR code generation fails
+        }
+      }
       
       // Notify parent component and close modal
       if (result.data) {
@@ -166,7 +221,7 @@ const CreateCustomerModal = ({
             </View>
             
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Phone Number *</Text>
+              <Text style={styles.label}>Phone Number</Text>
               <TextInput
                 style={styles.input}
                 value={phoneNumber}
@@ -177,7 +232,7 @@ const CreateCustomerModal = ({
             </View>
             
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>Email *</Text>
               <TextInput
                 style={styles.input}
                 value={email}
@@ -204,18 +259,18 @@ const CreateCustomerModal = ({
             <TouchableOpacity
               style={[styles.button, styles.cancelButton]}
               onPress={onClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isGeneratingQR}
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
-              style={[styles.button, styles.createButton, isSubmitting && styles.disabledButton]}
+              style={[styles.button, styles.createButton, (isSubmitting || isGeneratingQR) && styles.disabledButton]}
               onPress={handleCreateCustomer}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isGeneratingQR}
             >
               <Text style={styles.createButtonText}>
-                {isSubmitting ? 'Creating...' : 'Create Customer'}
+                {isSubmitting ? 'Creating...' : (isGeneratingQR ? 'Generating QR...' : 'Create Customer')}
               </Text>
             </TouchableOpacity>
           </View>

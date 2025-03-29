@@ -1,4 +1,3 @@
-// src/screens/CustomerEditScreen.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
@@ -10,7 +9,8 @@ import {
   Platform,
   Alert,
   StyleSheet,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { generateClient } from 'aws-amplify/data';
@@ -19,6 +19,9 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import EditCustomerModal from '../components/EditCustomerModal';
 import BarcodeScannerModal from '../components/BarCodeScannerModal';
+import QRCode from 'react-native-qrcode-svg';
+import * as QRCodeGenerator from '../utils/qrCodeGenerator';
+import ViewShot from 'react-native-view-shot';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -36,11 +39,12 @@ interface Customer {
   notes?: string;
   globalId?: string;
   businessID: string;
+  qrCodeImageUrl?: string;
 }
 
 // Define our route parameter types
 type RootStackParamList = {
-  CustomerEdit: { businessId: string };
+  CustomerEdit: { businessId: string; customerId?: string };
   CustomerSelection: undefined;
 };
 
@@ -50,7 +54,7 @@ type CustomerEditScreenNavigationProp = NativeStackNavigationProp<RootStackParam
 const CustomerEditScreen = () => {
   const navigation = useNavigation<CustomerEditScreenNavigationProp>();
   const route = useRoute<CustomerEditScreenRouteProp>();
-  const { businessId } = route.params || {};
+  const { businessId, customerId } = route.params || {};
   
   const [searchText, setSearchText] = useState('');
   const [quickSearchPhoneOrEmail, setQuickSearchPhoneOrEmail] = useState('');
@@ -64,13 +68,50 @@ const CustomerEditScreen = () => {
   const [isNewCustomer, setIsNewCustomer] = useState(true);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [barcodeModalVisible, setBarcodeModalVisible] = useState(false);
+  const [tempQrData, setTempQrData] = useState<string>('{}');
+  const [generatingQR, setGeneratingQR] = useState(false);
+  const [selectedQRCustomer, setSelectedQRCustomer] = useState<string | null>(null);
   
   const inputRef = useRef<TextInput>(null);
+  const qrRef = useRef<any>(null);
+  const qrSize = 300;
   
   // Fetch all customers for the current business on component mount
   useEffect(() => {
     fetchCustomers();
-  }, [businessId]);
+    
+    // If a customerId was passed in the route, open that customer
+    if (customerId) {
+      openCustomerById(customerId);
+    }
+  }, [businessId, customerId]);
+  
+  // Open a specific customer by ID
+  const openCustomerById = async (id: string) => {
+    try {
+      const customerResult = await client.models.Customer.get({ id });
+      if (customerResult.data) {
+        const customer = {
+          id: customerResult.data.id,
+          firstName: customerResult.data.firstName,
+          lastName: customerResult.data.lastName,
+          phoneNumber: customerResult.data.phoneNumber,
+          email: customerResult.data.email || undefined,
+          address: customerResult.data.address || undefined,
+          city: customerResult.data.city || undefined,
+          state: customerResult.data.state || undefined,
+          zipCode: customerResult.data.zipCode || undefined,
+          notes: customerResult.data.notes || undefined,
+          globalId: customerResult.data.globalId || undefined,
+          businessID: customerResult.data.businessID,
+          qrCodeImageUrl: customerResult.data.qrCodeImageUrl || undefined
+        };
+        handleSelectCustomer(customer as Customer);
+      }
+    } catch (error) {
+      console.error('Error fetching customer by ID:', error);
+    }
+  };
   
   // Check if customer exists whenever quickSearchPhoneOrEmail changes
   useEffect(() => {
@@ -104,7 +145,8 @@ const CustomerEditScreen = () => {
           zipCode: customer.zipCode || undefined,
           notes: customer.notes || undefined,
           globalId: customer.globalId || undefined,
-          businessID: customer.businessID
+          businessID: customer.businessID,
+          qrCodeImageUrl: customer.qrCodeImageUrl || undefined
         }));
         
         setCustomers(customerData as Customer[]);
@@ -154,7 +196,8 @@ const CustomerEditScreen = () => {
           zipCode: existingCustomer.zipCode || undefined,
           notes: existingCustomer.notes || undefined,
           globalId: existingCustomer.globalId || undefined,
-          businessID: existingCustomer.businessID
+          businessID: existingCustomer.businessID,
+          qrCodeImageUrl: existingCustomer.qrCodeImageUrl || undefined
         }]);
         setShowQuickAdd(false);
         return;
@@ -241,6 +284,20 @@ const CustomerEditScreen = () => {
       
       if (result.errors) {
         throw new Error(result.errors.map(e => e.message).join(', '));
+      }
+      
+      // After successfully importing, automatically generate QR code
+      if (result.data && result.data.id) {
+        try {
+          await generateQRCodeForCustomer({
+            ...foundExternalCustomer,
+            id: result.data.id, 
+            businessID: businessId
+          } as Customer);
+        } catch (qrError) {
+          console.warn('Error generating QR code for imported customer:', qrError);
+          // Continue even if QR generation fails
+        }
       }
       
       Alert.alert(
@@ -357,7 +414,8 @@ const CustomerEditScreen = () => {
           zipCode: customer.zipCode || undefined,
           notes: customer.notes || undefined,
           globalId: customer.globalId || undefined,
-          businessID: customer.businessID
+          businessID: customer.businessID,
+          qrCodeImageUrl: customer.qrCodeImageUrl || undefined
         }));
         
         setCustomers(customerData as Customer[]);
@@ -368,6 +426,89 @@ const CustomerEditScreen = () => {
       Alert.alert('Error', 'Failed to search customers. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Generate QR code for a customer
+  const generateQRCodeForCustomer = async (customer: Customer) => {
+    if (!customer.id || !businessId) return;
+    
+    setGeneratingQR(true);
+    setSelectedQRCustomer(customer.id);
+    
+    try {
+      // Check if QR code already exists
+      const existingQrCode = await QRCodeGenerator.createQRCodeIfNeeded(
+        'Customer',
+        customer.id,
+        businessId
+      );
+      
+      if (existingQrCode) {
+        // QR code already exists, just refresh the list
+        fetchCustomers();
+        return;
+      }
+      
+      // Generate QR code data
+      const qrCodeData = QRCodeGenerator.generateQRCodeData('Customer', customer);
+      setTempQrData(qrCodeData);
+      
+      // Wait for state update to ensure QR code renders with the right data
+      setTimeout(async () => {
+        try {
+          // Capture the QR code as an image
+          if (qrRef.current) {
+            const uri = await qrRef.current.capture();
+            
+            // Convert URI to blob
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            
+            // Save QR code image to S3
+            await QRCodeGenerator.saveQRCodeToS3(
+              'Customer',
+              customer.id,
+              businessId,
+              blob
+            );
+            
+            // Refresh the list to show the new QR code
+            fetchCustomers();
+            
+          } else {
+            throw new Error('QR code reference not available');
+          }
+        } catch (error) {
+          console.error('Error capturing QR code:', error);
+          Alert.alert('Error', 'Failed to generate QR code. Please try again.');
+        } finally {
+          setSelectedQRCustomer(null);
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      Alert.alert('Error', 'Failed to generate QR code. Please try again.');
+      setSelectedQRCustomer(null);
+    } finally {
+      setGeneratingQR(false);
+    }
+  };
+  
+  // View full QR code
+  const viewFullQRCode = (customer: Customer) => {
+    if (customer.qrCodeImageUrl) {
+      // Create a larger display or open a modal to show the QR code
+      Alert.alert(
+        'QR Code for ' + customer.firstName + ' ' + customer.lastName,
+        'Use this QR code for quick customer identification.',
+        [
+          { text: 'OK', onPress: () => console.log('QR Code viewed') }
+        ],
+        { cancelable: true }
+      );
+    } else {
+      Alert.alert('No QR Code', 'This customer does not have a QR code yet. Generate one first.');
     }
   };
   
@@ -530,18 +671,44 @@ const CustomerEditScreen = () => {
                 style={styles.customerItem}
                 onPress={() => handleSelectCustomer(item)}
               >
-                <Text style={styles.customerName}>
-                  {item.firstName} {item.lastName}
-                  {item.globalId && <Text style={styles.globalBadge}> • Shared</Text>}
-                </Text>
-                <Text style={styles.customerDetails}>
-                  {item.phoneNumber} {item.email ? `• ${item.email}` : ''}
-                </Text>
-                {item.address ? (
-                  <Text style={styles.customerAddress}>
-                    {item.address}
-                  </Text>
-                ) : null}
+                <View style={styles.customerItemContent}>
+                  <View style={styles.customerInfoContainer}>
+                    <Text style={styles.customerName}>
+                      {item.firstName} {item.lastName}
+                      {item.globalId && <Text style={styles.globalBadge}> • Shared</Text>}
+                    </Text>
+                    <Text style={styles.customerDetails}>
+                      {item.phoneNumber} {item.email ? `• ${item.email}` : ''}
+                    </Text>
+                    {item.address ? (
+                      <Text style={styles.customerAddress}>
+                        {item.address}
+                      </Text>
+                    ) : null}
+                  </View>
+                  
+                  <View style={styles.qrCodeContainer}>
+                    {item.qrCodeImageUrl ? (
+                      <TouchableOpacity onPress={() => viewFullQRCode(item)}>
+                        <Image 
+                          source={{ uri: item.qrCodeImageUrl }} 
+                          style={styles.qrCodeImage}
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity 
+                        style={styles.generateQrButton}
+                        onPress={() => generateQRCodeForCustomer(item)}
+                        disabled={generatingQR && selectedQRCustomer === item.id}
+                      >
+                        <Text style={styles.generateQrButtonText}>
+                          {(generatingQR && selectedQRCustomer === item.id) ? '...' : 'Generate QR'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
               </TouchableOpacity>
             )}
           />
@@ -572,6 +739,20 @@ const CustomerEditScreen = () => {
         onClose={() => setBarcodeModalVisible(false)}
         onCodeScanned={handleBarcodeScan}
       />
+
+      {/* Hidden QR code for generation */}
+      <ViewShot
+        ref={qrRef}
+        options={{ format: 'png', quality: 0.9 }}
+        style={{ position: 'absolute', width: qrSize, height: qrSize, opacity: 0 }}
+      >
+        <QRCode
+          value={tempQrData}
+          size={qrSize}
+          backgroundColor="white"
+          color="black"
+        />
+      </ViewShot>
     </SafeAreaView>
   );
 };
@@ -730,6 +911,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
+  customerItemContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  customerInfoContainer: {
+    flex: 1,
+  },
   customerName: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -747,6 +936,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 2,
+  },
+  qrCodeContainer: {
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  qrCodeImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 4,
+  },
+  generateQrButton: {
+    backgroundColor: '#2196F3',
+    padding: 6,
+    borderRadius: 4,
+  },
+  generateQrButtonText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   emptyState: {
     flex: 1,
