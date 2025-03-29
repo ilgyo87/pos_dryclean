@@ -14,6 +14,9 @@ import {
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import * as QRCodeGenerator from '../utils/qrCodeGenerator';
+import QRCode from 'react-native-qrcode-svg';
+import { captureRef } from 'react-native-view-shot';
+import { uploadData } from 'aws-amplify/storage';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -46,6 +49,7 @@ const CreateCustomerModal = ({
   const [address, setAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+  const [qrCodeRef, setQrCodeRef] = useState<React.RefObject<View>>(React.createRef());
 
   // Reset form when modal opens with potential initial data
   useEffect(() => {
@@ -57,6 +61,7 @@ const CreateCustomerModal = ({
       setAddress('');
       setIsSubmitting(false);
       setIsGeneratingQR(false);
+      setQrCodeRef(React.createRef());
     }
   }, [visible, initialData]);
 
@@ -117,22 +122,38 @@ const CreateCustomerModal = ({
       // Generate QR code data
       const qrData = QRCodeGenerator.generateQRCodeData('Customer', response.data);
       
-      // Convert to blob - this would typically use a library like react-native-qrcode-svg 
-      // to generate the image, but for this example, we're creating a placeholder
-      const textEncoder = new TextEncoder();
-      const qrDataArray = textEncoder.encode(qrData);
-      const qrCodeBlob = new Blob([qrDataArray], { type: 'image/png' });
+      // Capture QR code SVG as an image
+      if (!qrCodeRef.current) {
+        throw new Error('QR code reference not available');
+      }
+      
+      // Use react-native-view-shot to capture the QR code as an image
+      const uri = await captureRef(qrCodeRef, {
+        format: 'png',
+        quality: 1
+      });
+      
+      // Convert the image to a blob
+      const imageResponse = await fetch(uri);
+      const blob = await imageResponse.blob();
       
       // Save QR code to S3
-      const qrCodeUrl = await QRCodeGenerator.saveQRCodeToS3(
-        'Customer',
-        customerId,
-        businessId,
-        qrCodeBlob
-      );
+      const result = await uploadData({
+        path: `qrcodes/${businessId}/customer_${customerId}.png`,
+        data: blob,
+        options: {
+          contentType: 'image/png'
+        }
+      }).result;
       
-      console.log('QR code generated successfully:', qrCodeUrl);
-      return qrCodeUrl;
+      // Update customer with QR code URL
+      await client.models.Customer.update({
+        id: customerId,
+        qrCodeImageUrl: result.path
+      });
+      
+      console.log('QR code generated successfully:', result.path);
+      return result.path;
     } catch (error) {
       console.error('Error generating QR code:', error);
       throw error;
@@ -253,6 +274,25 @@ const CreateCustomerModal = ({
                 multiline
               />
             </View>
+            
+            {/* Hidden QR code component for capturing */}
+            <View style={styles.hiddenQrContainer}>
+              <View ref={qrCodeRef} style={styles.qrCodeContainer}>
+                <QRCode
+                  value={JSON.stringify({
+                    type: 'Customer',
+                    firstName,
+                    lastName,
+                    email,
+                    phoneNumber,
+                    businessID: businessId
+                  })}
+                  size={200}
+                  backgroundColor="white"
+                  color="black"
+                />
+              </View>
+            </View>
           </ScrollView>
           
           <View style={styles.buttonContainer}>
@@ -366,6 +406,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: 'white',
   },
+  hiddenQrContainer: {
+    position: 'absolute',
+    left: -9999,
+    height: 0,
+    overflow: 'hidden',
+  },
+  qrCodeContainer: {
+    backgroundColor: 'white',
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
 });
 
 export default CreateCustomerModal;

@@ -136,17 +136,14 @@ export const saveQRCodeToS3 = async (
   entityType: EntityType,
   entityId: string, 
   businessId: string,
-  qrCodeData: string
+  qrCodeBlob: Blob
 ): Promise<string> => {
   try {
-    // Generate the QR code blob
-    const qrCodeBlob = await generateQRCodeBlob(qrCodeData);
-    
     // Create the path for storing the QR code based on storage resource configuration
     // Using entity_id path structure as defined in storage resource
     const s3Key = `qrcodes/${businessId}/${entityType.toLowerCase()}_${entityId}.png`;
     
-    // Upload the QR code image to S3
+    // Upload the QR code image (Blob) to S3
     await uploadData({
       path: s3Key,
       data: qrCodeBlob,
@@ -288,7 +285,7 @@ export const createQRCodeIfNeeded = async (
       const qrCodeData = generateQRCodeData(entityType, entity);
       
       // Save QR code to S3
-      return await saveQRCodeToS3(entityType, entityId, businessId, qrCodeData);
+      return await saveQRCodeToS3(entityType, entityId, businessId, await generateQRCodeBlob(qrCodeData));
     }
     
     // Return null if entity doesn't exist
