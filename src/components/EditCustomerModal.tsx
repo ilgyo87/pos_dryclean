@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
-  StyleSheet,
   Alert,
   Modal,
   KeyboardAvoidingView,
@@ -15,6 +14,7 @@ import {
 } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import { styles } from '../styles/components/editCustomerModalStyles';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -158,13 +158,16 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
       return;
     }
     
-    // Email validation if provided
-    if (customer.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(customer.email)) {
-        Alert.alert('Invalid Email', 'Please enter a valid email address');
-        return;
-      }
+    // Email validation - required field now
+    if (!customer.email || !customer.email.trim()) {
+      Alert.alert('Email Required', 'Please enter an email address');
+      return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customer.email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
     }
     
     setIsSaving(true);
@@ -175,11 +178,11 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           firstName: customer.firstName,
           lastName: customer.lastName,
           phoneNumber: customer.phoneNumber,
+          email: customer.email, // Email is now required
           businessID: businessId,
         };
   
         // Only add optional fields if they have values
-        if (customer.email && customer.email.trim() !== '') createInput.email = customer.email;
         if (customer.address && customer.address.trim() !== '') createInput.address = customer.address;
         if (customer.city && customer.city.trim() !== '') createInput.city = customer.city;
         if (customer.state && customer.state.trim() !== '') createInput.state = customer.state;
@@ -193,8 +196,16 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           throw new Error(result.errors.map(e => e.message).join(', '));
         }
         
-        const fullName = `${customer.firstName} ${customer.lastName}`;
-        onSave(fullName);
+        // Get newly created customer ID for QR code generation
+        if (result.data && result.data.id) {
+          const newCustomerId = result.data.id;
+          // We'll let the parent component handle QR code generation on close
+          // by refreshing the customer list and having useEffect detect missing QR codes
+          const fullName = `${customer.firstName} ${customer.lastName}`;
+          onSave(fullName);
+        } else {
+          throw new Error('Failed to get created customer ID');
+        }
       } else if (customer.id) {
         // Update existing customer
         const updateInput: any = {
@@ -202,10 +213,10 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           firstName: customer.firstName,
           lastName: customer.lastName,
           phoneNumber: customer.phoneNumber,
+          email: customer.email, // Email is now required
         };
   
         // Only add optional fields if they have values
-        if (customer.email && customer.email.trim() !== '') updateInput.email = customer.email;
         if (customer.address && customer.address.trim() !== '') updateInput.address = customer.address;
         if (customer.city && customer.city.trim() !== '') updateInput.city = customer.city;
         if (customer.state && customer.state.trim() !== '') updateInput.state = customer.state;
@@ -335,7 +346,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
               
               {/* Email */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Email</Text>
+                <Text style={styles.inputLabel}>Email *</Text>
                 <TextInput
                   style={styles.textInput}
                   value={customer.email}
@@ -439,103 +450,5 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    borderRadius: 10,
-    maxHeight: '90%',
-    width: '90%',
-    alignSelf: 'center',
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    padding: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  closeButtonText: {
-    fontSize: 18,
-    color: '#666',
-  },
-  formScrollView: {
-    padding: 16,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    marginBottom: 8,
-    color: '#666',
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fafafa',
-  },
-  multilineInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  rowInputContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  button: {
-    padding: 14,
-    borderRadius: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-    flex: 2,
-    marginLeft: 8,
-  },
-  deleteButton: {
-    backgroundColor: '#F44336',
-    flex: 1,
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-  },
-});
 
 export default EditCustomerModal;

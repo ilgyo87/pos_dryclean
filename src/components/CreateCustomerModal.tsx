@@ -128,7 +128,7 @@ const CreateCustomerModal = ({
       }
       
       // Use react-native-view-shot to capture the QR code as an image
-      const uri = await captureRef(qrCodeRef, {
+      const uri = await captureRef(qrCodeRef.current, {
         format: 'png',
         quality: 1
       });

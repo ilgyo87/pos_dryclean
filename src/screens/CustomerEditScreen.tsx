@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  StyleSheet,
   ActivityIndicator,
   Image
 } from 'react-native';
@@ -22,6 +21,7 @@ import BarcodeScannerModal from '../components/BarCodeScannerModal';
 import QRCode from 'react-native-qrcode-svg';
 import * as QRCodeGenerator from '../utils/qrCodeGenerator';
 import ViewShot from 'react-native-view-shot';
+import { styles } from '../styles/screens/customerEditStyles';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -105,6 +105,14 @@ const CustomerEditScreen = () => {
         
         setCustomers(customerData as Customer[]);
         setFilteredCustomers(customerData as Customer[]);
+        
+        // Automatically trigger QR generation for customers without QR codes
+        const customersWithoutQR = customerData.filter(c => !c.qrCodeImageUrl);
+        if (customersWithoutQR.length > 0) {
+          // Generate for the first customer without a QR code
+          // This could be enhanced to handle multiple in a queue
+          generateQRCodeForCustomer(customersWithoutQR[0] as Customer);
+        }
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -165,17 +173,16 @@ const CustomerEditScreen = () => {
   // Effect to automatically generate QR codes for customers without them
   useEffect(() => {
     const customersWithoutQR = filteredCustomers.filter(customer => !customer.qrCodeImageUrl);
-    if (customersWithoutQR.length > 0) {
+    if (customersWithoutQR.length > 0 && !isLoading && !customerToCapture) {
       // Generate QR code for the first customer without one
-      // Avoid calling generate directly in this effect if it causes issues.
-      // Let's rely on the placeholder rendering or a button press for now.
-      // If automatic generation is essential, ensure it doesn't trigger infinite loops.
-      // Consider adding a check: !qrGeneratingCustomers.includes(customersWithoutQR[0].id)
-      // if (!qrGeneratingCustomers.includes(customersWithoutQR[0].id)) {
-      //   generateQRCodeForCustomer(customersWithoutQR[0]);
-      // }
+      // Only if we're not already generating a code and not loading customers
+      const customerToGenerate = customersWithoutQR[0];
+      if (!qrGeneratingCustomers.includes(customerToGenerate.id)) {
+        console.log(`Automatically generating QR code for customer: ${customerToGenerate.id}`);
+        generateQRCodeForCustomer(customerToGenerate);
+      }
     }
-  }, [filteredCustomers]); // Removed generatingQR dependency
+  }, [filteredCustomers, isLoading, qrGeneratingCustomers, customerToCapture]); // Removed generatingQR dependency
 
   // ADD: useEffect to handle the QR code capture after state updates
   useEffect(() => {
@@ -803,11 +810,11 @@ const CustomerEditScreen = () => {
             data={filteredCustomers}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.customerItem}
-                onPress={() => handleSelectCustomer(item)}
-              >
-                <View style={styles.customerItemContent}>
+              <View style={styles.customerItem}>
+                <TouchableOpacity
+                  style={styles.customerItemContent}
+                  onPress={() => handleSelectCustomer(item)}
+                >
                   <View style={styles.customerInfoContainer}>
                     <Text style={styles.customerName}>
                       {item.firstName} {item.lastName}
@@ -824,10 +831,43 @@ const CustomerEditScreen = () => {
                   </View>
                   
                   <View style={styles.qrCodeContainer}>
-                    {renderQRCode(item)}
+                    {qrGeneratingCustomers.includes(item.id) ? (
+                      <View style={styles.qrGeneratingContainer}>
+                        <ActivityIndicator size="small" color="#2196F3" />
+                      </View>
+                    ) : (
+                      renderQRCode(item)
+                    )}
                   </View>
+                </TouchableOpacity>
+                
+                <View style={styles.customerActionsContainer}>
+                  <TouchableOpacity 
+                    style={styles.customerAction}
+                    onPress={() => handleSelectCustomer(item)}
+                  >
+                    <Text style={styles.actionText}>Edit</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.customerAction, styles.deleteAction]}
+                    onPress={() => {
+                      // Set selected customer and prompt for deletion
+                      setSelectedCustomer(item);
+                      Alert.alert(
+                        'Delete Customer',
+                        `Are you sure you want to delete ${item.firstName} ${item.lastName}?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Delete', style: 'destructive', onPress: handleDeleteCustomer }
+                        ]
+                      );
+                    }}
+                  >
+                    <Text style={styles.deleteActionText}>Delete</Text>
+                  </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
+              </View>
             )}
           />
         ) : (
@@ -881,237 +921,5 @@ const CustomerEditScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9f9f9',
-  },
-  quickSearchContainer: {
-    padding: 16,
-    backgroundColor: '#f0f0f0',
-  },
-  quickSearchTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  quickSearchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  quickSearchInput: {
-    flex: 1,
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    backgroundColor: 'white',
-    fontSize: 16,
-    marginRight: 8,
-  },
-  scanButton: {
-    height: 44,
-    paddingHorizontal: 16,
-    backgroundColor: '#2196F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 5,
-  },
-  scanButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  searchingIndicator: {
-    position: 'absolute',
-    right: 12,
-  },
-  quickAddContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  foundProfileText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  foundProfileName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  foundProfileDetails: {
-    fontSize: 14,
-    color: '#333',
-    marginTop: 2,
-  },
-  quickActionButtons: {
-    flexDirection: 'row',
-    marginTop: 12,
-  },
-  actionButton: {
-    flex: 1,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 18,
-  },
-  importButton: {
-    backgroundColor: '#4caf50',
-    marginRight: 8,
-  },
-  editButton: {
-    backgroundColor: '#ff9800',
-  },
-  newCustomerQuickButton: {
-    backgroundColor: '#2196F3',
-    marginTop: 8,
-  },
-  actionButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  noMatchText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#ddd',
-  },
-  header: {
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    backgroundColor: 'white',
-    marginRight: 8,
-  },
-  searchButton: {
-    height: 44,
-    paddingHorizontal: 16,
-    backgroundColor: '#2196F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 5,
-  },
-  newCustomerButton: {
-    height: 44,
-    paddingHorizontal: 16,
-    backgroundColor: '#4caf50',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 5,
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  customersContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  customerItem: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  customerItemContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  customerInfoContainer: {
-    flex: 1,
-  },
-  customerName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  globalBadge: {
-    fontSize: 14,
-    color: '#2196F3',
-  },
-  customerDetails: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  customerAddress: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  qrCodeImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 4,
-  },
-  qrCodeContainer: { // Existing style
-    width: 60,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  qrGeneratingContainer: { // Add this style
-    width: 60,
-    height: 60,
-    justifyContent: 'center', // Center the ActivityIndicator vertically
-    alignItems: 'center',    // Center the ActivityIndicator horizontally
-    marginLeft: 8,         // Match the margin of the qrCodeContainer
-    // You might add a light background or border if needed visually
-    // backgroundColor: '#f0f0f0', 
-  },
-  qrPlaceholder: { // Existing style
-     width: 60,
-     height: 60,
-     justifyContent: 'center',
-     alignItems: 'center',
-     backgroundColor: '#e0e0e0',
-     borderRadius: 4,
-     marginLeft: 8,
-  },
-  qrPlaceholderText: { // Existing style
-    color: '#999',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
-  },
-});
 
 export default CustomerEditScreen;
