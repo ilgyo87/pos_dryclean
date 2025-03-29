@@ -15,7 +15,7 @@ import type { Schema } from '../../amplify/data/resource';
 import { styles } from './../styles/components/createBusinessStyles';
 import { useAuthenticator } from "@aws-amplify/ui-react-native";
 // Import QR code utilities
-import { generateQRCodeData, saveQRCodeToS3 } from '../utils/qrCodeGenerator';
+import { generateQRCodeData } from '../utils/qrCodeGenerator';
 // For QR code generation
 import QRCode from 'qrcode';
 
@@ -96,7 +96,7 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
     setIsFormValid(allFieldsFilled && (!phoneCheckComplete || !phoneExists));
   }, [businessName, firstName, lastName, phoneNumber, address, city, state, zipCode, phoneCheckComplete, phoneExists]);
 
-  // Generate QR code for the business
+  // Generate QR code data for the business
   const generateBusinessQRCode = async (businessId: string, businessData: any): Promise<string | null> => {
     try {
       setGeneratingQRCode(true);
@@ -104,20 +104,11 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
       // Generate QR code data
       const qrData = generateQRCodeData('Business', businessData);
       
-      // Convert QR data to image
+      // Convert QR data to image URL (but don't save it)
       const qrCodeUrl = await QRCode.toDataURL(qrData);
       
-      // Convert the data URL to a Blob
-      const response = await fetch(qrCodeUrl);
-      const blob = await response.blob();
-      
-      // Save QR code image to S3
-      return await saveQRCodeToS3(
-        'Business', 
-        businessId, 
-        businessId, // Business ID is used for both entity ID and business ID
-        blob
-      );
+      // Return the QR code data URL
+      return qrCodeUrl;
     } catch (error) {
       console.error('Error generating QR code:', error);
       return null;
@@ -170,12 +161,10 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
         zipCode: result.data?.zipCode ?? ''
       };
       
-      // Generate and save the QR code
-      const qrCodeUrl = await generateBusinessQRCode(result.data?.id ?? '', businessData);
+      // Generate the QR code (but we don't need to save it)
+      await generateBusinessQRCode(result.data?.id ?? '', businessData);
       
-      if (!qrCodeUrl) {
-        console.warn('QR code generation failed, but business was created');
-      }
+      // QR codes are now generated dynamically when needed
       
       // Call the callback with the new business info
       onBusinessCreated(result.data?.id ?? '', result.data?.name ?? '');

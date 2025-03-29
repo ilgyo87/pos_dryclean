@@ -39,6 +39,23 @@ export const styles = StyleSheet.create({
       color: '#666',
       marginTop: 5,
     },
+    qrCodeContainer: {
+      alignItems: 'center', 
+      marginTop: 10,      
+      marginBottom: 10,   
+      minHeight: 120,     
+    },
+    qrCodeWrapper: {
+      padding: 10,             
+      backgroundColor: 'white', 
+      borderRadius: 5,         
+      alignSelf: 'center',      
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
     startButton: {
       backgroundColor: '#4CAF50',
       padding: 15,

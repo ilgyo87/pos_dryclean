@@ -231,23 +231,26 @@ export const styles = StyleSheet.create({
   // Customer actions
   customerActionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
     paddingTop: 10,
   },
   customerAction: {
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#e0e0e0',
+    paddingHorizontal: 16,
+    backgroundColor: '#4caf50',
     borderRadius: 4,
-    marginLeft: 8,
+    width: '40%',
+    alignItems: 'center',
   },
   deleteAction: {
     backgroundColor: '#ffebee',
   },
   actionText: {
-    color: '#333',
+    color: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
     fontSize: 14,
     fontWeight: '500',
   },

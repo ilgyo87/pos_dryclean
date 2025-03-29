@@ -23,7 +23,6 @@ const schema = a.schema({
     loyaltyPrograms: a.hasMany("Loyalty", "businessID"),
     counters: a.hasMany("Counter", "businessID"),
     customerCredits: a.hasMany("CustomerCredit", "businessID"),
-    qrCodeImageUrl: a.string(),
     website: a.string(),
   })
   .authorization((allow) => [
@@ -43,7 +42,6 @@ const schema = a.schema({
       businessID: a.id().required(),
       business: a.belongsTo("Business", "businessID"),
       transactions: a.hasMany("Transaction", "employeeID"),
-      qrCodeImageUrl: a.string(),
     })
     .authorization((allow) => [
       allow.owner(),
@@ -64,7 +62,6 @@ const schema = a.schema({
     zipCode: a.string(),
     notes: a.string(),
     profileImageUrl: a.string(),
-    qrCodeImageUrl: a.string(),
     // New field for credits
     credits: a.float().default(0), // Default to 0 credits
     // New fields for customer app integration
@@ -102,7 +99,6 @@ const schema = a.schema({
       business: a.belongsTo("Business", "businessID"),
       customerID: a.id().required(),
       customer: a.belongsTo("Customer", "customerID"),
-      qrCodeImageUrl: a.string(),
     })
     .authorization((allow) => [
       allow.owner(),

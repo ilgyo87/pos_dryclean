@@ -11,10 +11,13 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { styles } from '../styles/components/editCustomerModalStyles';
+import QRCode from 'react-native-qrcode-svg';
+import { generateQRCodeData, EntityType } from '../utils/qrCodeGenerator';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -67,16 +70,16 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
     notes: '',
     businessID: businessId,
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Fetch customer data when ID changes or when visible changes
+
+  const [qrCodeString, setQrCodeString] = useState<string | null>(null);
+
   useEffect(() => {
     if (visible) {
       if (isNewCustomer) {
-        // If it's a new customer, use initial data if provided, otherwise reset the form
         if (initialCustomerData) {
           setCustomer({
             ...initialCustomerData,
@@ -97,20 +100,18 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           });
         }
       } else if (customerId) {
-        // If editing existing customer, fetch data
         fetchCustomerData();
       }
     }
   }, [visible, customerId, isNewCustomer, initialCustomerData]);
-  
-  // Function to fetch customer data by ID
+
   const fetchCustomerData = async () => {
     if (!customerId) return;
-    
+
     setIsLoading(true);
     try {
       const response = await client.models.Customer.get({ id: customerId });
-      
+
       if (response.data) {
         setCustomer({
           id: response.data.id,
@@ -134,104 +135,117 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
       setIsLoading(false);
     }
   };
-  
-  // Function to handle changes to form fields
+
+  useEffect(() => {
+    if (customer && customer.id) {
+      const qrDataInput = {
+        id: customer.id,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        phoneNumber: customer.phoneNumber,
+        businessID: customer.businessID,
+      };
+
+      if (
+        qrDataInput.id &&
+        qrDataInput.firstName &&
+        qrDataInput.lastName &&
+        qrDataInput.phoneNumber &&
+        qrDataInput.businessID
+      ) {
+        const qrString = generateQRCodeData('Customer', qrDataInput);
+        setQrCodeString(qrString);
+      } else {
+        setQrCodeString(null);
+        console.warn('[EditCustomerModal] Missing data required for QR code generation.');
+      }
+    } else {
+      setQrCodeString(null);
+    }
+  }, [customer]);
+
   const handleInputChange = (field: keyof Customer, value: string) => {
-    setCustomer(prev => ({
+    setCustomer((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
-  
-  // Function to handle saving the customer
+
   const handleSave = async () => {
-    // Basic validation
     if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.phoneNumber.trim()) {
       Alert.alert('Required Fields', 'First name, last name, and phone number are required.');
       return;
     }
-    
-    // Phone number validation
-    const phoneRegex = /^\d{10}$/; // Simple check for 10 digits
+
+    const phoneRegex = /^\d{10}$/;
     if (!phoneRegex.test(customer.phoneNumber.replace(/\D/g, ''))) {
       Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number');
       return;
     }
-    
-    // Email validation - required field now
+
     if (!customer.email || !customer.email.trim()) {
       Alert.alert('Email Required', 'Please enter an email address');
       return;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(customer.email)) {
       Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
-    
+
     setIsSaving(true);
     try {
       if (isNewCustomer) {
-        // Create a new customer
         const createInput: any = {
           firstName: customer.firstName,
           lastName: customer.lastName,
           phoneNumber: customer.phoneNumber,
-          email: customer.email, // Email is now required
+          email: customer.email,
           businessID: businessId,
         };
-  
-        // Only add optional fields if they have values
+
         if (customer.address && customer.address.trim() !== '') createInput.address = customer.address;
         if (customer.city && customer.city.trim() !== '') createInput.city = customer.city;
         if (customer.state && customer.state.trim() !== '') createInput.state = customer.state;
         if (customer.zipCode && customer.zipCode.trim() !== '') createInput.zipCode = customer.zipCode;
         if (customer.notes && customer.notes.trim() !== '') createInput.notes = customer.notes;
         if (customer.globalId && customer.globalId.trim() !== '') createInput.globalId = customer.globalId;
-  
+
         const result = await client.models.Customer.create(createInput);
-        
+
         if (result.errors) {
-          throw new Error(result.errors.map(e => e.message).join(', '));
+          throw new Error(result.errors.map((e) => e.message).join(', '));
         }
-        
-        // Get newly created customer ID for QR code generation
+
         if (result.data && result.data.id) {
           const newCustomerId = result.data.id;
-          // We'll let the parent component handle QR code generation on close
-          // by refreshing the customer list and having useEffect detect missing QR codes
           const fullName = `${customer.firstName} ${customer.lastName}`;
           onSave(fullName);
         } else {
           throw new Error('Failed to get created customer ID');
         }
       } else if (customer.id) {
-        // Update existing customer
         const updateInput: any = {
           id: customer.id,
           firstName: customer.firstName,
           lastName: customer.lastName,
           phoneNumber: customer.phoneNumber,
-          email: customer.email, // Email is now required
+          email: customer.email,
         };
-  
-        // Only add optional fields if they have values
+
         if (customer.address && customer.address.trim() !== '') updateInput.address = customer.address;
         if (customer.city && customer.city.trim() !== '') updateInput.city = customer.city;
         if (customer.state && customer.state.trim() !== '') updateInput.state = customer.state;
         if (customer.zipCode && customer.zipCode.trim() !== '') updateInput.zipCode = customer.zipCode;
         if (customer.notes && customer.notes.trim() !== '') updateInput.notes = customer.notes;
-        // Don't update these fields
-        // globalId: customer.globalId,
-        // businessID: customer.businessID,
-  
+
         const result = await client.models.Customer.update(updateInput);
-        
+
         if (result.errors) {
-          throw new Error(result.errors.map(e => e.message).join(', '));
+          throw new Error(result.errors.map((e) => e.message).join(', '));
         }
-        
+
         const fullName = `${customer.firstName} ${customer.lastName}`;
         onSave(fullName);
       }
@@ -242,12 +256,10 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
       setIsSaving(false);
     }
   };
-  
-  // Function to handle deleting the customer
+
   const handleDelete = async () => {
     if (!customer.id) return;
-    
-    // Confirm deletion
+
     Alert.alert(
       'Delete Customer',
       `Are you sure you want to delete ${customer.firstName} ${customer.lastName}?`,
@@ -263,25 +275,25 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
             setIsDeleting(true);
             try {
               const result = await client.models.Customer.delete({
-                id: customer.id || ''
+                id: customer.id || '',
               });
-              
+
               if (result.errors) {
-                throw new Error(result.errors.map(e => e.message).join(', '));
+                throw new Error(result.errors.map((e) => e.message).join(', '));
               }
-              
+
               onDelete();
             } catch (error) {
               console.error('Error deleting customer:', error);
               Alert.alert('Error', 'Failed to delete customer. Please try again.');
               setIsDeleting(false);
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
-  
+
   return (
     <Modal
       visible={visible}
@@ -289,7 +301,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
       transparent={true}
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalContainer}
       >
@@ -302,7 +314,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
-          
+
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#2196F3" />
@@ -320,7 +332,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   placeholder="Enter first name"
                 />
               </View>
-              
+
               {/* Last Name */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Last Name *</Text>
@@ -331,7 +343,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   placeholder="Enter last name"
                 />
               </View>
-              
+
               {/* Phone Number */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Phone Number *</Text>
@@ -343,7 +355,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   keyboardType="phone-pad"
                 />
               </View>
-              
+
               {/* Email */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Email *</Text>
@@ -356,7 +368,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   autoCapitalize="none"
                 />
               </View>
-              
+
               {/* Address */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Address</Text>
@@ -367,7 +379,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   placeholder="Enter street address"
                 />
               </View>
-              
+
               {/* City, State, Zip in one row */}
               <View style={styles.rowInputContainer}>
                 <View style={[styles.inputGroup, { flex: 2, marginRight: 8 }]}>
@@ -379,7 +391,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                     placeholder="City"
                   />
                 </View>
-                
+
                 <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
                   <Text style={styles.inputLabel}>State</Text>
                   <TextInput
@@ -391,7 +403,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                     autoCapitalize="characters"
                   />
                 </View>
-                
+
                 <View style={[styles.inputGroup, { flex: 1 }]}>
                   <Text style={styles.inputLabel}>ZIP</Text>
                   <TextInput
@@ -404,7 +416,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   />
                 </View>
               </View>
-              
+
               {/* Notes */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Notes</Text>
@@ -417,11 +429,26 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   numberOfLines={4}
                 />
               </View>
-              
+
+              {/* QR Code Display */}
+              {qrCodeString ? (
+                <View style={styles.qrCodeContainer}>
+                  <Text style={styles.inputLabel}>QR Code</Text>
+                  <View style={styles.qrCodeWrapper}>
+                    <QRCode
+                      value={qrCodeString}
+                      size={150}
+                      backgroundColor="white"
+                      color="black"
+                    />
+                  </View>
+                </View>
+              ) : null}
+
               {/* Button Row */}
               <View style={styles.buttonRow}>
                 {!isNewCustomer && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.button, styles.deleteButton]}
                     onPress={handleDelete}
                     disabled={isDeleting}
@@ -431,8 +458,8 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                     </Text>
                   </TouchableOpacity>
                 )}
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={[styles.button, styles.saveButton, isNewCustomer ? { flex: 1 } : {}]}
                   onPress={handleSave}
                   disabled={isSaving}
@@ -449,6 +476,5 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
     </Modal>
   );
 };
-
 
 export default EditCustomerModal;

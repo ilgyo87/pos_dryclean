@@ -201,7 +201,7 @@ const CustomerSearchScreen: React.FC = () => {
             placeholder="Name, Phone Number, or Email"
             returnKeyType="search"
             onSubmitEditing={handleSearch}
-            onKeyPress={handleKeyPress}
+            onKeyPress={handleKeyPress as any}
             autoCapitalize="none"
           />
           <TouchableOpacity 

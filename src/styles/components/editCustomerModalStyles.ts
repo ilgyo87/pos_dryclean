@@ -97,4 +97,14 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  qrCodeContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  qrCodeWrapper: {
+    padding: 10,
+    backgroundColor: 'white',
+    alignSelf: 'center',
+    marginTop: 8,
+  },
 });

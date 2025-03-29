@@ -6,63 +6,111 @@ import { styles } from '../styles/screens/dashboardStyles';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { useAuthenticator } from "@aws-amplify/ui-react-native";
+import QRCode from 'react-native-qrcode-svg'; 
+import Svg from 'react-native-svg'; 
+import { generateQRCodeData } from '../utils/qrCodeGenerator'; 
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
 
+// Define the Business type based on the schema
+type BusinessData = {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  owner: string;
+};
+
 export default function DashboardScreen({ route }: { route: any }) {
-  const { businessId, businessName: initialBusinessName } = route.params || {};
+  const { businessId } = route.params || {}; 
   const { user } = useAuthenticator();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const [businessName, setBusinessName] = useState(initialBusinessName || '');
+  const [businessData, setBusinessData] = useState<BusinessData | null>(null); 
+  const [qrCodeString, setQrCodeString] = useState<string>(''); 
   
-  // Fetch business name when component mounts
+  // Fetch business data when component mounts or user/businessId changes
   useEffect(() => {
-    const fetchBusinessName = async () => {
+    const fetchBusinessData = async () => {
+      if (!user?.username && !businessId) {
+        console.log("User or Business ID not available for fetching data.");
+        setBusinessData(null); 
+        return;
+      }
+
       try {
-        console.log("Fetching business name...");
-        const result = await client.models.Business.list({
-          filter: { owner: { eq: user?.username } }
-        });
-        
-        if (result.data && result.data.length > 0) {
-          console.log("Found business:", result.data[0].name);
-          setBusinessName(result.data[0].name);
+        console.log(`Fetching business data... ID: ${businessId}, User: ${user?.username}`);
+        let fetchedData: BusinessData | null = null;
+
+        if (businessId) {
+          const result = await client.models.Business.get({ id: businessId });
+          if (result.data) {
+            fetchedData = result.data as BusinessData; 
+          }
+        } else if (user?.username) {
+          const result = await client.models.Business.list({
+            filter: { owner: { eq: user.username } }
+          });
+          if (result.data && result.data.length > 0) {
+            fetchedData = result.data[0] as BusinessData; 
+          }
+        }
+
+        if (fetchedData) {
+          console.log("Fetched Business Data:", fetchedData);
+          setBusinessData(fetchedData);
+        } else {
+          console.log("No business data found.");
+          setBusinessData(null); 
         }
       } catch (error) {
-        console.error('Error fetching business name:', error);
+        console.error('Error fetching business data:', error);
+        setBusinessData(null); 
       }
     };
     
-    if (user?.username && !initialBusinessName) {
-      fetchBusinessName();
+    fetchBusinessData();
+  }, [user, businessId]); 
+
+  // Generate QR Code string when businessData is available
+  useEffect(() => {
+    if (businessData) {
+      const qrString = generateQRCodeData('Business', businessData);
+      console.log("Generated QR String:", qrString);
+      setQrCodeString(qrString);
+    } else {
+      setQrCodeString(''); 
     }
-  }, [user, initialBusinessName]);
+  }, [businessData]); 
   
   const menuItems = [
     { title: 'Product Management', screen: 'ProductManagement', icon: '📦' },
     { title: 'Employee Management', screen: 'EmployeeManagement', icon: '👥' },
     { title: 'Appointments', screen: 'Appointments', icon: '📅' },
     { title: 'Order Management', screen: 'OrderManagement', icon: '📋' },
-    { title: 'Customers', screen: 'CustomerEdit', icon: '👤' },
+    { title: 'Customers', screen: 'CustomerEdit', icon: '👤' }, 
     { title: 'Reports', screen: 'Reports', icon: '📊' },
     { title: 'Settings', screen: 'Settings', icon: '⚙️' },
   ];
 
   const navigateToScreen = (screenName: string) => {
-    // For the CustomerEdit screen, pass the businessId parameter
+    const currentBusinessId = businessData?.id || '';
+    const currentBusinessName = businessData?.name || '';
+
+    const params: { businessId: string; businessName: string; [key: string]: any } = {
+      businessId: currentBusinessId,
+      businessName: currentBusinessName,
+    };
+
     if (screenName === 'CustomerEdit') {
-      navigation.navigate(screenName, { 
-        businessId: businessId || '',
-        // No customerId means creating a new customer
-      });
-    } else if (screenName === 'Transactions') {
-      navigation.navigate(screenName, {
-        businessId: businessId || '',
-        businessName: businessName || ''
-      });
+      navigation.navigate(screenName, params);
     } else {
-      navigation.navigate(screenName);
+      navigation.navigate(screenName, params); 
     }
   };
   
@@ -70,20 +118,33 @@ export default function DashboardScreen({ route }: { route: any }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.businessHeader}>
-          <Text style={styles.businessName}>{businessName.toUpperCase()}</Text>
+          <Text style={styles.businessName}>
+            {(businessData?.name ? businessData.name.toUpperCase() : 'LOADING...')}
+          </Text>
         </View>
+        {qrCodeString ? (
+          <View style={styles.qrCodeContainer}> 
+            <View style={styles.qrCodeWrapper}> 
+              <QRCode
+                value={qrCodeString}
+                size={100} 
+                logoBackgroundColor='transparent'
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.qrCodeContainer} /> 
+        )}
         <Text style={styles.subtitle}>DASHBOARD</Text>
       </View>
 
-      {/* Start Transaction Button */}
       <TouchableOpacity 
         style={styles.startButton}
-        onPress={() => navigateToScreen('Transactions')}
+        onPress={() => navigateToScreen('TransactionSelection')} 
       >
         <Text style={styles.startButtonText}>START TRANSACTION</Text>
       </TouchableOpacity>
 
-      {/* Menu Grid */}
       <FlatList
         data={menuItems}
         numColumns={2}

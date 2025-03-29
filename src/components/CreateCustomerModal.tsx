@@ -148,8 +148,7 @@ const CreateCustomerModal = ({
       
       // Update customer with QR code URL
       await client.models.Customer.update({
-        id: customerId,
-        qrCodeImageUrl: result.path
+        id: customerId
       });
       
       console.log('QR code generated successfully:', result.path);

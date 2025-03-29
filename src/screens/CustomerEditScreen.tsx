@@ -19,13 +19,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import EditCustomerModal from '../components/EditCustomerModal';
 import BarcodeScannerModal from '../components/BarCodeScannerModal';
 import QRCode from 'react-native-qrcode-svg';
-import * as QRCodeGenerator from '../utils/qrCodeGenerator';
-import ViewShot from 'react-native-view-shot';
+import { generateQRCodeData } from '../utils/qrCodeGenerator';
 import { styles } from '../styles/screens/customerEditStyles';
+// Import QRCode directly for dynamic generation
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
 
+// Define the Customer type 
 interface Customer {
   id: string;
   firstName: string;
@@ -68,16 +69,8 @@ const CustomerEditScreen = () => {
   const [isNewCustomer, setIsNewCustomer] = useState(true);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [barcodeModalVisible, setBarcodeModalVisible] = useState(false);
-  const [tempQrData, setTempQrData] = useState<string | null>(null);
-  const [qrGeneratingCustomers, setQrGeneratingCustomers] = useState<string[]>([]);
-  // ADD: State to trigger capture
-  const [customerToCapture, setCustomerToCapture] = useState<Customer | null>(null);
-
   const inputRef = useRef<TextInput>(null);
-  // CORRECT Ref Type
-  const qrRef = useRef<ViewShot>(null); // Use ViewShot type
-  const qrSize = 300; // Keep consistent size
-  
+
   // Function to fetch all customers for current business
   const fetchCustomers = useCallback(async (): Promise<void> => {
     setIsLoading(true);
@@ -99,20 +92,13 @@ const CustomerEditScreen = () => {
           zipCode: customer.zipCode || undefined,
           notes: customer.notes || undefined,
           globalId: customer.globalId || undefined,
-          businessID: customer.businessID,
-          qrCodeImageUrl: customer.qrCodeImageUrl || undefined
+          businessID: customer.businessID
         }));
         
         setCustomers(customerData as Customer[]);
         setFilteredCustomers(customerData as Customer[]);
         
-        // Automatically trigger QR generation for customers without QR codes
-        const customersWithoutQR = customerData.filter(c => !c.qrCodeImageUrl);
-        if (customersWithoutQR.length > 0) {
-          // Generate for the first customer without a QR code
-          // This could be enhanced to handle multiple in a queue
-          generateQRCodeForCustomer(customersWithoutQR[0] as Customer);
-        }
+        // No need to trigger QR generation anymore as we're generating them dynamically
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -120,7 +106,7 @@ const CustomerEditScreen = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [businessId, client]); // Added client to dependency array for correctness
+  }, [businessId, client]);
 
   // Fetch all customers for the current business on component mount
   useEffect(() => {
@@ -131,7 +117,9 @@ const CustomerEditScreen = () => {
       openCustomerById(customerId);
     }
   }, [businessId, customerId]);
-  
+
+  // We don't need the QR code generation effects anymore
+
   // Open a specific customer by ID
   const openCustomerById = async (id: string) => {
     try {
@@ -149,8 +137,7 @@ const CustomerEditScreen = () => {
           zipCode: customerResult.data.zipCode || undefined,
           notes: customerResult.data.notes || undefined,
           globalId: customerResult.data.globalId || undefined,
-          businessID: customerResult.data.businessID,
-          qrCodeImageUrl: customerResult.data.qrCodeImageUrl || undefined
+          businessID: customerResult.data.businessID
         };
         handleSelectCustomer(customer as Customer);
       }
@@ -158,146 +145,18 @@ const CustomerEditScreen = () => {
       console.error('Error fetching customer by ID:', error);
     }
   };
-  
+
   // Check if customer exists whenever quickSearchPhoneOrEmail changes
   useEffect(() => {
-    if (quickSearchPhoneOrEmail.length > 8) { // Only search when we have enough characters
+    if (quickSearchPhoneOrEmail.length > 8) {
       checkCustomerExists(quickSearchPhoneOrEmail);
     } else {
-      // Reset states when input is cleared or too short
       setFoundExternalCustomer(null);
       setShowQuickAdd(false);
     }
   }, [quickSearchPhoneOrEmail]);
-  
-  // Effect to automatically generate QR codes for customers without them
-  useEffect(() => {
-    const customersWithoutQR = filteredCustomers.filter(customer => !customer.qrCodeImageUrl);
-    if (customersWithoutQR.length > 0 && !isLoading && !customerToCapture) {
-      // Generate QR code for the first customer without one
-      // Only if we're not already generating a code and not loading customers
-      const customerToGenerate = customersWithoutQR[0];
-      if (!qrGeneratingCustomers.includes(customerToGenerate.id)) {
-        console.log(`Automatically generating QR code for customer: ${customerToGenerate.id}`);
-        generateQRCodeForCustomer(customerToGenerate);
-      }
-    }
-  }, [filteredCustomers, isLoading, qrGeneratingCustomers, customerToCapture]); // Removed generatingQR dependency
 
-  // ADD: useEffect to handle the QR code capture after state updates
-  useEffect(() => {
-    const currentQrRef = qrRef.current; // Capture the current value
-    // Only proceed if we have a customer to capture and the ref is ready
-    if (customerToCapture && currentQrRef) { // Use the captured value in the check
-      const customer = customerToCapture; // Capture the value for closure
-
-      // Define the capture logic as an async function
-      const captureAndSave = async () => {
-        // --- START: Corrected Order of Checks ---
-        // 1. Ensure qrRef is valid *before* trying to use it
-        if (!currentQrRef) {
-          console.error("Cannot capture QR code: qrRef became null.");
-          setCustomerToCapture(null); // Clear potentially stale state
-          return; // Stop execution
-        }
-        
-        // 2. Ensure 'customer' is still valid when the function runs
-        if (!customer) {
-          console.error("Cannot capture QR code: customer became null or undefined.");
-          setCustomerToCapture(null); // Clear potentially stale state
-          return; // Stop execution
-        }
-
-        // 3. Ensure 'businessID' exists (especially if it might be optional on the type)
-        if (!customer.businessID) {
-           console.error(`Cannot save QR code for customer ${customer.id}: businessID is missing.`);
-           // Clear state and generating status as we can't proceed
-           setCustomerToCapture(null);
-           setQrGeneratingCustomers(prev => prev.filter(id => id !== customer?.id)); // Use optional chaining here just in case
-           return; // Stop execution
-        }
-        // --- END: Corrected Order of Checks ---
-        
-        try {
-          console.log(`Attempting to capture QR for ${customer.id} with data: ${tempQrData}`);
-          
-          // Add an explicit check for currentQrRef
-          if (!currentQrRef) {
-            console.error(`QR Code reference (currentQrRef) is not available for customer ${customer.id}.`);
-            setCustomerToCapture(null);
-            setQrGeneratingCustomers(prev => prev.filter(id => id !== customer?.id));
-            return; // Stop execution if ref is not set
-          }
-
-          // Check if the capture method exists and is a function
-          if (typeof currentQrRef.capture === 'function') {
-            const uri = await currentQrRef.capture(); // Now we know capture exists and is callable
-            
-            // Add a check for the result of capture
-            if (!uri) {
-              console.error(`Failed to capture QR code image for ${customer.id}. URI is null or undefined.`);
-              setCustomerToCapture(null);
-              setQrGeneratingCustomers(prev => prev.filter(id => id !== customer?.id));
-              return; // Stop execution
-            }
-  
-            console.log('Capture successful, URI:', uri);
-
-            // Convert URI to blob
-            const imageResponse = await fetch(uri);
-            const blob = await imageResponse.blob();
-            console.log('Blob created successfully');
-
-            // Save QR code image to S3
-            await QRCodeGenerator.saveQRCodeToS3(
-              'Customer',
-              customer.id,
-              customer.businessID, // Safe to use now
-              blob
-            );
-            console.log('QR code saved to S3');
-
-            // Refresh the list to show the new QR code
-            fetchCustomers();
-
-          } else {
-            // Handle the case where capture method doesn't exist
-            console.error(`The 'capture' method is not available on the QR code ref for customer ${customer.id}.`);
-            setCustomerToCapture(null);
-            setQrGeneratingCustomers(prev => prev.filter(id => id !== customer?.id));
-            return; // Stop execution
-          }
-        } catch (error) {
-          console.error(`Error capturing or saving QR code for ${customer.id}:`, error);
-          // Optionally show an alert to the user
-          // Alert.alert('QR Code Error', 'Failed to generate or save the QR code.');
-        } finally {
-          // Clear the trigger and the generating status regardless of success/failure
-          setCustomerToCapture(null);
-          // Accessing customer.id here is also safer due to the check above
-          setQrGeneratingCustomers(prev => prev.filter(id => id !== customer.id));
-        }
-      };
-
-      // Call the capture logic. A small delay might still be needed for rendering complex SVGs,
-      // but this is more robust than relying solely on setTimeout from the start.
-      // Let's try without a delay first. If issues persist, add a small (e.g., 100ms) delay here.
-      const captureTimeout = setTimeout(() => {
-         captureAndSave();
-      }, 100); // Small delay to ensure render completes
-
-      // Cleanup function for the timeout
-      return () => clearTimeout(captureTimeout);
-
-    } else if (customerToCapture && !qrRef.current) {
-        console.warn(`Capture triggered for ${customerToCapture.id}, but qrRef is not ready.`);
-        // Reset trigger if ref isn't ready to avoid getting stuck
-         setCustomerToCapture(null);
-         setQrGeneratingCustomers(prev => prev.filter(id => id !== customerToCapture.id));
-    }
-  }, [customerToCapture, qrRef, tempQrData, fetchCustomers]); // Consider reviewing dependencies if issues arise
-
-  // Function to check if customer exists in our database and/or other businesses
+  // Function to check if customer exists
   const checkCustomerExists = async (searchValue: string): Promise<void> => {
     if (!searchValue.trim()) return;
     
@@ -333,8 +192,7 @@ const CustomerEditScreen = () => {
           zipCode: existingCustomer.zipCode || undefined,
           notes: existingCustomer.notes || undefined,
           globalId: existingCustomer.globalId || undefined,
-          businessID: existingCustomer.businessID,
-          qrCodeImageUrl: existingCustomer.qrCodeImageUrl || undefined
+          businessID: existingCustomer.businessID
         }]);
         setShowQuickAdd(false);
         return;
@@ -388,7 +246,6 @@ const CustomerEditScreen = () => {
 
   // Handle barcode scan
   const handleBarcodeScan = (scannedValue: string) => {
-    // Process the scanned barcode value immediately
     setQuickSearchPhoneOrEmail(scannedValue); 
     checkCustomerExists(scannedValue);
   };
@@ -423,19 +280,7 @@ const CustomerEditScreen = () => {
         throw new Error(result.errors.map(e => e.message).join(', '));
       }
       
-      // After successfully importing, automatically generate QR code
-      if (result.data && result.data.id) {
-        try {
-          await generateQRCodeForCustomer({
-            ...foundExternalCustomer,
-            id: result.data.id, 
-            businessID: businessId
-          } as Customer);
-        } catch (qrError) {
-          console.warn('Error generating QR code for imported customer:', qrError);
-          // Continue even if QR generation fails
-        }
-      }
+      // No need to generate QR code here as we're generating them dynamically in the render function
       
       Alert.alert(
         'Success', 
@@ -551,8 +396,7 @@ const CustomerEditScreen = () => {
           zipCode: customer.zipCode || undefined,
           notes: customer.notes || undefined,
           globalId: customer.globalId || undefined,
-          businessID: customer.businessID,
-          qrCodeImageUrl: customer.qrCodeImageUrl || undefined
+          businessID: customer.businessID
         }));
         
         setCustomers(customerData as Customer[]);
@@ -565,66 +409,21 @@ const CustomerEditScreen = () => {
       setIsLoading(false);
     }
   };
-  
-  // MODIFY: generateQRCodeForCustomer function
-  const generateQRCodeForCustomer = async (customer: Customer) => {
-    if (!customer || !customer.id || !businessId) {
-        console.warn('generateQRCodeForCustomer called with invalid customer or businessId');
-        return;
-    }
 
-    // Check if we're already generating a QR code for this customer
-    // Check if we're already generating/capturing for this customer
-    if (qrGeneratingCustomers.includes(customer.id) || customerToCapture?.id === customer.id) {
-        console.log(`QR generation/capture already in progress for ${customer.id}`);
-        return;
-    }
-
-    console.log(`Starting QR generation process for customer: ${customer.id}`);
-    setQrGeneratingCustomers(prev => [...prev, customer.id]); // Mark as generating immediately
-
-    try {
-      // Note: createQRCodeIfNeeded might trigger its own generation if called elsewhere.
-      //       Consider simplifying if this causes redundant checks/generations.
-      const entityData = await QRCodeGenerator.getEntityData('Customer', customer.id);
-      if (entityData?.qrCodeImageUrl) {
-        console.log(`QR code already exists for ${customer.id}, refreshing list.`);
-        fetchCustomers(); // Refresh to ensure UI is up-to-date
-        setQrGeneratingCustomers(prev => prev.filter(id => id !== customer.id)); // Remove generating status
-        return;
-      }
-
-      // Generate QR code data
-      const qrCodeData = QRCodeGenerator.generateQRCodeData('Customer', customer);
-      // Set the data and trigger the capture effect
-      console.log(`Setting tempQrData for ${customer.id} and triggering capture effect.`);
-      setTempQrData(qrCodeData);       // Update the data for the hidden QRCode component
-      setCustomerToCapture(customer);  // Set the trigger for the useEffect
-
-    } catch (error) {
-      console.error(`Error during QR code generation setup for ${customer.id}:`, error);
-      // Reset generating status on error during setup
-      setQrGeneratingCustomers(prev => prev.filter(id => id !== customer.id));
-      setCustomerToCapture(null); // Ensure trigger is cleared on error too
-    }
-  };
+  // We don't need the QR code generation method anymore since we're generating QR codes dynamically
 
   // View full QR code
   const viewFullQRCode = (customer: Customer) => {
-    if (customer.qrCodeImageUrl) {
-      // Create a larger display or open a modal to show the QR code
-      Alert.alert(
-        'QR Code for ' + customer.firstName + ' ' + customer.lastName,
-        'Use this QR code for quick customer identification.',
-        [
-          { text: 'OK', onPress: () => console.log('QR Code viewed') }
-        ],
-        { cancelable: true }
-      );
-    } else {
-      // Auto-generate QR code if it doesn't exist
-      generateQRCodeForCustomer(customer);
-    }
+    // In the future, this could be enhanced to show a modal with
+    // a larger QR code that could be saved or shared
+    Alert.alert(
+      'QR Code',
+      `Customer: ${customer.firstName} ${customer.lastName}\nThis QR code can be scanned for quick identification.`,
+      [
+        { text: 'OK', onPress: () => console.log('QR Code viewed') }
+      ],
+      { cancelable: true }
+    );
   };
   
   // Handle customer selection for editing
@@ -633,55 +432,90 @@ const CustomerEditScreen = () => {
     setIsNewCustomer(false);
     setModalVisible(true);
   };
-  
-  // Handle modal close
-  const handleCloseModal = () => {
-    setModalVisible(false);
-  };
-  
-  // Handle save customer from modal
-  const handleSaveCustomer = (customerName: string) => {
-    setModalVisible(false);
-    Alert.alert('Success', `Customer ${customerName} ${isNewCustomer ? 'created' : 'updated'} successfully`);
-    fetchCustomers();
-    setQuickSearchPhoneOrEmail(''); // Clear quick search after saving
-  };
-  
-  // Handle delete customer from modal
-  const handleDeleteCustomer = () => {
-    setModalVisible(false);
-    Alert.alert('Success', 'Customer deleted successfully');
-    fetchCustomers();
-  };
-  
-  // Render QR code or loading indicator
-  // MODIFY: renderQRCode to potentially call generateQRCodeForCustomer differently if needed
-  const renderQRCode = (customer: Customer) => {
-    if (customer.qrCodeImageUrl) {
-      // Show the existing QR code image
-      return (
-        <TouchableOpacity onPress={() => viewFullQRCode(customer)}>
-          <Image 
-            source={{ uri: customer.qrCodeImageUrl }} 
-            style={styles.qrCodeImage}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      );
-    } else {
-      // Show placeholder and auto-generate QR
-      // Let's rely on the useEffect that checks for customers without QR codes
-      // instead of calling generateQRCodeForCustomer directly here on every render.
-      // This prevents potential infinite loops or excessive calls.
-      // The useEffect hook added earlier should handle triggering the generation.
-      return (
-        <View style={styles.qrPlaceholder}>
-          <Text style={styles.qrPlaceholderText}>QR</Text>
-        </View>
-      );
+
+  // Handle customer deletion
+  const handleDeleteCustomer = async () => {
+    if (!selectedCustomer?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const result = await client.models.Customer.delete({
+        id: selectedCustomer.id
+      });
+      
+      if (result.errors) {
+        throw new Error(result.errors.map(e => e.message).join(', '));
+      }
+      
+      setModalVisible(false);
+      Alert.alert('Success', 'Customer deleted successfully');
+      fetchCustomers();
+      
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      Alert.alert('Error', 'Failed to delete customer. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
   
+  // Render QR code directly using the library instead of loading from S3
+  const renderQRCode = (customer: Customer) => {
+    // Use the utility to generate consistent QR code data
+    const qrData = generateQRCodeData('Customer', customer);
+    
+    return (
+      <TouchableOpacity onPress={() => viewFullQRCode(customer)}>
+        <View style={styles.qrCodeContainer}>
+          <QRCode
+            value={qrData}
+            size={60}
+            backgroundColor="white"
+            color="black"
+          />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render each customer item in the list
+  const renderItem = ({ item }: { item: Customer }) => (
+    <View style={styles.customerItem}>
+      <TouchableOpacity
+        style={styles.customerItemContent}
+        onPress={() => handleSelectCustomer(item)}
+      >
+        <View style={styles.customerInfoContainer}>
+          <Text style={styles.customerName}>
+            {item.firstName} {item.lastName}
+            {item.globalId && <Text style={styles.globalBadge}> • Shared</Text>}
+          </Text>
+          <Text style={styles.customerDetails}>
+            {item.phoneNumber} {item.email ? `• ${item.email}` : ''}
+          </Text>
+          {item.address ? (
+            <Text style={styles.customerAddress}>
+              {item.address}
+            </Text>
+          ) : null}
+        </View>
+        
+        <View style={styles.qrCodeContainer}>
+          {renderQRCode(item)}
+        </View>
+      </TouchableOpacity>
+      
+      <View style={styles.customerActionsContainer}>
+        <TouchableOpacity 
+          style={[styles.customerAction, { flex: 1 }]}
+          onPress={() => handleSelectCustomer(item)}
+        >
+          <Text style={styles.actionText}>Edit</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Quick Search Section */}
@@ -809,66 +643,9 @@ const CustomerEditScreen = () => {
           <FlatList
             data={filteredCustomers}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.customerItem}>
-                <TouchableOpacity
-                  style={styles.customerItemContent}
-                  onPress={() => handleSelectCustomer(item)}
-                >
-                  <View style={styles.customerInfoContainer}>
-                    <Text style={styles.customerName}>
-                      {item.firstName} {item.lastName}
-                      {item.globalId && <Text style={styles.globalBadge}> • Shared</Text>}
-                    </Text>
-                    <Text style={styles.customerDetails}>
-                      {item.phoneNumber} {item.email ? `• ${item.email}` : ''}
-                    </Text>
-                    {item.address ? (
-                      <Text style={styles.customerAddress}>
-                        {item.address}
-                      </Text>
-                    ) : null}
-                  </View>
-                  
-                  <View style={styles.qrCodeContainer}>
-                    {qrGeneratingCustomers.includes(item.id) ? (
-                      <View style={styles.qrGeneratingContainer}>
-                        <ActivityIndicator size="small" color="#2196F3" />
-                      </View>
-                    ) : (
-                      renderQRCode(item)
-                    )}
-                  </View>
-                </TouchableOpacity>
-                
-                <View style={styles.customerActionsContainer}>
-                  <TouchableOpacity 
-                    style={styles.customerAction}
-                    onPress={() => handleSelectCustomer(item)}
-                  >
-                    <Text style={styles.actionText}>Edit</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={[styles.customerAction, styles.deleteAction]}
-                    onPress={() => {
-                      // Set selected customer and prompt for deletion
-                      setSelectedCustomer(item);
-                      Alert.alert(
-                        'Delete Customer',
-                        `Are you sure you want to delete ${item.firstName} ${item.lastName}?`,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Delete', style: 'destructive', onPress: handleDeleteCustomer }
-                        ]
-                      );
-                    }}
-                  >
-                    <Text style={styles.deleteActionText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+            renderItem={renderItem}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 20 }}
           />
         ) : (
           <View style={styles.emptyState}>
@@ -877,49 +654,38 @@ const CustomerEditScreen = () => {
             </Text>
           </View>
         )}
+        
+        {/* Edit Customer Modal */}
+        <EditCustomerModal
+          visible={modalVisible}
+          customerId={selectedCustomer?.id}
+          isNewCustomer={isNewCustomer}
+          businessId={businessId || ''}
+          onSave={(customerName) => {
+            setModalVisible(false);
+            Alert.alert('Success', `Customer ${customerName} ${isNewCustomer ? 'created' : 'updated'} successfully`);
+            fetchCustomers();
+          }}
+          onDelete={handleDeleteCustomer}
+          onClose={() => {
+            setModalVisible(false);
+            setSelectedCustomer(null);
+            fetchCustomers(); // Re-fetch customers after modal closes
+          }}
+          initialCustomerData={selectedCustomer}
+        />
+
+        {/* Barcode Scanner Modal */}
+        <BarcodeScannerModal
+          visible={barcodeModalVisible}
+          onClose={() => setBarcodeModalVisible(false)}
+          onCodeScanned={handleBarcodeScan}
+        />
       </KeyboardAvoidingView>
       
-      {/* Customer Edit Modal */}
-      <EditCustomerModal
-        visible={modalVisible}
-        customerId={selectedCustomer?.id}
-        isNewCustomer={isNewCustomer}
-        businessId={businessId || ''}
-        onSave={handleSaveCustomer}
-        onDelete={handleDeleteCustomer}
-        onClose={handleCloseModal}
-        initialCustomerData={selectedCustomer}
-      />
-
-      {/* Barcode Scanner Modal */}
-      <BarcodeScannerModal
-        visible={barcodeModalVisible}
-        onClose={() => setBarcodeModalVisible(false)}
-        onCodeScanned={handleBarcodeScan}
-      />
-
-      {/* Hidden QR code for generation */}
-      <ViewShot
-        ref={qrRef}
-        options={{ format: 'png', quality: 0.9 }}
-        style={{ position: 'absolute', bottom: -qrSize * 2, left: 0, width: qrSize, height: qrSize, backgroundColor: 'white', opacity: 0, zIndex: -1 }} // Position off-screen, ensure background is white for capture
-      >
-        {/* Ensure tempQrData is not empty or invalid JSON before rendering */}
-        {tempQrData ? (
-          <QRCode
-            value={tempQrData} // Use the temporary data to render the QR code for capture
-            size={qrSize}       // Use the defined size
-            backgroundColor="white" // Match ViewShot background
-            color="black"
-          />
-        ) : (
-          // Render nothing or a placeholder if no data is ready for capture
-          <View style={{ width: qrSize, height: qrSize, backgroundColor: 'white' }} />
-        )}
-      </ViewShot>
+      {/* No need for hidden ViewShot component anymore */}
     </SafeAreaView>
   );
 };
-
 
 export default CustomerEditScreen;
