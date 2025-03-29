@@ -2,6 +2,10 @@
 import { uploadData, getUrl, remove } from 'aws-amplify/storage';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import React from 'react';
+import QRCode from 'react-native-qrcode-svg';
+import { captureRef } from 'react-native-view-shot';
+import { View } from 'react-native';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -77,31 +81,83 @@ export const generateQRCodeData = <T extends BaseEntityData>(
 };
 
 /**
+ * QR Code component that renders an SVG QR code
+ */
+export const QRCodeComponent = React.forwardRef<View, { value: string; size?: number; }>((props, ref) => {
+  return (
+    <View ref={ref} style={{ backgroundColor: 'white', padding: 10 }}>
+      <QRCode
+        value={props.value}
+        size={props.size || 200}
+        backgroundColor="white"
+        color="black"
+      />
+    </View>
+  );
+});
+
+/**
+ * Generates a QR code as a blob from QR data
+ */
+export const generateQRCodeBlob = async (qrCodeData: string, size: number = 200): Promise<Blob> => {
+  // Create a ref to capture
+  const qrCodeRef = React.createRef<View>();
+  
+  // Create a temporary component with the QR code
+  const TempQRComponent = () => (
+    <QRCodeComponent ref={qrCodeRef} value={qrCodeData} size={size} />
+  );
+  
+  // Render the component
+  const component = <TempQRComponent />;
+  
+  try {
+    // Capture the QR code as a URI
+    const uri = await captureRef(qrCodeRef, {
+      format: 'png',
+      quality: 1
+    });
+    
+    // Fetch the image as a blob
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    
+    return blob;
+  } catch (error) {
+    console.error('Error generating QR code blob:', error);
+    throw error;
+  }
+};
+
+/**
  * Saves QR code data to S3 and returns the URL
  */
 export const saveQRCodeToS3 = async (
   entityType: EntityType,
   entityId: string, 
   businessId: string,
-  qrCodeImageData: Blob
+  qrCodeData: string
 ): Promise<string> => {
   try {
+    // Generate the QR code blob
+    const qrCodeBlob = await generateQRCodeBlob(qrCodeData);
+    
     // Create the path for storing the QR code based on storage resource configuration
     // Using entity_id path structure as defined in storage resource
     const s3Key = `qrcodes/${businessId}/${entityType.toLowerCase()}_${entityId}.png`;
     
     // Upload the QR code image to S3
     await uploadData({
-      key: s3Key,
-      data: qrCodeImageData,
+      path: s3Key,
+      data: qrCodeBlob,
       options: {
         contentType: 'image/png'
       }
-    });
+    }).result;
     
     // Get the URL of the uploaded QR code
     const urlResult = await getUrl({
-      key: s3Key
+      path: s3Key
     });
     
     const url = urlResult.url.toString();
@@ -226,7 +282,16 @@ export const createQRCodeIfNeeded = async (
       return entity.qrCodeImageUrl;
     }
     
-    // Return null to indicate a QR code needs to be generated
+    // Entity exists but has no QR code
+    if (entity) {
+      // Generate QR code data
+      const qrCodeData = generateQRCodeData(entityType, entity);
+      
+      // Save QR code to S3
+      return await saveQRCodeToS3(entityType, entityId, businessId, qrCodeData);
+    }
+    
+    // Return null if entity doesn't exist
     return null;
   } catch (error) {
     console.error(`Error checking QR code for ${entityType}:`, error);
@@ -252,7 +317,7 @@ export const deleteQRCodeFromS3 = async (
       
       // Delete the QR code from S3
       await remove({
-        key: s3Key
+        path: s3Key
       });
       
       // Update the entity to remove the QR code URL
