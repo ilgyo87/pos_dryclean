@@ -13,6 +13,7 @@ import outputs from "../amplify_outputs.json";
 import TransactionScreen from './screens/CustomerSearchScreen';
 import CustomerEditScreen from './screens/CustomerEditScreen';
 import CustomerSearchScreen from './screens/CustomerSearchScreen';
+import ProductManagementScreen from './screens/ProductManagementScreen';
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);
@@ -135,6 +136,16 @@ function AppContent() {
               options={{
                 headerShown: true,
                 title: "CUSTOMER",
+                headerRight: () => <SignOutButton />
+              }}
+            />
+            <Stack.Screen
+              name="ProductManagement"
+              component={ProductManagementScreen}
+              initialParams={{ businessId, businessName }}
+              options={{
+                headerShown: true,
+                title: "PRODUCTS",
                 headerRight: () => <SignOutButton />
               }}
             />
