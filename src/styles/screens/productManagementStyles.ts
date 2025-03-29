@@ -4,11 +4,12 @@ export const styles = StyleSheet.create({
   // Main container
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#ffffff',
   },
   contentContainer: {
     flex: 1,
     padding: 16,
+    paddingTop: 8,
   },
   
   // Header section
@@ -16,70 +17,99 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
   },
+  buttonContainer: {
+    flexDirection: 'row',
+  },
   addButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 8,
+  },
+  serviceButton: {
+    backgroundColor: '#8a68c5',
+  },
+  productButton: {
+    backgroundColor: '#4CAF50',
   },
   addButtonText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontWeight: '500',
     marginLeft: 4,
+    fontSize: 13,
   },
   
-  // Service tabs
+  // Service tabs - Extreme space reduction
   tabContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    marginBottom: 0,
+    height: 24,
   },
   tab: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginRight: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 10,
+    marginRight: 6,
+    borderRadius: 4,
+    backgroundColor: 'white',
+    height: 24,
+    justifyContent: 'center',
   },
   activeTab: {
-    borderBottomWidth: 3,
-    borderBottomColor: '#2196F3',
+    backgroundColor: '#f0f0f0',
   },
   tabText: {
-    fontSize: 16,
-    color: '#757575',
+    fontSize: 12,
+    color: '#666',
   },
   activeTabText: {
-    color: '#2196F3',
+    color: '#007aff',
     fontWeight: 'bold',
   },
   
-  // Service info section
+  // Tab underline - Essentially removed
+  tabUnderlineContainer: {
+    flexDirection: 'row',
+    height: 1,
+    marginBottom: 1,
+  },
+  activeUnderline: {
+    width: 80,
+    height: 1,
+    backgroundColor: '#007aff',
+  },
+  inactiveUnderline: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#eee',
+  },
+  
+  // Service info section - Maximally compact
   serviceInfoContainer: {
     backgroundColor: 'white',
-    padding: 16,
+    padding: 6,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 4,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#eee',
   },
   serviceTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   serviceDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   servicePriceRow: {
     flexDirection: 'row',
@@ -87,53 +117,54 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
   servicePrice: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#4CAF50',
   },
   editServiceButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    backgroundColor: '#f0f0f0',
+    padding: 3,
+    paddingHorizontal: 6,
+    backgroundColor: '#f8f8f8',
     borderRadius: 4,
   },
   editServiceText: {
-    marginLeft: 4,
+    marginLeft: 2,
     color: '#666',
+    fontSize: 10,
   },
   
-  // Products grid
+  // Products header - Minimal spacing
   productsHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 0, // Reduced from 4
   },
   productsHeaderTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
   },
-  productsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  productsCountText: {
+    fontSize: 12,
+    color: '#666',
   },
   productItem: {
-    width: '48%', // Almost half width for 2 columns
+    width: '23%',
     backgroundColor: 'white',
     borderRadius: 8,
-    marginBottom: 16,
-    padding: 12,
+    marginBottom: 0, // Reduced from 4
+    padding: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    elevation: 2,
+    borderColor: '#eee',
+    marginHorizontal: '1%',
   },
   productImageContainer: {
-    height: 120,
+    height: 80,
     backgroundColor: '#f0f0f0',
     borderRadius: 4,
-    marginBottom: 8,
+    marginBottom: 0, // Reduced from 4
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -143,33 +174,75 @@ export const styles = StyleSheet.create({
     height: '100%',
   },
   productImagePlaceholder: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#999',
   },
   productName: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 0, // Reduced from 2
   },
   productDescription: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
-    marginBottom: 8,
-    height: 32, // Limit to 2 lines approximately
+    marginBottom: 0, // Reduced from 4
   },
   productPrice: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
-    color: '#2196F3',
+    color: '#007aff',
   },
   productActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 8,
+    marginTop: 0, // Reduced from 4
+    alignItems: 'center',
   },
-  productActionButton: {
-    padding: 6,
+  productEditButton: {
+    width: 20,
+    height: 20,
+  },
+  productEditIcon: {
+    color: '#007aff',
+  },
+  productDeleteButton: {
+    width: 20,
+    height: 20,
     marginLeft: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#F44336',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productDeleteIcon: {
+    color: '#F44336',
+  },
+  
+  // Pagination controls
+  paginationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 0, // Reduced from 4
+    marginBottom: 0, // Reduced from 8
+  },
+  paginationButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  paginationButtonDisabled: {
+    opacity: 0.5,
+  },
+  paginationText: {
+    fontSize: 13,
+    color: '#666',
+    marginHorizontal: 12,
   },
   
   // Empty state
@@ -180,7 +253,7 @@ export const styles = StyleSheet.create({
     padding: 24,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#666',
     textAlign: 'center',
     marginTop: 16,
@@ -193,7 +266,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#666',
     marginTop: 16,
   },
@@ -214,7 +287,7 @@ export const styles = StyleSheet.create({
     maxWidth: 500,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
   },
@@ -235,31 +308,6 @@ export const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
-  },
-  imagePreviewContainer: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 4,
-    marginTop: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  imagePreview: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  uploadButton: {
-    backgroundColor: '#f0f0f0',
-    padding: 12,
-    borderRadius: 4,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  uploadButtonText: {
-    color: '#666',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -283,14 +331,14 @@ export const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: '#F44336',
-    marginRight: 'auto', // Push to the left
+    marginRight: 'auto',
   },
   actionButtonText: {
     color: 'white',
     fontWeight: 'bold',
   },
   
-  // Alert modal
+  // Alert modal styles
   alertOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

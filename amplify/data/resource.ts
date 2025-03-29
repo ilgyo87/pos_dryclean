@@ -3,33 +3,33 @@ import { a, defineData, type ClientSchema } from "@aws-amplify/backend";
 const schema = a.schema({
   // Business Model
   Business: a
-  .model({
-    id: a.id().required(),
-    name: a.string().required(),
-    firstName: a.string().required(),
-    lastName: a.string().required(),
-    phoneNumber: a.string().required(),
-    address: a.string(),
-    city: a.string(),
-    state: a.string(),
-    zipCode: a.string(),
-    owner: a.string().required(),
-    services: a.hasMany("Service", "businessID"),
-    products: a.hasMany("Product", "businessID"),
-    transactions: a.hasMany("Transaction", "businessID"),
-    employees: a.hasMany("Employee", "businessID"),
-    customers: a.hasMany("Customer", "businessID"),
-    garments: a.hasMany("Garment", "businessID"),
-    loyaltyPrograms: a.hasMany("Loyalty", "businessID"),
-    counters: a.hasMany("Counter", "businessID"),
-    customerCredits: a.hasMany("CustomerCredit", "businessID"),
-    website: a.string(),
-  })
-  .authorization((allow) => [
-    allow.owner(),
-    // Added access for authenticated users to support customer app
-    allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
-  ]),
+    .model({
+      id: a.id().required(),
+      name: a.string().required(),
+      firstName: a.string().required(),
+      lastName: a.string().required(),
+      phoneNumber: a.string().required(),
+      address: a.string(),
+      city: a.string(),
+      state: a.string(),
+      zipCode: a.string(),
+      owner: a.string().required(),
+      services: a.hasMany("Service", "businessID"),
+      products: a.hasMany("Product", "businessID"),
+      transactions: a.hasMany("Transaction", "businessID"),
+      employees: a.hasMany("Employee", "businessID"),
+      customers: a.hasMany("Customer", "businessID"),
+      garments: a.hasMany("Garment", "businessID"),
+      loyaltyPrograms: a.hasMany("Loyalty", "businessID"),
+      counters: a.hasMany("Counter", "businessID"),
+      customerCredits: a.hasMany("CustomerCredit", "businessID"),
+      website: a.string(),
+    })
+    .authorization((allow) => [
+      allow.owner(),
+      // Added access for authenticated users to support customer app
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
+    ]),
 
   // Employee Model
   Employee: a
@@ -50,41 +50,36 @@ const schema = a.schema({
 
   // Customer Model - Modified to include credits
   Customer: a
-  .model({
-    id: a.id().required(),
-    firstName: a.string().required(),
-    lastName: a.string().required(),
-    phoneNumber: a.phone().required(),
-    email: a.email(),
-    address: a.string(),
-    city: a.string(),
-    state: a.string(),
-    zipCode: a.string(),
-    notes: a.string(),
-    profileImageUrl: a.string(),
-    // New field for credits
-    credits: a.float().default(0), // Default to 0 credits
-    // New fields for customer app integration
-    globalId: a.string(), // Used as the universal ID for both POS and customer app
-    notificationPreferences: a.string(), // JSON string of preferences
-    lastLogin: a.datetime(),
-    // Original fields
-    businessID: a.id().required(),
-    business: a.belongsTo("Business", "businessID"),
-    transactions: a.hasMany("Transaction", "customerID"),
-    garments: a.hasMany("Garment", "customerID"),
-    loyaltyProgram: a.hasOne("Loyalty", "customerID"),
-    // Add missing bidirectional relationships
-    notifications: a.hasMany("CustomerNotification", "customerID"),
-    appSessions: a.hasMany("CustomerAppSession", "customerID"),
-    // New relationship for credit transactions
-    creditTransactions: a.hasMany("CustomerCredit", "customerID")
-  })
-  .authorization((allow) => [
-    allow.owner(),
-    allow.authenticated().to(['get', 'list', 'update'])
-  ]),
-  
+    .model({
+      id: a.id().required(),
+      firstName: a.string().required(),
+      lastName: a.string().required(),
+      phoneNumber: a.phone().required(),
+      email: a.email(),
+      address: a.string(),
+      city: a.string(),
+      state: a.string(),
+      zipCode: a.string(),
+      notes: a.string(),
+      profileImageUrl: a.string(),
+      credits: a.float().default(0), // Default to 0 credits
+      globalId: a.string(), // Used as the universal ID for both POS and customer app
+      notificationPreferences: a.string(), // JSON string of preferences
+      lastLogin: a.datetime(),
+      businessID: a.id().required(),
+      business: a.belongsTo("Business", "businessID"),
+      transactions: a.hasMany("Transaction", "customerID"),
+      garments: a.hasMany("Garment", "customerID"),
+      loyaltyProgram: a.hasOne("Loyalty", "customerID"),
+      notifications: a.hasMany("CustomerNotification", "customerID"),
+      appSessions: a.hasMany("CustomerAppSession", "customerID"),
+      creditTransactions: a.hasMany("CustomerCredit", "customerID")
+    })
+    .authorization((allow) => [
+      allow.owner(),
+      allow.authenticated().to(['get', 'list', 'update'])
+    ]),
+
   // Garment Model
   Garment: a
     .model({
@@ -117,6 +112,7 @@ const schema = a.schema({
       estimatedTime: a.integer(),
       category: a.string(),
       business: a.belongsTo("Business", "businessID"),
+      products: a.hasMany("Product", "serviceID"),
       transactionItems: a.hasMany("TransactionItem", "serviceID")
     })
     .authorization((allow) => [
@@ -130,11 +126,12 @@ const schema = a.schema({
     .model({
       id: a.id().required(),
       businessID: a.id().required(),
+      serviceID: a.id().required(), // Added serviceID to connect with services
       name: a.string().required(),
       description: a.string(),
       price: a.float().required(),
-      inventory: a.integer(),
       business: a.belongsTo("Business", "businessID"),
+      service: a.belongsTo("Service", "serviceID"), // Added belongsTo relationship
       transactionItems: a.hasMany("TransactionItem", "productID")
     })
     .authorization((allow) => [
@@ -270,7 +267,7 @@ const schema = a.schema({
       customer: a.belongsTo("Customer", "customerID")
     })
     .authorization((allow) => allow.authenticated()),
-    
+
   // New model for customer credits
   CustomerCredit: a
     .model({

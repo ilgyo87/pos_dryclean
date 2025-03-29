@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,8 @@ import {
   Alert,
   ActivityIndicator,
   FlatList,
+  Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -44,8 +44,10 @@ interface Product {
   price: number;
   inventory?: number;
   businessID: string;
+  serviceID: string;
 }
 
+const ITEMS_PER_PAGE = 16; // 4x4 grid
 const ProductManagementScreen: React.FC = () => {
   const route = useRoute();
   const navigation = useNavigation();
@@ -56,6 +58,13 @@ const ProductManagementScreen: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Client-side mapping of products to services (since there's no direct relationship in the database)
+  const [productServiceMap, setProductServiceMap] = useState<Record<string, string>>({});
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   // State for service modal
   const [isServiceModalVisible, setIsServiceModalVisible] = useState(false);
@@ -82,7 +91,7 @@ const ProductManagementScreen: React.FC = () => {
   const [productDescription, setProductDescription] = useState('');
   const [productPrice, setProductPrice] = useState('');
   const [productInventory, setProductInventory] = useState('');
-
+  const [productServiceID, setProductServiceID] = useState('');
 
   // Fetch services and products from the database
   const fetchServicesAndProducts = useCallback(async () => {
@@ -109,25 +118,73 @@ const ProductManagementScreen: React.FC = () => {
       });
       
       const allProducts = productsResult.data ? productsResult.data as unknown as Product[] : [];
-      
       setProducts(allProducts);
+      
+      // Initialize product to service mapping if empty
+      if (Object.keys(productServiceMap).length === 0 && allProducts.length > 0 && servicesResult.data) {
+        const servicesData = servicesResult.data as unknown as Service[];
+        if (servicesData.length > 0) {
+          // Create a map of product ID to service ID
+          const initialMap: Record<string, string> = {};
+          allProducts.forEach((product, index) => {
+            // Distribute products evenly among services
+            const serviceIndex = index % servicesData.length;
+            initialMap[product.id] = servicesData[serviceIndex].id;
+          });
+          setProductServiceMap(initialMap);
+        }
+      }
+      
+      // Calculate total pages for pagination
+      setTotalPages(Math.ceil(allProducts.length / ITEMS_PER_PAGE));
     } catch (error) {
       console.error('Error fetching services and products:', error);
       Alert.alert('Error', 'Failed to load services and products. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [businessId, selectedServiceId]);
+  }, [businessId]);
   
   useEffect(() => {
     fetchServicesAndProducts();
   }, [fetchServicesAndProducts]);
   
-  // Show all products since they're not tied to specific services
-  const filteredProducts = products;
+  // Handle service tab selection without refreshing all data
+  const handleServiceSelect = (serviceId: string) => {
+    setSelectedServiceId(serviceId);
+    setCurrentPage(0); // Reset to first page when switching services
+  };
+  
+  // Filter products by the selected service
+  const filteredProducts = useMemo(() => {
+    if (!selectedServiceId) return products;
+    return products.filter(product => productServiceMap[product.id] === selectedServiceId);
+  }, [products, selectedServiceId, productServiceMap]);
+  
+  // Update pagination when filtered products change
+  useEffect(() => {
+    setTotalPages(Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
+  }, [filteredProducts.length]);
 
-  // Get the selected service
-  const selectedService = services.find(service => service.id === selectedServiceId);
+  // Get paginated products from filtered products
+  const getPaginatedProducts = () => {
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredProducts.slice(startIndex, endIndex);
+  };
+
+  // Pagination handlers
+  const handlePrevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   // Open service modal for adding a new service
   const handleAddService = () => {
@@ -204,15 +261,13 @@ const ProductManagementScreen: React.FC = () => {
 
   // Open product modal for adding a new product
   const handleAddProduct = () => {
-  
-    
     setIsNewProduct(true);
     setEditingProduct(null);
     setProductName('');
     setProductDescription('');
     setProductPrice('');
     setProductInventory('');
-
+    setProductServiceID(selectedServiceId || '');
     setIsProductModalVisible(true);
   };
 
@@ -224,25 +279,20 @@ const ProductManagementScreen: React.FC = () => {
     setProductDescription(product.description || '');
     setProductPrice(product.price.toString());
     setProductInventory(product.inventory?.toString() || '');
-
+    setProductServiceID(product.serviceID);
     setIsProductModalVisible(true);
   };
 
   // Save product (create or update)
   const handleSaveProduct = async () => {
-    if (!productName.trim()) {
-      Alert.alert('Error', 'Product name is required');
+    if (!productName.trim() || !productPrice.trim()) {
+      Alert.alert('Error', 'Product name and price are required.');
       return;
     }
-    
-    if (!productPrice.trim() || isNaN(parseFloat(productPrice))) {
-      Alert.alert('Error', 'Please enter a valid price');
-      return;
-    }
-    
+
     try {
       if (isNewProduct) {
-        // Create new product
+        // Create a new product
         const result = await client.models.Product.create({
           name: productName.trim(),
           description: productDescription.trim() || undefined,
@@ -252,7 +302,16 @@ const ProductManagementScreen: React.FC = () => {
         });
         
         if (result.data) {
-          setProducts(prev => [...prev, result.data as unknown as Product]);
+          const newProduct = result.data as unknown as Product;
+          setProducts(prev => [...prev, newProduct]);
+          
+          // Associate this new product with the currently selected service
+          if (selectedServiceId) {
+            setProductServiceMap(prev => ({
+              ...prev,
+              [newProduct.id]: selectedServiceId
+            }));
+          }
         }
       } else if (editingProduct) {
         // Update existing product
@@ -265,9 +324,9 @@ const ProductManagementScreen: React.FC = () => {
         });
         
         if (result.data) {
-          setProducts(prev => prev.map(p => 
-            p.id === editingProduct.id ? result.data as unknown as Product : p
-          ));
+          setProducts(prev => 
+            prev.map(p => p.id === editingProduct.id ? result.data as unknown as Product : p)
+          );
         }
       }
       
@@ -290,9 +349,6 @@ const ProductManagementScreen: React.FC = () => {
     
     try {
       if (itemToDelete.type === 'service') {
-        // Since products are not tied to services in our schema, we can delete services directly
-        // No need to check for associated products
-        
         // Delete service
         await client.models.Service.delete({ id: itemToDelete.id });
         setServices(prev => prev.filter(s => s.id !== itemToDelete.id));
@@ -305,7 +361,13 @@ const ProductManagementScreen: React.FC = () => {
       } else {
         // Delete product
         await client.models.Product.delete({ id: itemToDelete.id });
-        setProducts(prev => prev.filter(p => p.id !== itemToDelete.id));
+        const updatedProducts = products.filter(p => p.id !== itemToDelete.id);
+        setProducts(updatedProducts);
+        // Recalculate pagination
+        setTotalPages(Math.ceil(updatedProducts.length / ITEMS_PER_PAGE));
+        if (currentPage >= Math.ceil(updatedProducts.length / ITEMS_PER_PAGE)) {
+          setCurrentPage(Math.max(0, Math.ceil(updatedProducts.length / ITEMS_PER_PAGE) - 1));
+        }
       }
       
       setIsDeleteModalVisible(false);
@@ -315,29 +377,29 @@ const ProductManagementScreen: React.FC = () => {
     }
   };
 
-  // Render product item
+  // Render product item - updated for 4x4 grid
   const renderProductItem = ({ item }: { item: Product }) => (
     <View style={styles.productItem}>
       <View style={styles.productImageContainer}>
         <Text style={styles.productImagePlaceholder}>No Image</Text>
       </View>
       <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
-      <Text style={styles.productDescription} numberOfLines={2}>
+      <Text style={styles.productDescription} numberOfLines={1}>
         {item.description || 'No description'}
       </Text>
       <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
       <View style={styles.productActions}>
         <TouchableOpacity 
-          style={styles.productActionButton}
+          style={styles.productEditButton}
           onPress={() => handleEditProduct(item)}
         >
-          <Ionicons name="pencil" size={18} color="#2196F3" />
+          <Ionicons name="pencil" size={16} color="#007aff" style={styles.productEditIcon} />
         </TouchableOpacity>
         <TouchableOpacity 
-          style={styles.productActionButton}
+          style={styles.productDeleteButton}
           onPress={() => handleDeletePrompt('product', item.id)}
         >
-          <Ionicons name="trash" size={18} color="#F44336" />
+          <Ionicons name="trash" size={14} color="#F44336" style={styles.productDeleteIcon} />
         </TouchableOpacity>
       </View>
     </View>
@@ -345,108 +407,150 @@ const ProductManagementScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2196F3" />
+          <ActivityIndicator size="large" color="#007aff" />
           <Text style={styles.loadingText}>Loading services and products...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.contentContainer}>
+    <View style={styles.container}>
+      <View style={{
+        ...styles.contentContainer,
+        paddingTop: 4, // Reduced padding at the top
+      }}>
         {/* Header with add buttons */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Product Management</Text>
-          <View style={{ flexDirection: 'row' }}>
+          <View style={styles.buttonContainer}>
             <TouchableOpacity 
-              style={[styles.addButton, { marginRight: 8, backgroundColor: '#673AB7' }]}
+              style={[styles.addButton, styles.serviceButton]}
               onPress={handleAddService}
             >
-              <Ionicons name="add-circle-outline" size={18} color="white" />
+              <Ionicons name="add-circle" size={16} color="white" />
               <Text style={styles.addButtonText}>Add Service</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={styles.addButton}
+              style={[styles.addButton, styles.productButton]}
               onPress={handleAddProduct}
-              disabled={!selectedServiceId}
             >
-              <Ionicons name="add-circle-outline" size={18} color="white" />
+              <Ionicons name="add-circle" size={16} color="white" />
               <Text style={styles.addButtonText}>Add Product</Text>
             </TouchableOpacity>
           </View>
         </View>
         
-        {/* Service tabs */}
+        {/* Services and Products Content */}
         {services.length > 0 ? (
-          <>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.tabContainer}
-            >
-              {services.map((service) => (
-                <TouchableOpacity
-                  key={service.id}
-                  style={[
-                    styles.tab,
-                    selectedServiceId === service.id && styles.activeTab
-                  ]}
-                  onPress={() => setSelectedServiceId(service.id)}
-                >
-                  <Text
+          <View style={{flex: 1, marginTop: 0}}>
+            {/* Service tabs - with zero margin */}
+            <View style={{height: 24, marginBottom: 0}}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{paddingBottom: 0}}
+              >
+                {services.map((service) => (
+                  <TouchableOpacity
+                    key={service.id}
                     style={[
-                      styles.tabText,
-                      selectedServiceId === service.id && styles.activeTabText
+                      styles.tab,
+                      selectedServiceId === service.id && styles.activeTab
                     ]}
+                    onPress={() => handleServiceSelect(service.id)}
                   >
-                    {service.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            
-            {/* Selected service info */}
-            {selectedService && (
-              <View style={styles.serviceInfoContainer}>
-                <Text style={styles.serviceTitle}>{selectedService.name}</Text>
-                <Text style={styles.serviceDescription}>
-                  {selectedService.description || 'No description provided.'}
-                </Text>
-                <View style={styles.servicePriceRow}>
-                  <Text style={styles.servicePrice}>
-                    Base Price: ${selectedService.price.toFixed(2)}
+                    <Text
+                      style={[
+                        styles.tabText,
+                        selectedServiceId === service.id && styles.activeTabText
+                      ]}
+                    >
+                      {service.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Compact service info card */}
+            {selectedServiceId && (
+              <View style={{paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'white', borderRadius: 4, borderWidth: 1, borderColor: '#eee', marginVertical: 0}}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <Text style={{fontSize: 14, fontWeight: 'bold'}}>{services.find(s => s.id === selectedServiceId)?.name}</Text>
+                  <Text style={{fontSize: 12, fontWeight: 'bold', color: '#4CAF50'}}>${services.find(s => s.id === selectedServiceId)?.price.toFixed(2)}</Text>
+                </View>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2}}>
+                  <Text style={{fontSize: 12, color: '#666'}} numberOfLines={1}>
+                    {services.find(s => s.id === selectedServiceId)?.description || 'No description provided.'}
                   </Text>
                   <TouchableOpacity 
-                    style={styles.editServiceButton}
-                    onPress={() => handleEditService(selectedService)}
+                    style={{padding: 2, paddingHorizontal: 4, backgroundColor: '#f8f8f8', borderRadius: 4, flexDirection: 'row', alignItems: 'center'}}
+                    onPress={() => handleEditService(services.find(s => s.id === selectedServiceId))}
                   >
-                    <Ionicons name="settings-outline" size={16} color="#666" />
-                    <Text style={styles.editServiceText}>Edit Service</Text>
+                    <Ionicons name="settings-outline" size={12} color="#666" />
+                    <Text style={{marginLeft: 2, color: '#666', fontSize: 10}}>Edit</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
-            
-            {/* Products section */}
-            <View style={styles.productsHeaderRow}>
-              <Text style={styles.productsHeaderTitle}>Products</Text>
+
+            {/* Products header - directly after service info */}
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 2}}>
+              <Text style={{fontSize: 14, fontWeight: 'bold'}}>Products</Text>
               {filteredProducts.length > 0 && (
-                <Text>{filteredProducts.length} item{filteredProducts.length !== 1 ? 's' : ''}</Text>
+                <Text style={{fontSize: 12, color: '#666'}}>
+                  {filteredProducts.length} item{filteredProducts.length !== 1 ? 's' : ''} 
+                  {totalPages > 1 && ` (Page ${currentPage + 1}/${totalPages})`}
+                </Text>
               )}
             </View>
             
-            {products.length > 0 ? (
-              <FlatList
-                data={products}
-                renderItem={renderProductItem}
-                keyExtractor={(item) => item.id}
-                numColumns={2}
-                columnWrapperStyle={{ justifyContent: 'space-between' }}
-                style={{ flex: 1 }}
-              />
+            {/* Products grid */}
+            {filteredProducts.length > 0 ? (
+              <View style={{flex: 1}}>
+                <FlatList
+                  data={getPaginatedProducts()}
+                  renderItem={renderProductItem}
+                  keyExtractor={(item) => item.id}
+                  numColumns={4}
+                  key="four-column"
+                  columnWrapperStyle={{ justifyContent: 'flex-start' }}
+                />
+                
+                {/* Pagination controls */}
+                {totalPages > 1 && (
+                  <View style={styles.paginationContainer}>
+                    <TouchableOpacity 
+                      style={[
+                        styles.paginationButton,
+                        currentPage === 0 && styles.paginationButtonDisabled
+                      ]}
+                      onPress={handlePrevPage}
+                      disabled={currentPage === 0}
+                    >
+                      <Ionicons name="chevron-back" size={18} color="#666" />
+                    </TouchableOpacity>
+                    
+                    <Text style={styles.paginationText}>
+                      Page {currentPage + 1} of {totalPages}
+                    </Text>
+                    
+                    <TouchableOpacity 
+                      style={[
+                        styles.paginationButton,
+                        currentPage === totalPages - 1 && styles.paginationButtonDisabled
+                      ]}
+                      onPress={handleNextPage}
+                      disabled={currentPage === totalPages - 1}
+                    >
+                      <Ionicons name="chevron-forward" size={18} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             ) : (
               <View style={styles.emptyContainer}>
                 <Ionicons name="basket-outline" size={48} color="#ccc" />
@@ -455,7 +559,7 @@ const ProductManagementScreen: React.FC = () => {
                 </Text>
               </View>
             )}
-          </>
+          </View>
         ) : (
           <View style={styles.emptyContainer}>
             <Ionicons name="briefcase-outline" size={48} color="#ccc" />
@@ -610,7 +714,15 @@ const ProductManagementScreen: React.FC = () => {
               />
             </View>
             
-
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Service</Text>
+              <TextInput
+                style={styles.input}
+                value={productServiceID}
+                onChangeText={setProductServiceID}
+                placeholder="Enter service ID"
+              />
+            </View>
             
             <View style={styles.buttonRow}>
               {!isNewProduct && (
@@ -677,7 +789,7 @@ const ProductManagementScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
