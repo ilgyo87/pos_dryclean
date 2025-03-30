@@ -147,19 +147,24 @@ const schema = a.schema({
       allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
-  // Transaction Model - Modified to support credit payments
+  // Transaction Model - Modified to support credit payments and Square integration
   Transaction: a
     .model({
       id: a.id().required(),
       orderId: a.string().required(),
       businessID: a.id().required(),
       customerID: a.id().required(),
-      employeeID: a.id().required(),
+      employeeID: a.id(),
       status: a.string().required(),
       total: a.float().required(),
       paymentMethod: a.string().required(),
       pickupDate: a.string().required(),
-      customerNotes: a.string(),
+      customerPreferences: a.string(),
+      // Square payment fields
+      transactionId: a.string(),
+      receiptUrl: a.string(),
+      paymentStatus: a.string(),
+      transactionDate: a.string(),
       // New field for credit usage
       creditApplied: a.float().default(0),
       // New fields for customer app
@@ -190,6 +195,8 @@ const schema = a.schema({
       transactionID: a.id().required(),
       serviceID: a.id(),
       productID: a.id(),
+      name: a.string().required(),
+      itemType: a.string().required(), // "SERVICE" or "PRODUCT"
       quantity: a.integer().required(),
       price: a.float().required(),
       notes: a.string(),

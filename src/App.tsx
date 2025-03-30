@@ -14,6 +14,8 @@ import CustomerEditScreen from './screens/CustomerEditScreen';
 import CustomerSearchScreen from './screens/CustomerSearchScreen';
 import ProductManagementScreen from './screens/ProductManagementScreen';
 import TransactionSelectionScreen from './screens/TransactionSelectionScreen';
+import CheckoutScreen from './screens/CheckoutScreen';
+import ReceiptScreen from './screens/ReceiptScreen';
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);
@@ -157,6 +159,20 @@ function AppContent() {
                 headerShown: true,
                 title: "TRANSACTION",
                 headerRight: () => <SignOutButton />
+              }}
+            />
+            <Stack.Screen
+              name="Checkout"
+              component={CheckoutScreen}
+              options={{
+                headerShown: false
+              }}
+            />
+            <Stack.Screen
+              name="Receipt"
+              component={ReceiptScreen}
+              options={{
+                headerShown: false
               }}
             />
           </>
