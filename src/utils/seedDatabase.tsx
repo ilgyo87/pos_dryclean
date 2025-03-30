@@ -1,53 +1,19 @@
-import { generateClient } from 'aws-amplify/api';
+import { generateClient } from 'aws-amplify/data';
 import { seedData } from './seedData';
 import { v4 as uuidv4 } from 'uuid';
+import { type Schema } from '../../amplify/data/resource';
 
 // Create a GraphQL client using the Amplify Gen 2 approach
-const client = generateClient();
-
-// Define GraphQL operations directly
-const listServicesQuery = `
-  query ListServices($filter: ModelServiceFilterInput) {
-    listServices(filter: $filter) {
-      items {
-        id
-      }
-    }
-  }
-`;
-
-const createServiceMutation = `
-  mutation CreateService($input: CreateServiceInput!) {
-    createService(input: $input) {
-      id
-      name
-      businessID
-    }
-  }
-`;
-
-const createProductMutation = `
-  mutation CreateProduct($input: CreateProductInput!) {
-    createProduct(input: $input) {
-      id
-      name
-      businessID
-      serviceID
-    }
-  }
-`;
+const client = generateClient<Schema>();
 
 export const seedBusinessData = async (businessId: string): Promise<void> => {
   try {
     // Check if this business already has services to avoid duplicate seeding
-    const existingServicesResponse = await client.graphql({
-      query: listServicesQuery,
-      variables: {
-        filter: { businessID: { eq: businessId } }
-      }
-    }) as { data: { listServices: { items: { id: string }[] } } };
+    const existingServicesResponse = await client.models.Service.list({
+      filter: { businessID: { eq: businessId } }
+    });
     
-    if (existingServicesResponse.data.listServices.items.length > 0) {
+    if (existingServicesResponse.data.length > 0) {
       console.log('Business already has services, skipping seed');
       return;
     }
@@ -67,12 +33,14 @@ export const seedBusinessData = async (businessId: string): Promise<void> => {
         urlPicture: serviceData.urlPicture
       };
       
-      const serviceResponse = await client.graphql({
-        query: createServiceMutation,
-        variables: { input: serviceInput }
-      }) as { data: { createService: { id: string } } };
+      const serviceResponse = await client.models.Service.create(serviceInput);
+      const service = serviceResponse.data;
       
-      const service = serviceResponse.data.createService as { id: string, name: string };
+      if (!service) {
+        console.error('Failed to create service:', serviceData.name);
+        continue;
+      }
+      
       console.log(`Created service: ${service.name}`);
       
       // Create associated products
@@ -87,10 +55,7 @@ export const seedBusinessData = async (businessId: string): Promise<void> => {
           urlPicture: productData.urlPicture
         };
         
-        await client.graphql({
-          query: createProductMutation,
-          variables: { input: productInput }
-        });
+        await client.models.Product.create(productInput);
       }
     }
     

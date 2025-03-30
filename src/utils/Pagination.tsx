@@ -4,7 +4,7 @@ import {
   Text,
   TouchableOpacity,
 } from 'react-native';
-import { styles } from '../styles/screens/productManagementStyles';
+import { styles } from '../styles/components/utilityStyles';
 
 interface PaginationProps {
   currentPage: number;

@@ -154,7 +154,7 @@ export default function DashboardScreen({ route }: { route: any }) {
 
       <TouchableOpacity 
         style={styles.startButton}
-        onPress={() => navigateToScreen('TransactionSelection')} 
+        onPress={() => navigateToScreen('Transactions')} 
       >
         <Text style={styles.startButtonText}>START TRANSACTION</Text>
       </TouchableOpacity>

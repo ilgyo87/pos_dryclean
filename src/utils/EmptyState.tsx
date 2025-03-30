@@ -2,9 +2,8 @@ import React from 'react';
 import {
   View,
   Text,
-  StyleSheet,
 } from 'react-native';
-import { styles } from '../styles/screens/productManagementStyles';
+import { styles } from '../styles/components/utilityStyles';
 
 interface EmptyStateProps {
   message: string;
