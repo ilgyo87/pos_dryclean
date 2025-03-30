@@ -24,11 +24,13 @@ const ProductItem: React.FC<ProductItemProps> = ({
       {item.urlPicture ? (
         <Image 
           source={{ uri: item.urlPicture }} 
-          style={{ width: 48, height: 48, borderRadius: 4 }}
+          style={{ width: '100%', height: '100%', borderRadius: 4 }}
           resizeMode="cover"
         />
       ) : (
-        <Text style={styles.listImagePlaceholder}>No Image</Text>
+        <View style={{ width: '100%', height: '100%', backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontSize: 10, color: '#aaa' }}>No Image</Text>
+        </View>
       )}
     </View>
     <Text style={styles.listItemName} numberOfLines={1}>{item.name}</Text>

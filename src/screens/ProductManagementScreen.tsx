@@ -25,8 +25,8 @@ import { Service, Product, RouteParams } from '../types/productTypes';
 // Initialize Amplify client
 const client = generateClient<Schema>();
 
-// Define 4x4 grid = 16 items per page
-const ITEMS_PER_PAGE = 16;
+// Define 4x4 grid = 8 items per page
+const ITEMS_PER_PAGE = 8;
 
 const ProductManagementScreen: React.FC = () => {
   const route = useRoute();
@@ -66,6 +66,8 @@ const ProductManagementScreen: React.FC = () => {
         filter: { businessID: { eq: businessId } }
       });
 
+      console.log('Fetched services:', servicesResult.data);
+
       if (servicesResult.data) {
         const servicesData = servicesResult.data as unknown as Service[];
         setServices(servicesData);
@@ -73,6 +75,7 @@ const ProductManagementScreen: React.FC = () => {
         // Select the first service by default if none is selected
         if (servicesData.length > 0 && !selectedServiceId) {
           setSelectedServiceId(servicesData[0].id);
+          console.log('Setting default selected service:', servicesData[0].id);
         }
       }
 
@@ -81,23 +84,30 @@ const ProductManagementScreen: React.FC = () => {
         filter: { businessID: { eq: businessId } }
       });
 
+      console.log('Fetched products:', productsResult.data);
+
       const allProducts = productsResult.data ? productsResult.data as unknown as Product[] : [];
       setProducts(allProducts);
 
       // Initialize product to service mapping if empty
-      if (Object.keys(productServiceMap).length === 0 && allProducts.length > 0 && servicesResult.data) {
-        const servicesData = servicesResult.data as unknown as Service[];
-        if (servicesData.length > 0) {
-          // Create a map of product ID to service ID
-          const initialMap: Record<string, string> = {};
-          allProducts.forEach((product, index) => {
-            // Distribute products evenly among services
-            const serviceIndex = index % servicesData.length;
-            initialMap[product.id] = servicesData[serviceIndex].id;
-          });
-          setProductServiceMap(initialMap);
+      setProductServiceMap(prevMap => {
+        if (Object.keys(prevMap).length === 0 && allProducts.length > 0 && servicesResult.data) {
+          const servicesData = servicesResult.data as unknown as Service[];
+          if (servicesData.length > 0) {
+            // Create a map of product ID to service ID
+            const initialMap: Record<string, string> = {};
+            allProducts.forEach((product, index) => {
+              // Distribute products evenly among services
+              const serviceIndex = index % servicesData.length;
+              initialMap[product.id] = servicesData[serviceIndex].id;
+            });
+            console.log('Created initial product-service mapping:', initialMap);
+            return initialMap;
+          }
         }
-      }
+        console.log('Existing product-service mapping:', prevMap);
+        return prevMap;
+      });
 
       // Calculate total pages for pagination
       setTotalPages(Math.ceil(allProducts.length / ITEMS_PER_PAGE));
@@ -106,8 +116,9 @@ const ProductManagementScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [businessId, selectedServiceId]);
+  }, [businessId, selectedServiceId]); // removed productServiceMap from dependencies
 
+  // Also need to add useEffect to call the function
   useEffect(() => {
     fetchServicesAndProducts();
   }, [fetchServicesAndProducts]);
@@ -120,25 +131,43 @@ const ProductManagementScreen: React.FC = () => {
 
   // Filter products by the selected service
   const filteredProducts = useMemo(() => {
-    if (!selectedServiceId) return products;
-    return products.filter(product => productServiceMap[product.id] === selectedServiceId);
-  }, [products, selectedServiceId, productServiceMap]);
+    if (!selectedServiceId) return [...products].sort((a, b) => {
+      // Sort by createdAt (oldest first)
+      if (a.createdAt && b.createdAt) {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      // Handle cases where one record doesn't have createdAt
+      if (a.createdAt) return -1;
+      if (b.createdAt) return 1;
+      // Fall back to sorting by name
+      return a.name.localeCompare(b.name);
+    });
 
+    // Filter by service ID first, then sort
+    const filtered = products.filter(product => product.serviceID === selectedServiceId);
+
+    // Sort filtered products by createdAt
+    return filtered.sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      if (a.createdAt) return -1;
+      if (b.createdAt) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [products, selectedServiceId]);
   // Update pagination when filtered products change
   useEffect(() => {
     setTotalPages(Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
-    // Reset to first page if current page is out of bounds
-    if (currentPage >= Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)) {
-      setCurrentPage(0);
-    }
-  }, [filteredProducts.length, currentPage]);
+    // Reset to first page when changing services
+    setCurrentPage(0); // Changed from 1 to 0 for 0-indexing
+  }, [filteredProducts, ITEMS_PER_PAGE]);
 
-  // Get paginated products from filtered products
-  const getPaginatedProducts = () => {
+  // Calculate paginated products based on filtered products
+  const paginatedProducts = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return filteredProducts.slice(startIndex, endIndex);
-  };
+    return filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredProducts, currentPage, ITEMS_PER_PAGE]);
 
   // Pagination handlers
   const handlePrevPage = () => {
@@ -415,9 +444,9 @@ const ProductManagementScreen: React.FC = () => {
             )}
 
             {/* Products grid */}
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, backgroundColor: 'white', paddingVertical: 0 }}>
               <FlatList
-                data={getPaginatedProducts()}
+                data={paginatedProducts}
                 renderItem={(props) => <ProductItem
                   {...props}
                   onEdit={handleEditProduct}
@@ -426,22 +455,24 @@ const ProductManagementScreen: React.FC = () => {
                 keyExtractor={(item) => item.id}
                 numColumns={4}
                 key="four-column"
-                columnWrapperStyle={{ justifyContent: 'flex-start' }}
-                contentContainerStyle={{ paddingBottom: 8 }}
+                columnWrapperStyle={{ justifyContent: 'flex-start', paddingHorizontal: 0 }} // Change to flex-start 
+                contentContainerStyle={{ paddingBottom: 0, paddingHorizontal: 0 }}
+                style={{ flex: 1, marginBottom: 0 }}
+                scrollEnabled={false} // Prevent scrolling to maximize visible space
               />
+            </View>
 
-              {/* Pagination controls - only show if more than 16 items */}
-              {totalPages > 1 && (
-                <View style={styles.paginationContainer}>
+            {/* Pagination controls - only show if more than 16 items */}
+            {/* Pagination container - always show */}
+            <View style={styles.paginationContainer}>
+              {totalPages > 1 ? (
+                <>
                   <TouchableOpacity
-                    style={[
-                      styles.paginationButton,
-                      currentPage === 0 && styles.paginationButtonDisabled
-                    ]}
                     onPress={handlePrevPage}
                     disabled={currentPage === 0}
+                    style={[styles.paginationButton, currentPage === 0 && styles.paginationButtonDisabled]}
                   >
-                    <Text>←</Text>
+                    <Text style={styles.paginationButtonText}>Previous</Text>
                   </TouchableOpacity>
 
                   <Text style={styles.paginationText}>
@@ -449,16 +480,15 @@ const ProductManagementScreen: React.FC = () => {
                   </Text>
 
                   <TouchableOpacity
-                    style={[
-                      styles.paginationButton,
-                      currentPage === totalPages - 1 && styles.paginationButtonDisabled
-                    ]}
                     onPress={handleNextPage}
-                    disabled={currentPage === totalPages - 1}
+                    disabled={currentPage >= totalPages - 1}
+                    style={[styles.paginationButton, currentPage >= totalPages - 1 && styles.paginationButtonDisabled]}
                   >
-                    <Text>→</Text>
+                    <Text style={styles.paginationButtonText}>Next</Text>
                   </TouchableOpacity>
-                </View>
+                </>
+              ) : (
+                <View style={{ height: 40 }} />
               )}
             </View>
           </View>
@@ -494,7 +524,7 @@ const ProductManagementScreen: React.FC = () => {
         onConfirm={handleDeleteConfirm}
         itemType={itemToDelete?.type || 'item'}
       />
-    </View>
+    </View >
   );
 };
 

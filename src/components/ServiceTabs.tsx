@@ -20,15 +20,7 @@ const ServiceTabs: React.FC<ServiceTabsProps> = ({
 }) => {
   // Sort services with specific priority order, then by createdAt
   const sortedServices = [...services].sort((a, b) => {
-    // Priority 1: Dry Cleaning always first (case-insensitive)
-    if (a.name.toLowerCase().includes("dry cleaning")) return -1;
-    if (b.name.toLowerCase().includes("dry cleaning")) return 1;
-    
-    // Priority 2: Laundry always second (case-insensitive)
-    if (a.name.toLowerCase() === "laundry") return -1;
-    if (b.name.toLowerCase() === "laundry") return 1;
-    
-    // Priority 3: Sort remaining services by createdAt (oldest first)
+    // Priority: Sort remaining services by createdAt (oldest first)
     if (a.createdAt && b.createdAt) {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     }
@@ -40,7 +32,6 @@ const ServiceTabs: React.FC<ServiceTabsProps> = ({
     // Fall back to sorting by name
     return a.name.localeCompare(b.name);
   });
-  console.log("Sorted services:", sortedServices.map(s => s.name));
 
   return (
     <ScrollView
