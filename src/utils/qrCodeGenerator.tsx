@@ -4,6 +4,8 @@ import type { Schema } from '../../amplify/data/resource';
 import React from 'react';
 import QRCode from 'react-native-qrcode-svg';
 import { View } from 'react-native';
+import { uploadData } from 'aws-amplify/storage';
+import { toDataURL } from 'qrcode';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -167,5 +169,90 @@ export const parseQRCode = (qrValue: string): { type: EntityType, data: any } | 
   } catch (error) {
     console.error('Error parsing QR code data:', error);
     return null;
+  }
+};
+/**
+ * Generates a QR code image and uploads it to S3
+ */
+export const generateAndUploadQRCode = async <T extends BaseEntityData>(
+  entityType: EntityType,
+  data: T
+): Promise<string | null> => {
+  try {
+    // Generate QR code data
+    const qrCodeData = generateQRCodeData(entityType, data);
+    
+    // Convert QR code to a data URL (PNG image)
+    const qrImageDataURL = await new Promise<string>((resolve, reject) => {
+      toDataURL(qrCodeData, { 
+        errorCorrectionLevel: 'H',
+        width: 400,
+        margin: 1
+      }, (err, url) => {
+        if (err) reject(err);
+        else resolve(url);
+      });
+    });
+    
+    // Convert data URL to blob
+    const base64Data = qrImageDataURL.split(',')[1];
+    const blob = Buffer.from(base64Data, 'base64');
+    
+    // Create a unique filename
+    const filename = `qrcodes/${entityType}/${data.id}_${Date.now()}.png`;
+    
+    // Upload to S3
+    const result = await uploadData({
+      key: filename,
+      data: blob,
+      options: {
+        contentType: 'image/png'
+      }
+    });
+    
+    return filename; 
+  } catch (error) {
+    console.error('Error generating and uploading QR code:', error);
+    return null;
+  }
+};
+
+/**
+ * Updates an entity with its QR code URL
+ */
+export const attachQRCodeToEntity = async <T extends BaseEntityData>(
+  entityType: EntityType,
+  entityId: string,
+  qrCodeUrl: string
+): Promise<boolean> => {
+  try {
+    let result;
+    
+    // Update entity with QR code URL
+    switch (entityType) {
+      case 'Customer':
+        result = await client.models.Customer.update({
+          id: entityId,
+          qrCode: qrCodeUrl
+        });
+        break;
+      
+      case 'Garment':
+        result = await client.models.Garment.update({
+          id: entityId,
+          qrCode: qrCodeUrl
+        });
+        break;
+      
+      // Add other entity types as needed
+      
+      default:
+        throw new Error(`QR code attachment not supported for type: ${entityType}`);
+    }
+    
+    return !!result.data;
+  } catch (error) {
+    console.error(`Error attaching QR code to ${entityType}:`, error);
+    return false;
   }
 };

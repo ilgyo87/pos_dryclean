@@ -24,6 +24,7 @@ const schema = a.schema({
       counters: a.hasMany("Counter", "businessID"),
       customerCredits: a.hasMany("CustomerCredit", "businessID"),
       website: a.string(),
+      qrCode: a.string()
     })
     .authorization((allow) => [
       allow.owner(),
@@ -42,10 +43,11 @@ const schema = a.schema({
       businessID: a.id().required(),
       business: a.belongsTo("Business", "businessID"),
       transactions: a.hasMany("Transaction", "employeeID"),
+      qrCode: a.string()
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Customer Model - Modified to include credits
@@ -73,11 +75,14 @@ const schema = a.schema({
       loyaltyProgram: a.hasOne("Loyalty", "customerID"),
       notifications: a.hasMany("CustomerNotification", "customerID"),
       appSessions: a.hasMany("CustomerAppSession", "customerID"),
-      creditTransactions: a.hasMany("CustomerCredit", "customerID")
+      creditTransactions: a.hasMany("CustomerCredit", "customerID"),
+      // Add these new fields:
+    qrCode: a.string(),
+    preferredContactMethod: a.string(),
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['get', 'list', 'update'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Garment Model
@@ -94,11 +99,12 @@ const schema = a.schema({
       business: a.belongsTo("Business", "businessID"),
       customerID: a.id().required(),
       customer: a.belongsTo("Customer", "customerID"),
+      qrCode: a.string()
     })
     .authorization((allow) => [
       allow.owner(),
       // Allow customers to see their own garments
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Service Model
@@ -118,7 +124,7 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.owner(),
       // Allow customers to see available services
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Product Model
@@ -138,7 +144,7 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.owner(),
       // Allow customers to see available products
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Transaction Model - Modified to support credit payments
@@ -168,12 +174,13 @@ const schema = a.schema({
       items: a.hasMany("TransactionItem", "transactionID"),
       payments: a.hasMany("Payment", "transactionID"),
       // Add bidirectional relation for notifications
-      notifications: a.hasMany("CustomerNotification", "transactionID")
+      notifications: a.hasMany("CustomerNotification", "transactionID"),
+      qrCode: a.string()
     })
     .authorization((allow) => [
       allow.owner(),
       // Allow customers to view their transactions
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Transaction Item Model
@@ -193,7 +200,7 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.owner(),
       // Allow customers to view their transaction items
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Payment Model
@@ -209,7 +216,7 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.owner(),
       // Allow customers to view their payments
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Loyalty Program Model
@@ -226,7 +233,7 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.owner(),
       // Allow customers to view their loyalty program
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 
   // Counter Model
@@ -286,7 +293,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['get', 'list'])
+      allow.authenticated().to(['get', 'list', 'create', 'update', 'delete'])
     ]),
 });
 

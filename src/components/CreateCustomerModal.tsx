@@ -11,9 +11,13 @@ import {
   Alert
 } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
-import * as QRCodeGenerator from '../utils/qrCodeGenerator';
 import { styles } from '../styles/components/createCustomerModalStyles';
+import type { Schema } from '../../amplify/data/resource';
+import { Customer } from '../types/CustomerTypes';
+import { 
+  generateAndUploadQRCode, 
+  attachQRCodeToEntity 
+} from '../utils/qrCodeGenerator';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -22,12 +26,14 @@ const client = generateClient<Schema>();
 interface CreateCustomerModalProps {
   visible: boolean;
   onClose: () => void;
-  onCustomerCreated: (customerId: string, customerName: string) => void;
+  onCustomerCreated: (customer: Customer) => void;
   businessId: string;
+  searchGlobalCustomers?: (phone: string) => Promise<Customer[]>;
   initialData?: {
     firstName?: string;
     lastName?: string;
     phoneNumber?: string;
+    email?: string;
   };
 }
 
@@ -36,6 +42,7 @@ const CreateCustomerModal = ({
   onClose, 
   onCustomerCreated,
   businessId,
+  searchGlobalCustomers = async () => [],
   initialData = {}
 }: CreateCustomerModalProps) => {
   // Form state
@@ -106,33 +113,50 @@ const CreateCustomerModal = ({
   // Handle customer creation
   const handleCreateCustomer = async () => {
     if (!validateForm()) return;
-
+  
     setIsSubmitting(true);
     try {
-      // Create customer in database matching the schema
+      // First create the customer in database
       const result = await client.models.Customer.create({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phoneNumber: phoneNumber.trim(),
-        email: email.trim(), // Now required
+        email: email.trim(),
         address: address.trim() || undefined,
-        businessID: businessId
+        businessID: businessId,
+        preferredContactMethod: email ? 'EMAIL' : 'PHONE', // Choose based on provided data
+        // Don't set qrCode yet - we'll update it after generating the QR code
       });
-
-      console.log('Customer created:', result);
-      
-      // No need to generate and store QR code image in S3
-      // The QR code will be generated dynamically when needed using the EntityQRCode component
-      
-      // Notify parent component and close modal
+  
       if (result.data) {
-        const fullName = `${firstName} ${lastName}`;
-        onCustomerCreated(result.data.id, fullName);
+        // Generate and upload QR code using the newly created customer data
+        const customer = result.data;
+        
+        // Use the generateAndUploadQRCode function to create and store QR code
+        const qrCodeUrl = await generateAndUploadQRCode('Customer', {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          phoneNumber: customer.phoneNumber,
+          email: customer.email,
+          businessID: customer.businessID
+        });
+        
+        if (qrCodeUrl) {
+          // Update the customer record with the QR code URL
+          await attachQRCodeToEntity('Customer', customer.id, qrCodeUrl);
+          
+          // Update the local customer object with QR code URL
+          customer.qrCode = qrCodeUrl;
+        }
+        
+        // Notify parent component and close modal
+        onCustomerCreated(customer);
         onClose();
       }
     } catch (error) {
       console.error('Error creating customer:', error);
-      Alert.alert('Error', 'Failed to create customer. Please try again.');
+      Alert.alert('Error', 'There was a problem creating the customer. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

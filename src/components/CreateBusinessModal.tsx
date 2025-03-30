@@ -15,7 +15,11 @@ import type { Schema } from '../../amplify/data/resource';
 import { styles } from './../styles/components/createBusinessStyles';
 import { useAuthenticator } from "@aws-amplify/ui-react-native";
 // Import QR code utilities
-import { generateQRCodeData } from '../utils/qrCodeGenerator';
+import { 
+  generateQRCodeData, 
+  generateAndUploadQRCode, 
+  attachQRCodeToEntity 
+} from '../utils/qrCodeGenerator';
 // For QR code generation
 import QRCode from 'qrcode';
 import { seedBusinessData } from '../utils/seedDatabase';
@@ -53,50 +57,54 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
 
   const { user } = useAuthenticator();
 
-  // Check phone number exists when it changes
-  const checkPhoneExists = async (phone: string) => {
-    if (!phone || phone.trim().length < 10) return; // Don't check until we have a valid phone
-    
-    try {
-      setIsCheckingPhone(true);
-      
-      // Query for businesses with this phone number
-      const result = await client.models.Business.list({
-        filter: { phoneNumber: { eq: phone.trim() } }
-      });
-      
-      // Update state based on results
-      const exists = result.data && result.data.length > 0;
-      setPhoneExists(exists);
-      setPhoneCheckComplete(true);
-      
-      // Optionally show alert
-      if (exists) {
-        Alert.alert('Business Exists', 'A business with this phone number already exists.');
-      }
-    } catch (error) {
-      console.error('Error checking phone number:', error);
-    } finally {
-      setIsCheckingPhone(false);
-    }
-  };
-
-  // Check if all required fields are filled and phone number is valid
+  // Validate all form fields on change
   useEffect(() => {
-    const allFieldsFilled = 
+    const isValid = 
       businessName.trim() !== '' && 
       firstName.trim() !== '' && 
       lastName.trim() !== '' && 
       phoneNumber.trim() !== '' && 
+      phoneNumber.trim().length >= 10 &&
       address.trim() !== '' && 
       city.trim() !== '' && 
       state.trim() !== '' && 
-      zipCode.trim() !== '';
+      zipCode.trim() !== '' &&
+      !phoneExists;
     
-    // Only valid if all fields are filled AND either phone check isn't complete yet OR phone doesn't exist
-    setIsFormValid(allFieldsFilled && (!phoneCheckComplete || !phoneExists));
-  }, [businessName, firstName, lastName, phoneNumber, address, city, state, zipCode, phoneCheckComplete, phoneExists]);
+    setIsFormValid(isValid);
+  }, [businessName, firstName, lastName, phoneNumber, address, city, state, zipCode, phoneExists]);
 
+  // Check phone number exists when it changes
+  const checkPhoneExists = async (phone: string) => {
+    if (phone.trim().length < 10) return;
+    
+    setIsCheckingPhone(true);
+    setPhoneCheckComplete(false);
+    
+    try {
+      const result = await client.models.Business.list({
+        filter: { phoneNumber: { eq: phone.trim() } }
+      });
+      
+      setPhoneExists(result.data && result.data.length > 0);
+    } catch (error) {
+      console.error('Error checking phone:', error);
+    } finally {
+      setIsCheckingPhone(false);
+      setPhoneCheckComplete(true);
+    }
+  };
+
+  // Debounce phone checking
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (phoneNumber.trim().length >= 10) {
+        checkPhoneExists(phoneNumber);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [phoneNumber]);
 
   const handleCreateBusiness = async () => {
     // No need for field validation here since the button is disabled when isFormValid is false
@@ -127,85 +135,96 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
         owner: user?.username
       });
       
-      if (result.errors) {
-        throw new Error(result.errors.map(e => e.message).join(', '));
+      if (result.data) {
+        const business = result.data;
+        
+        // Generate and upload QR code
+        setGeneratingQRCode(true);
+        
+        // Use the generateAndUploadQRCode function to create and store QR code
+        const qrCodeUrl = await generateAndUploadQRCode('Business', {
+          id: business.id,
+          name: business.name,
+          firstName: business.firstName,
+          lastName: business.lastName,
+          phoneNumber: business.phoneNumber,
+          address: business.address,
+          city: business.city,
+          state: business.state,
+          zipCode: business.zipCode
+        });
+        
+        if (qrCodeUrl) {
+          // Update the business record with the QR code URL
+          await client.models.Business.update({
+            id: business.id,
+            qrCode: qrCodeUrl
+          });
+        }
+        
+        // Create initial demo/seed data for the business
+        await seedBusinessData(business.id);
+        
+        // Notify parent component
+        onBusinessCreated(business.id, business.name);
+        
+        // Reset form
+        setBusinessName('');
+        setFirstName('');
+        setLastName('');
+        setPhoneNumber('');
+        setAddress('');
+        setCity('');
+        setState('');
+        setZipCode('');
       }
-      
-      // Seed the business with preset services and products
-      if (result.data?.id) {
-        console.log('Seeding business data for', result.data.id);
-        await seedBusinessData(result.data.id);
-      }
-      
-      // Seed the business with preset services and products
-      if (result.data?.id) {
-        console.log('Seeding business data for', result.data.id);
-        await seedBusinessData(result.data.id);
-      }
-      
-      // Call the callback with the new business info
-      onBusinessCreated(result.data?.id ?? '', result.data?.name ?? '');
-      
-      // Reset form
-      setBusinessName('');
-      setFirstName('');
-      setLastName('');
-      setPhoneNumber('');
-      setAddress('');
-      setCity('');
-      setState('');
-      setZipCode('');
-      
     } catch (error) {
       console.error('Error creating business:', error);
       Alert.alert('Error', 'Failed to create business. Please try again.');
     } finally {
       setIsLoading(false);
+      setGeneratingQRCode(false);
     }
   };
 
   return (
     <Modal
+      visible={visible}
       animationType="slide"
       transparent={true}
-      visible={visible}
-      onRequestClose={() => {
-        // Handle back button press on Android
-      }}
     >
-      <View style={styles.centeredView}>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Create Your Business</Text>
-            <Text style={styles.modalSubtitle}>Let's get started with your dry cleaning business</Text>
-            
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Create New Business</Text>
+          
+          <ScrollView style={styles.scrollView}>
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Business Name *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your business name"
                 value={businessName}
                 onChangeText={setBusinessName}
+                placeholder="Enter business name"
               />
             </View>
             
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>First Name *</Text>
+              <Text style={styles.inputLabel}>Owner First Name *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your first name"
                 value={firstName}
                 onChangeText={setFirstName}
+                placeholder="Enter first name"
               />
             </View>
             
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Last Name *</Text>
+              <Text style={styles.inputLabel}>Owner Last Name *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your last name"
                 value={lastName}
                 onChangeText={setLastName}
+                placeholder="Enter last name"
               />
             </View>
             
@@ -214,25 +233,20 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
               <TextInput
                 style={[
                   styles.input,
-                  phoneCheckComplete && (phoneExists ? { borderColor: 'red', borderWidth: 1 } : { borderColor: 'green', borderWidth: 1 })
+                  phoneExists ? styles.inputError : null
                 ]}
-                placeholder="Enter business phone number"
                 value={phoneNumber}
-                onChangeText={(text) => {
-                  setPhoneNumber(text);
-                  // Reset the check states when user types
-                  setPhoneCheckComplete(false);
-                  setPhoneExists(false);
-                }}
-                onBlur={() => checkPhoneExists(phoneNumber)}
+                onChangeText={setPhoneNumber}
+                placeholder="Enter phone number"
                 keyboardType="phone-pad"
               />
-              {isCheckingPhone && <Text>Checking phone number...</Text>}
-              {phoneCheckComplete && phoneExists && (
-                <Text style={{ color: 'red' }}>Business with this phone already exists</Text>
+              {isCheckingPhone && (
+                <Text style={styles.validatingText}>Checking...</Text>
               )}
-              {phoneCheckComplete && !phoneExists && phoneNumber.trim().length >= 10 && (
-                <Text style={{ color: 'green' }}>Business phone number available</Text>
+              {phoneCheckComplete && phoneExists && (
+                <Text style={styles.errorText}>
+                  This phone number is already registered
+                </Text>
               )}
             </View>
             
@@ -240,63 +254,80 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
               <Text style={styles.inputLabel}>Address *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter street address"
                 value={address}
                 onChangeText={setAddress}
+                placeholder="Enter address"
               />
             </View>
             
-            <View style={styles.rowContainer}>
-              <View style={styles.cityInput}>
-                <Text style={styles.inputLabel}>City *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="City"
-                  value={city}
-                  onChangeText={setCity}
-                />
-              </View>
-              
-              <View style={styles.stateInput}>
-                <Text style={styles.inputLabel}>State *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="State"
-                  value={state}
-                  onChangeText={setState}
-                />
-              </View>
-              
-              <View style={styles.zipInput}>
-                <Text style={styles.inputLabel}>ZIP *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="ZIP"
-                  value={zipCode}
-                  onChangeText={setZipCode}
-                  keyboardType="numeric"
-                />
-              </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>City *</Text>
+              <TextInput
+                style={styles.input}
+                value={city}
+                onChangeText={setCity}
+                placeholder="Enter city"
+              />
             </View>
             
-            <TouchableOpacity 
-              style={[styles.button, (!isFormValid || isLoading || generatingQRCode) && styles.buttonDisabled]} 
-              onPress={handleCreateBusiness}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>State *</Text>
+              <TextInput
+                style={styles.input}
+                value={state}
+                onChangeText={setState}
+                placeholder="Enter state"
+              />
+            </View>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Zip Code *</Text>
+              <TextInput
+                style={styles.input}
+                value={zipCode}
+                onChangeText={setZipCode}
+                placeholder="Enter zip code"
+                keyboardType="numeric"
+              />
+            </View>
+          </ScrollView>
+          
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.cancelButton]}
+              onPress={() => {
+                // Reset form and close modal
+                setBusinessName('');
+                setFirstName('');
+                setLastName('');
+                setPhoneNumber('');
+                setAddress('');
+                setCity('');
+                setState('');
+                setZipCode('');
+                onBusinessCreated('', ''); // Cancel
+              }}
+            >
+              <Text style={styles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.button, 
+                styles.createButton,
+                (!isFormValid || isLoading || generatingQRCode) ? styles.disabledButton : null
+              ]}
               disabled={!isFormValid || isLoading || generatingQRCode}
+              onPress={handleCreateBusiness}
             >
               {isLoading || generatingQRCode ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator color="#ffffff" />
-                  <Text style={styles.loadingText}>
-                    {generatingQRCode ? 'Generating QR Code...' : 'Creating Business...'}
-                  </Text>
-                </View>
+                <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.buttonText}>Create Business</Text>
               )}
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </View>
     </Modal>
   );

@@ -1,19 +1,15 @@
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
-    centeredView: {
+    // Modal container styles
+    modalContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         padding: 20,
     },
-    scrollContainer: {
-        flexGrow: 1,
-        justifyContent: 'center',
-        width: '100%',
-    },
-    modalView: {
+    modalContent: {
         backgroundColor: 'white',
         borderRadius: 10,
         padding: 25,
@@ -28,37 +24,23 @@ export const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5,
     },
+    scrollView: {
+        maxHeight: 400,
+        marginBottom: 15,
+    },
+    
+    // Title styles
     modalTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        marginBottom: 10,
+        marginBottom: 20,
         textAlign: 'center',
         color: '#333',
     },
-    modalSubtitle: {
-        fontSize: 16,
-        marginBottom: 20,
-        textAlign: 'center',
-        color: '#666',
-    },
+    
+    // Input styles
     inputContainer: {
         marginBottom: 15,
-    },
-    rowContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 15,
-    },
-    cityInput: {
-        flex: 2,
-        marginRight: 10,
-    },
-    stateInput: {
-        flex: 1,
-        marginRight: 10,
-    },
-    zipInput: {
-        flex: 1,
     },
     inputLabel: {
         fontSize: 16,
@@ -72,22 +54,53 @@ export const styles = StyleSheet.create({
         padding: 12,
         fontSize: 16,
     },
+    inputError: {
+        borderColor: 'red',
+        borderWidth: 1,
+    },
+    validatingText: {
+        color: '#666',
+        fontSize: 14,
+        marginTop: 5,
+    },
+    errorText: {
+        color: 'red',
+        fontSize: 14,
+        marginTop: 5,
+    },
+    
+    // Button styles
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+    },
     button: {
-        backgroundColor: '#2196F3',
         borderRadius: 5,
         padding: 15,
-        marginTop: 10,
         alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+        height: 50,
     },
-    buttonDisabled: {
+    cancelButton: {
+        backgroundColor: '#ccc',
+        marginRight: 10,
+    },
+    createButton: {
+        backgroundColor: '#2196F3',
+    },
+    disabledButton: {
         backgroundColor: '#a0d0f7',
+        opacity: 0.7,
     },
     buttonText: {
         color: 'white',
         fontWeight: 'bold',
         fontSize: 16,
     },
-    // New styles for QR code generation
+    
+    // Loading styles
     loadingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
