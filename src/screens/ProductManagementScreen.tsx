@@ -116,7 +116,7 @@ const ProductManagementScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [businessId, selectedServiceId]); // removed productServiceMap from dependencies
+  }, [businessId]); // removed productServiceMap from dependencies
 
   // Also need to add useEffect to call the function
   useEffect(() => {
