@@ -18,6 +18,7 @@ import { useAuthenticator } from "@aws-amplify/ui-react-native";
 import { generateQRCodeData } from '../utils/qrCodeGenerator';
 // For QR code generation
 import QRCode from 'qrcode';
+import { seedBusinessData } from '../utils/seedDatabase';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -96,26 +97,6 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
     setIsFormValid(allFieldsFilled && (!phoneCheckComplete || !phoneExists));
   }, [businessName, firstName, lastName, phoneNumber, address, city, state, zipCode, phoneCheckComplete, phoneExists]);
 
-  // Generate QR code data for the business
-  const generateBusinessQRCode = async (businessId: string, businessData: any): Promise<string | null> => {
-    try {
-      setGeneratingQRCode(true);
-      
-      // Generate QR code data
-      const qrData = generateQRCodeData('Business', businessData);
-      
-      // Convert QR data to image URL (but don't save it)
-      const qrCodeUrl = await QRCode.toDataURL(qrData);
-      
-      // Return the QR code data URL
-      return qrCodeUrl;
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-      return null;
-    } finally {
-      setGeneratingQRCode(false);
-    }
-  };
 
   const handleCreateBusiness = async () => {
     // No need for field validation here since the button is disabled when isFormValid is false
@@ -150,21 +131,17 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
         throw new Error(result.errors.map(e => e.message).join(', '));
       }
       
-      // Generate QR code for the new business
-      const businessData = {
-        id: result.data?.id ?? '',
-        name: result.data?.name ?? '',
-        phoneNumber: result.data?.phoneNumber ?? '',
-        address: result.data?.address ?? '',
-        city: result.data?.city ?? '',
-        state: result.data?.state ?? '',
-        zipCode: result.data?.zipCode ?? ''
-      };
+      // Seed the business with preset services and products
+      if (result.data?.id) {
+        console.log('Seeding business data for', result.data.id);
+        await seedBusinessData(result.data.id);
+      }
       
-      // Generate the QR code (but we don't need to save it)
-      await generateBusinessQRCode(result.data?.id ?? '', businessData);
-      
-      // QR codes are now generated dynamically when needed
+      // Seed the business with preset services and products
+      if (result.data?.id) {
+        console.log('Seeding business data for', result.data.id);
+        await seedBusinessData(result.data.id);
+      }
       
       // Call the callback with the new business info
       onBusinessCreated(result.data?.id ?? '', result.data?.name ?? '');

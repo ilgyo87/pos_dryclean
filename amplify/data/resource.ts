@@ -109,8 +109,8 @@ const schema = a.schema({
       name: a.string().required(),
       description: a.string(),
       price: a.float().required(),
-      estimatedTime: a.integer(),
-      category: a.string(),
+      estimatedTime: a.integer(), //days
+      urlPicture: a.string(),
       business: a.belongsTo("Business", "businessID"),
       products: a.hasMany("Product", "serviceID"),
       transactionItems: a.hasMany("TransactionItem", "serviceID")
@@ -130,6 +130,7 @@ const schema = a.schema({
       name: a.string().required(),
       description: a.string(),
       price: a.float().required(),
+      urlPicture: a.string(),
       business: a.belongsTo("Business", "businessID"),
       service: a.belongsTo("Service", "serviceID"), // Added belongsTo relationship
       transactionItems: a.hasMany("TransactionItem", "productID")

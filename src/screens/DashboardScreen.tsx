@@ -9,6 +9,7 @@ import { useAuthenticator } from "@aws-amplify/ui-react-native";
 import QRCode from 'react-native-qrcode-svg'; 
 import Svg from 'react-native-svg'; 
 import { generateQRCodeData } from '../utils/qrCodeGenerator'; 
+import Toast from 'react-native-toast-message';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -77,6 +78,19 @@ export default function DashboardScreen({ route }: { route: any }) {
     fetchBusinessData();
   }, [user, businessId]); 
 
+  // Add a new separate useEffect for handling the seeded data message
+  useEffect(() => {
+    if (route.params?.showSeededMessage) {
+      // Show a toast or notification
+      Toast.show({
+        type: 'success',
+        text1: 'Business created successfully',
+        text2: 'We\'ve added some preset services to get you started. You can edit them anytime.',
+        visibilityTime: 4000,
+      });
+    }
+  }, [route.params?.showSeededMessage]);
+  
   // Generate QR Code string when businessData is available
   useEffect(() => {
     if (businessData) {
@@ -86,7 +100,7 @@ export default function DashboardScreen({ route }: { route: any }) {
     } else {
       setQrCodeString(''); 
     }
-  }, [businessData]); 
+  }, [businessData]);
   
   const menuItems = [
     { title: 'Product Management', screen: 'ProductManagement', icon: '📦' },
@@ -160,6 +174,7 @@ export default function DashboardScreen({ route }: { route: any }) {
         )}
         contentContainerStyle={styles.menuGrid}
       />
+      <Toast />
     </View>
   );
 }
