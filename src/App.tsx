@@ -11,11 +11,11 @@ import CreateBusinessModal from './components/CreateBusinessModal';
 import DashboardScreen from './screens/DashboardScreen';
 import outputs from "../amplify_outputs.json";
 import CustomerEditScreen from './screens/CustomerEditScreen';
-import CustomerSearchScreen from './screens/CustomerSearchScreen';
-import ProductManagementScreen from './screens/ProductManagementScreen';
 import TransactionSelectionScreen from './screens/TransactionSelectionScreen';
+import ProductManagementScreen from './screens/ProductManagementScreen';
 import CheckoutScreen from './screens/CheckoutScreen';
 import ReceiptScreen from './screens/ReceiptScreen';
+import CustomerSearchScreen from './screens/CustomerSearchScreen';
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);
@@ -122,7 +122,7 @@ function AppContent() {
               }}
             />
             <Stack.Screen
-              name="Transactions"
+              name="CustomerSearch"
               component={CustomerSearchScreen}
               initialParams={{ businessId, businessName }}
               options={{

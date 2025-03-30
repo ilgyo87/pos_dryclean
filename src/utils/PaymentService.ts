@@ -1,12 +1,9 @@
-import { 
-  SQIPCore, 
-  SQIPCardEntry, 
-  SQIPApplePay, 
-  SQIPCardDetails 
-} from 'react-native-square-in-app-payments';
+import SquareSDK from './SquarePaymentHelper';
+const { SQIPCore, SQIPCardEntry, SQIPApplePay, isMock } = SquareSDK;
 import { Platform } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import type { SquareCardDetails } from './SquarePaymentHelper';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -34,21 +31,28 @@ export interface CartItem {
   imageUrl?: string | null;
 }
 
+// Now using the APPLE_PAY_MERCHANT_ID defined at the top of the file
+
 // Initialize Square payment SDK
 export const initializeSquarePayments = async (): Promise<boolean> => {
   try {
+    // Initialize Square payment form
     await SQIPCore.initializePaymentForm();
     
     // Initialize Apple Pay if on iOS
     if (Platform.OS === 'ios') {
       try {
-        await SQIPApplePay.initializeApplePay(APPLE_PAY_MERCHANT_ID);
+        // If we're using a mock implementation, this won't actually do anything
+        // but will return success so your code flow works
+        await SQIPApplePay.initializeApplePay();
+        console.log('Apple Pay initialized successfully');
       } catch (applePayError) {
         console.error('Failed to initialize Apple Pay:', applePayError);
         // Continue without Apple Pay - this is not critical
       }
     }
     
+    console.log(`Square SDK initialized successfully (${isMock ? 'Simulator Mock' : 'Real Device'})`);
     return true;
   } catch (error) {
     console.error('Failed to initialize Square payments:', error);
@@ -61,10 +65,23 @@ export const processCardPayment = async (
   amount: number,
   currency: string = 'USD'
 ): Promise<PaymentResult> => {
+  // Check if SDK is disabled (we're in a simulator)
+  if (SquareSDK.isDisabled) {
+    console.log('Running in simulator - returning mock payment result');
+    // Return a simulated successful payment
+    const mockTransactionId = 'sim_' + Math.random().toString(36).substring(2, 15);
+    return {
+      success: true,
+      transactionId: mockTransactionId,
+      receiptUrl: `https://example.com/receipt/${mockTransactionId}`,
+      timestamp: new Date()
+    };
+  }
+  
   try {
     // Start the card entry flow
     await SQIPCardEntry.startCardEntryFlow(
-      ({ nonce }) => onCardNonceRequestSuccess(nonce, amount, currency),
+      ({ nonce }: { nonce: string }) => onCardNonceRequestSuccess(nonce, amount, currency),
       () => onCardEntryCancel()
     );
     
@@ -164,40 +181,44 @@ export const processApplePayment = async (
       };
     }
     
+    let paymentResult: PaymentResult = {
+      success: false,
+      error: 'Payment processing error',
+      timestamp: new Date()
+    };
+    
     await SQIPApplePay.requestApplePayNonce(
-      {
-        price: amount.toFixed(2),
-        summaryLabel,
-        countryCode: 'US',
-        currencyCode: currency
-      },
-      async (nonce) => {
+      amount.toFixed(2),
+      summaryLabel,
+      'US',
+      currency,
+      async (nonce: SquareCardDetails) => {
         // Process the nonce with your backend
         // Similar to card processing above
         const mockTransactionId = 'apay_' + Math.random().toString(36).substring(2, 15);
         
-        return {
+        paymentResult = {
           success: true,
           transactionId: mockTransactionId,
           receiptUrl: `https://squareup.com/receipt/${mockTransactionId}`,
           timestamp: new Date()
         };
       },
-      (error) => {
-        return {
+      (error: Error) => {
+        paymentResult = {
           success: false,
           error: error.message || 'Apple Pay payment failed',
           timestamp: new Date()
         };
+      },
+      () => {
+        // This callback is called when Apple Pay sheet is closed
+        console.log('Apple Pay flow completed');
+        SQIPApplePay.completeApplePayAuthorization(paymentResult.success);
       }
     );
     
-    // Placeholder return
-    return {
-      success: false,
-      error: 'Payment not completed',
-      timestamp: new Date()
-    };
+    return paymentResult;
   } catch (error: any) {
     return {
       success: false,
@@ -222,7 +243,9 @@ export const createTransactionRecord = async (
     const result = await client.models.Transaction.create({
       businessID: businessId,
       customerID: customerId,
-      amount: total,
+      orderId: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      status: paymentResult.success ? 'COMPLETED' : 'FAILED',
+      total: total,
       paymentStatus: paymentResult.success ? 'COMPLETED' : 'FAILED',
       transactionDate: new Date().toISOString(),
       pickupDate: pickupDate,

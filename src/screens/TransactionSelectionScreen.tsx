@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { generateClient } from 'aws-amplify/data';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { Schema } from '../../amplify/data/resource';
 
 // Initialize Amplify client
@@ -60,7 +60,10 @@ type RootStackParamList = {
 
 type TransactionSelectionScreenProps = NativeStackScreenProps<RootStackParamList, 'TransactionSelection'>;
 
-export default function TransactionSelectionScreen({ route, navigation }: TransactionSelectionScreenProps) {
+const TransactionSelectionScreen = () => {  
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'TransactionSelection'>>();
+  
   const { businessId, customerId, customerName } = route.params || {};
   
   const [loading, setLoading] = useState(true);
@@ -252,7 +255,7 @@ export default function TransactionSelectionScreen({ route, navigation }: Transa
     }));
     
     // Navigate to checkout screen
-    navigation.navigate('Checkout', {
+    navigation.navigate('Checkout' as const, {
       businessId: businessId as string,
       customerId: customerId as string,
       customerName: customerName,
@@ -989,3 +992,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+export default TransactionSelectionScreen;
