@@ -1,7 +1,9 @@
 // src/utils/PaymentService.ts
-import { generateClient } from 'aws-amplify/data';
+import { generateClient } from 'aws-amplify/api'; // Correct API import
 import type { Schema } from '../../amplify/data/resource';
-import { CartItem, PaymentResult, MockPaymentResult } from '../types/PaymentTypes';
+import { CartItem, PaymentResult, MockPaymentResult } from '../types/PaymentTypes'; // Make sure this path is correct
+import { Share } from 'react-native';
+import RNFS from 'react-native-fs'; // Ensure react-native-fs is installed
 
 const client = generateClient<Schema>();
 
@@ -11,7 +13,7 @@ let currentMockPaymentAmount = 0;
 let currentMockPaymentMethod: 'card' | 'applepay' = 'card';
 let mockPaymentMerchantName = 'Dry Clean Business';
 let mockPaymentResolve: ((value: PaymentResult) => void) | null = null;
-let mockPaymentReject: ((reason: Error) => void) | null = null;
+let mockPaymentReject: ((reason?: any) => void) | null = null; // Allow any reason
 
 // Show the mock payment UI
 export const showMockPaymentUI = (
@@ -42,7 +44,8 @@ export const getMockPaymentUIState = () => {
     onPaymentComplete: (result: MockPaymentResult) => {
       mockPaymentModalVisible = false;
       if (mockPaymentResolve) {
-        mockPaymentResolve(result);
+        // Adapt MockPaymentResult to PaymentResult if needed, or adjust types
+        mockPaymentResolve(result as PaymentResult); // Type assertion might be needed
         mockPaymentResolve = null;
         mockPaymentReject = null;
       }
@@ -68,7 +71,7 @@ export const processCardPayment = async (
   currency: string = 'USD'
 ): Promise<PaymentResult> => {
   console.log('Processing card payment with mock implementation');
-  
+
   // Show the mock payment UI
   return new Promise<PaymentResult>((resolve, reject) => {
     mockPaymentResolve = resolve;
@@ -84,7 +87,7 @@ export const processApplePayment = async (
   summaryLabel: string = 'Your Purchase'
 ): Promise<PaymentResult> => {
   console.log('Processing Apple Pay with mock implementation');
-  
+
   // Show the mock payment UI
   return new Promise<PaymentResult>((resolve, reject) => {
     mockPaymentResolve = resolve;
@@ -93,251 +96,244 @@ export const processApplePayment = async (
   });
 };
 
+// --- UPDATED createTransactionRecord ---
 export const createTransactionRecord = async (
-  businessId: string,
-  customerId: string, // This is required but coming in as undefined
-  items: CartItem[],
-  total: number,
-  paymentResult: PaymentResult,
-  pickupDate: string,
-  customerPreferences?: string
-): Promise<string> => {
-  try {
-    // Validate required fields
+    businessId: string,
+    customerId: string | null, // Customer ID can be null for guests
+    items: CartItem[], // Using CartItem type from import
+    total: number,
+    paymentResult: PaymentResult, // Using PaymentResult type from import
+    pickupDate: string, // Assuming ISO string format e.g., "2024-12-31T14:00:00.000Z"
+    customerPreferences?: string
+  ): Promise<Schema['Transaction']['type']> => { // Return the created transaction object
+    console.log("Attempting to create transaction record...");
+    console.log("Payment result:", paymentResult);
+
     if (!businessId) {
-      throw new Error('Business ID is required');
+      throw new Error("Business ID is required to create a transaction.");
     }
-    
+
+    // Use guest ID if customerId is null
+    const finalCustomerId = customerId || `guest-${Date.now()}`;
     if (!customerId) {
-      // Create a guest customer ID if not provided
-      customerId = `guest-${Date.now()}`;
-      console.log('Created guest customer ID:', customerId);
+        console.log('Using generated guest customer ID:', finalCustomerId);
     }
-    
+
+    // --- Calculate Financial Fields ---
+    // Assuming a fixed tax rate for simplicity. Replace with actual calculation logic.
+    const TAX_RATE = 0.08; // Example 8% tax rate
+    const subtotal = parseFloat((total / (1 + TAX_RATE)).toFixed(2));
+    const tax = parseFloat((total - subtotal).toFixed(2));
+
+    // Generate a simple transaction number
+    const transactionNumber = `TXN-${businessId.substring(businessId.length - 4)}-${Date.now()}`;
+
     // Log the input parameters for debugging
     console.log('Creating transaction with params:', {
       businessId,
-      customerId, // Now this should never be undefined
-      items: items.length,
+      customerId: finalCustomerId,
+      itemsCount: items.length,
+      subtotal,
+      tax,
       total,
-      paymentStatus: paymentResult.success ? 'COMPLETED' : 'FAILED',
-      pickupDate
+      paymentStatus: paymentResult.success ? 'Paid' : 'Failed', // Map success to PaymentStatus
+      status: paymentResult.success ? 'Completed' : 'Failed', // Map success to Status
+      pickupDate,
+      externalTransactionId: paymentResult.transactionId,
+      transactionNumber,
+      paymentMethod: paymentResult.cardDetails?.brand || 'CREDIT_CARD', // Use card brand or default
+      receiptUrl: paymentResult.receiptUrl,
+      customerPreferences,
     });
 
-    // Create the transaction in your database
-    const result = await client.models.Transaction.create({
-      businessID: businessId,
-      customerID: customerId, // Now this should never be undefined
-      orderId: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      status: paymentResult.success ? 'COMPLETED' : 'FAILED',
-      total: total,
-      paymentStatus: paymentResult.success ? 'COMPLETED' : 'FAILED',
-      transactionDate: new Date().toISOString(),
-      pickupDate: pickupDate,
-      customerPreferences: customerPreferences || '',
-      paymentMethod: 'CREDIT_CARD',
-      transactionId: paymentResult.transactionId || '',
-      receiptUrl: paymentResult.receiptUrl || '',
-    });
+    try {
+      // Create the transaction in your database using the updated schema fields
+      const result = await client.models.Transaction.create({
+        businessID: businessId,
+        customerID: finalCustomerId,
+        transactionNumber: transactionNumber,
+        transactionDate: new Date().toISOString(),
+        status: paymentResult.success ? 'Completed' : 'Failed',
+        subtotal: subtotal,
+        tax: tax,
+        // discount: 0, // Optional
+        total: total,
+        paymentMethod: paymentResult.cardDetails?.brand || 'CREDIT_CARD', // Use card brand or default
+        paymentStatus: paymentResult.success ? 'Paid' : 'Failed',
+        // notes: 'Optional transaction notes', // Optional
+        receiptUrl: paymentResult.receiptUrl || undefined,
+        externalTransactionId: paymentResult.transactionId || undefined,
+        // employeeID: 'emp-123', // Optional
+        orderID: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`, // Optional
+        // qrCode: 's3://...', // Optional
+        pickupDate: pickupDate ? new Date(pickupDate).toISOString() : undefined,
+        customerPreferences: customerPreferences || undefined,
+      });
 
-    console.log('Transaction creation response:', JSON.stringify(result, null, 2));
+      console.log('Transaction creation response:', JSON.stringify(result, null, 2));
 
-    if (!result.data) {
-      throw new Error('Failed to create transaction record: No data returned');
-    }
-
-    console.log('Transaction created successfully with ID:', result.data.id);
-    return result.data.id;
-  } catch (error) {
-    // Enhanced error logging
-    console.error('Transaction creation error details:', error);
-    
-    // Check for specific error types
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-      
-      // Log additional details if it's an API error
-      if ('errors' in (error as any)) {
-        console.error('API errors:', (error as any).errors);
+      if (result.errors) {
+          console.error('GraphQL errors during transaction creation:', result.errors);
+          throw new Error(`Failed to create transaction record: ${result.errors.map(e => e.message).join(', ')}`);
       }
+      if (!result.data) {
+        throw new Error('Failed to create transaction record: No data returned');
+      }
+
+      console.log('Transaction record created successfully:', result.data.id);
+      return result.data; // Return the created transaction data
+
+    } catch (error: any) {
+        console.error('Error creating transaction record:', error);
+        if (error.response && error.response.errors) {
+            console.error('Detailed GraphQL Errors:', JSON.stringify(error.response.errors, null, 2));
+        }
+        throw new Error(`Error saving transaction: ${error.message || 'Unknown error'}`);
     }
-    
-    // Rethrow with more context
-    throw new Error(`Failed to create transaction record: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-};
+  };
+// --- END UPDATED createTransactionRecord ---
 
-// Generate a receipt
-export const generateReceipt = (
-  transactionId: string,
-  businessName: string,
-  customerName: string,
-  items: CartItem[],
-  total: number,
-  paymentResult: PaymentResult,
-  pickupDate: string
+
+// Generate a receipt (HTML Format)
+export const generateReceiptHtml = (
+    transactionId: string, // Use the actual Transaction ID from DB
+    businessName: string,
+    customerName: string,
+    items: CartItem[],
+    total: number,
+    tax: number, // Add tax parameter
+    subtotal: number, // Add subtotal parameter
+    paymentResult: PaymentResult,
+    pickupDate: string // ISO String format
 ): string => {
-  // Format the date for display
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-  
-  // Format the time for display
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-  
-  const receiptDate = new Date();
-  const pickupDateTime = new Date(pickupDate);
-  
-  // Generate line items for the receipt
-  const itemsHtml = items.map(item => `
-    <tr>
-      <td>${item.name}</td>
-      <td>${item.quantity}</td>
-      <td>${item.price.toFixed(2)}</td>
-      <td>${(item.price * item.quantity).toFixed(2)}</td>
-    </tr>
-  `).join('');
-  
-  // Generate full HTML receipt
-  const receiptHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          margin: 0;
-          padding: 20px;
-          color: #333;
-        }
-        .receipt {
-          max-width: 500px;
-          margin: 0 auto;
-          border: 1px solid #eee;
-          padding: 20px;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 20px;
-          border-bottom: 1px solid #eee;
-          padding-bottom: 10px;
-        }
-        .business-name {
-          font-size: 24px;
-          font-weight: bold;
-        }
-        .transaction-info {
-          margin-bottom: 20px;
-        }
-        .customer-info {
-          margin-bottom: 20px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-        th, td {
-          padding: 8px;
-          text-align: left;
-          border-bottom: 1px solid #eee;
-        }
-        th {
-          background-color: #f8f8f8;
-        }
-        .total-row {
-          font-weight: bold;
-        }
-        .footer {
-          margin-top: 30px;
-          text-align: center;
-          font-size: 14px;
-          color: #777;
-        }
-        .payment-info {
-          margin: 20px 0;
-          padding: 10px;
-          background-color: #f8f8f8;
-          border-radius: 5px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="receipt">
-        <div class="header">
-          <div class="business-name">${businessName}</div>
-          <p>Dry Cleaning Receipt</p>
+    // Format the date for display
+    const formatDate = (isoString: string | Date): string => {
+        if (!isoString) return 'N/A';
+        const date = typeof isoString === 'string' ? new Date(isoString) : isoString;
+        if (isNaN(date.getTime())) return 'Invalid Date';
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric'
+        });
+    };
+
+    // Format the time for display
+    const formatTime = (isoString: string | Date): string => {
+        if (!isoString) return 'N/A';
+        const date = typeof isoString === 'string' ? new Date(isoString) : isoString;
+        if (isNaN(date.getTime())) return 'Invalid Time';
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit', minute: '2-digit', hour12: true
+        });
+    };
+
+    const receiptDate = new Date(); // Use current date/time for receipt generation moment
+
+    // Generate line items for the receipt
+    const itemsHtml = items.map(item => `
+      <tr>
+        <td>${item.name}</td>
+        <td>${item.quantity}</td>
+        <td>$${item.price.toFixed(2)}</td>
+        <td>$${(item.price * item.quantity).toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    // Generate full HTML receipt
+    const receiptHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          /* (Keep your existing CSS styles here) */
+          body { font-family: sans-serif; margin: 20px; color: #333; }
+          .receipt { max-width: 400px; margin: auto; border: 1px solid #ccc; padding: 15px; font-size: 14px; }
+          .header { text-align: center; margin-bottom: 15px; }
+          .business-name { font-size: 1.5em; font-weight: bold; }
+          .info p { margin: 3px 0; }
+          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+          th, td { padding: 6px; text-align: left; border-bottom: 1px solid #eee; }
+          th { background-color: #f8f8f8; font-weight: bold; }
+          .totals td { text-align: right; }
+          .totals .label { text-align: left; }
+          .footer { margin-top: 20px; text-align: center; font-size: 0.9em; color: #777; }
+          .payment-info { margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ccc; }
+        </style>
+      </head>
+      <body>
+        <div class="receipt">
+          <div class="header">
+            <div class="business-name">${businessName}</div>
+            <p>Dry Cleaning Receipt</p>
+          </div>
+
+          <div class="info">
+            <p><strong>Receipt #:</strong> ${transactionId}</p>
+            <p><strong>Date:</strong> ${formatDate(receiptDate)} ${formatTime(receiptDate)}</p>
+            <p><strong>Customer:</strong> ${customerName || 'Guest'}</p>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th><th>Qty</th><th>Price</th><th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+
+          <table class="totals">
+             <tr><td class="label">Subtotal</td><td>$${subtotal.toFixed(2)}</td></tr>
+             <tr><td class="label">Tax</td><td>$${tax.toFixed(2)}</td></tr>
+             <tr><td class="label" style="font-weight: bold;">Total</td><td style="font-weight: bold;">$${total.toFixed(2)}</td></tr>
+          </table>
+
+          <div class="payment-info">
+            <p><strong>Payment Method:</strong> ${paymentResult.cardDetails?.brand || 'Card'} ${paymentResult.cardDetails?.lastFourDigits ? `ending in ${paymentResult.cardDetails.lastFourDigits}` : ''}</p>
+            <p><strong>Status:</strong> ${paymentResult.success ? 'Paid' : 'Failed'}</p>
+            ${paymentResult.transactionId ? `<p><strong>Payment ID:</strong> ${paymentResult.transactionId}</p>` : ''}
+          </div>
+
+          <div class="info pickup-info" style="margin-top: 10px;">
+             <p><strong>Estimated Pickup:</strong> ${formatDate(pickupDate)}</p>
+          </div>
+
+          <div class="footer">
+            <p>Thank you for your business!</p>
+            ${paymentResult.receiptUrl ? `<p><a href="${paymentResult.receiptUrl}" target="_blank">View Online Receipt</a></p>` : ''}
+          </div>
         </div>
-        
-        <div class="transaction-info">
-          <p><strong>Receipt #:</strong> ${transactionId}</p>
-          <p><strong>Date:</strong> ${formatDate(receiptDate)}</p>
-          <p><strong>Time:</strong> ${formatTime(receiptDate)}</p>
-        </div>
-        
-        <div class="customer-info">
-          <p><strong>Customer:</strong> ${customerName}</p>
-        </div>
-        
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Price</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td colspan="3">Total</td>
-              <td>$${total.toFixed(2)}</td>
-            </tr>
-          </tfoot>
-        </table>
-        
-        <div class="payment-info">
-          <p><strong>Payment Method:</strong> ${paymentResult.cardDetails?.brand || 'Credit Card'} ending in ${paymentResult.cardDetails?.lastFourDigits || 'XXXX'}</p>
-          <p><strong>Status:</strong> ${paymentResult.success ? 'Paid' : 'Failed'}</p>
-          ${paymentResult.transactionId ? `<p><strong>Payment ID:</strong> ${paymentResult.transactionId}</p>` : ''}
-        </div>
-        
-        <div class="pickup-info">
-          <p><strong>Pickup Date:</strong> ${formatDate(pickupDateTime)}</p>
-        </div>
-        
-        <div class="footer">
-          <p>Thank you for your business!</p>
-          ${paymentResult.receiptUrl ? `<p>View online receipt: <a href="${paymentResult.receiptUrl}">${paymentResult.receiptUrl}</a></p>` : ''}
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  return receiptHtml;
+      </body>
+      </html>
+    `;
+
+    return receiptHtml;
 };
 
-// Save receipt to device or share it
-export const saveOrShareReceipt = async (
+// Save receipt HTML to a file and provide share options
+export const saveAndShareReceipt = async (
   receiptHtml: string,
   transactionId: string
-): Promise<boolean> => {
-  // In a real app, you would implement this to save the receipt to a file
-  // or share it using the Share API
-  console.log('Receipt generated for transaction:', transactionId);
-  return true;
+): Promise<void> => {
+  const filePath = `${RNFS.DocumentDirectoryPath}/receipt_${transactionId}.html`;
+
+  try {
+    // Write the HTML string to a file
+    await RNFS.writeFile(filePath, receiptHtml, 'utf8');
+    console.log('Receipt saved to:', filePath);
+
+    // Use React Native's Share API
+    await Share.share({
+      title: `Receipt ${transactionId}`,
+      url: `file://${filePath}`, // Use the file URL for sharing
+      // message: `Here is your receipt ${transactionId}.`, // Optional message
+    });
+
+  } catch (error: any) {
+    console.error('Error saving or sharing receipt:', error);
+    // Optionally, delete the file if sharing failed?
+    // await RNFS.unlink(filePath);
+    throw new Error('Failed to save or share receipt.'); // Rethrow or handle appropriately
+  }
 };

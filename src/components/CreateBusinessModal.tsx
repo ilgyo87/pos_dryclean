@@ -22,13 +22,11 @@ const client = generateClient<Schema>();
 
 interface CreateBusinessModalProps {
   visible: boolean;
-  onClose: () => void;
   onBusinessCreated: (businessId: string, businessName: string) => void;
 }
 
 const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
   visible,
-  onClose, // Destructure onClose here
   onBusinessCreated
 }) => {
   const [businessName, setBusinessName] = useState('');
@@ -157,14 +155,13 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
       // Create business in Amplify
       const result = await client.models.Business.create({
         name: businessName.trim(),
-        ownerName: `${firstName.trim()} ${lastName.trim()}`,
+        owner: `${firstName.trim()} ${lastName.trim()}`,
         phoneNumber: phoneNumber.trim(),
         address: address.trim(),
         city: city.trim(),
         state: state.trim(),
         zipCode: zipCode.trim(),
-        qrCode: '', // qrCode field is NOT set here, it's set after upload
-        ownerCognitoId: user.userId,
+        id: user.userId,
       });
 
       if (result.data && result.data.id) {
@@ -207,7 +204,6 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
         console.log(`Successfully attached QR key to business ${createdBusinessId}`);
         resetForm(); // Reset form fields
         onBusinessCreated(createdBusinessId, createdBusinessName); // Notify parent component
-        onClose(); // Close the main modal now that everything succeeded
       } else {
         Alert.alert('Error', 'Failed to attach QR code to the business record. Please check logs.');
         // Consider cleanup or retry logic here
@@ -225,13 +221,11 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
            Alert.alert('Cleanup Error', 'Failed to automatically clean up the partially created business. Please check your records.');
        }
        resetForm(); // Reset form even on failure
-       onClose(); // Close the modal
     }
   };
 
   const handleCancel = () => {
     resetForm();
-    onClose(); // Use the onClose prop passed from the parent
   };
 
 
@@ -401,7 +395,6 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
                         Alert.alert("Cleanup Error", "Failed to automatically delete the business record. Please check manually.");
                     }
                     resetForm(); // Reset form state
-                    onClose(); // Close the main modal
                   },
                 },
               ]
@@ -449,7 +442,6 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({
                                  Alert.alert("Cleanup Error", "Failed to automatically delete the business record. Please check manually.");
                              }
                              resetForm();
-                             onClose();
                           },
                         },
                       ]

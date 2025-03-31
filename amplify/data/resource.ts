@@ -1,3 +1,5 @@
+// amplify/data/resource.ts
+
 import { a, defineData, type ClientSchema } from "@aws-amplify/backend";
 
 const schema = a.schema({
@@ -10,84 +12,73 @@ const schema = a.schema({
       city: a.string(),
       state: a.string(),
       zipCode: a.string(),
-      phoneNumber: a.phone().required(),
+      phoneNumber: a.phone(),
       email: a.email(),
       website: a.url(),
       description: a.string(),
-      hoursOfOperation: a.json(), // Store operating hours as JSON
-      ownerName: a.string(), // Optional: Store owner's name for display
+      hours: a.string(), // Consider JSON string or break down further if complex querying needed
       logoUrl: a.url(),
-      ownerCognitoId: a.string(), // Store the Cognito ID of the owner
-      qrCode: a.string(), // Store the S3 key or identifier for the QR code
-      // Relationships
-      categories: a.hasMany('Category', 'businessId'), // Business has many Categories
-      items: a.hasMany('Item', 'businessId'), // Business has many Items
-      customers: a.hasMany('Customer', 'businessId'),
-      orders: a.hasMany('Order', 'businessId'),
-      employees: a.hasMany('Employee', 'businessId'),
-      garments: a.hasMany('Garment', 'businessId'),
-      transactions: a.hasMany('Transaction', 'businessId'),
-      loyaltyPrograms: a.hasMany('Loyalty', 'businessId'),
-      counters: a.hasMany('Counter', 'businessId'),
+      industry: a.string(),
+      establishedDate: a.date(),
+      taxId: a.string(),
+      isActive: a.boolean().default(true),
+      owner: a.string().required(), 
+      qrCode: a.string(), // Store the S3 key for the QR code image
+
+      // --- Relationships (Commented out to reduce type complexity) ---
+      // categories: a.hasMany('Category', 'businessID'),
+      // items: a.hasMany('Item', 'businessID'),
+      // customers: a.hasMany('Customer', 'businessID'),
+      // employees: a.hasMany('Employee', 'businessID'),
+      // garments: a.hasMany('Garment', 'businessID'),
+      // transactions: a.hasMany('Transaction', 'businessID'),
+      // orders: a.hasMany('Order', 'businessID'),
+      // notifications: a.hasMany('CustomerNotification', 'businessID'),
+      // credits: a.hasMany('CustomerCredit', 'businessID')
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('ownerCognitoId'), // Owner can CRUD
-      allow.authenticated().to(['read']), // Any logged-in user can read
+      allow.owner(), // Allow owner full access
+      allow.authenticated().to(['read']), // Allow any logged-in user to read
+      // Add group-based or other rules if needed
     ]),
 
-  // Employee Model
-  Employee: a
-    .model({
-      id: a.id().required(),
-      firstName: a.string().required(),
-      lastName: a.string().required(),
-      phoneNumber: a.phone().required(),
-      role: a.string().required(),
-      businessId: a.id().required(),
-      qrCode: a.string(),
-      // Relationships
-      business: a.belongsTo('Business', 'businessId'),
-      transactions: a.hasMany('Transaction', 'employeeId'),
-    })
-    .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'),
-      allow.authenticated().to(['read']),
-    ]),
-
-  // Category Model (replaces Service)
+  // Category Model
   Category: a
     .model({
       id: a.id().required(),
       name: a.string().required(),
       description: a.string(),
-      businessId: a.id().required(), // Foreign key for Business
-      // Relationships
-      business: a.belongsTo('Business', 'businessId'),
-      items: a.hasMany('Item', 'categoryId'), // Category has many Items
+      businessID: a.string().required(), // Foreign key for Business
+      // Define relationships
+      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
+      items: a.hasMany('Item', 'categoryID')
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'), // Owner of the related Business can CRUD
+      allow.owner(),
       allow.authenticated().to(['read']),
     ]),
 
-  // Item Model (replaces Product)
+  // Item Model (Service or Product)
   Item: a
     .model({
       id: a.id().required(),
       name: a.string().required(),
       description: a.string(),
       price: a.float().required(),
-      urlPicture: a.url(),
-      categoryId: a.id().required(), // Foreign key for Category
-      businessId: a.id().required(), // Foreign key for Business
-      // Relationships
-      category: a.belongsTo('Category', 'categoryId'),
-      business: a.belongsTo('Business', 'businessId'),
-      orderItems: a.hasMany('OrderItem', 'itemId'), // Item can be in many OrderItems
-      transactionItems: a.hasMany('TransactionItem', 'itemId'), // Item can be in many TransactionItems
+      duration: a.integer(), // Optional: duration in minutes for services
+      sku: a.string(), // Stock Keeping Unit
+      taxable: a.boolean().default(true),
+      imageUrl: a.url(),
+      businessID: a.string().required(), // Foreign key for Business
+      categoryID: a.string().required(), // Foreign key for Category
+      // Define relationships
+      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
+      category: a.belongsTo('Category', 'categoryID'), // Keep belongsTo
+      orderItems: a.hasMany('OrderItem', 'itemID'),
+      transactionItems: a.hasMany('TransactionItem', 'itemID')
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'), // Owner of the related Business can CRUD
+      allow.owner(),
       allow.authenticated().to(['read']),
     ]),
 
@@ -95,216 +86,235 @@ const schema = a.schema({
   Customer: a
     .model({
       id: a.id().required(),
+      cognitoUserId: a.string(), // Link to Cognito User if customer can log in
       firstName: a.string().required(),
       lastName: a.string().required(),
       email: a.email(),
-      phoneNumber: a.phone().required(),
+      phone: a.phone(),
       address: a.string(),
-      city: a.string(),
-      state: a.string(),
-      zipCode: a.string(),
       notes: a.string(),
+      joinDate: a.date().required(),
+      lastActiveDate: a.date(),
+      preferences: a.string(), // Store as JSON string
+      businessID: a.string().required(), // Foreign key for Business
       qrCode: a.string(),
-      businessId: a.id().required(),
-      // Relationships
-      business: a.belongsTo('Business', 'businessId'),
-      orders: a.hasMany('Order', 'customerId'),
-      garments: a.hasMany('Garment', 'customerId'),
-      transactions: a.hasMany('Transaction', 'customerId'),
-      loyaltyProgram: a.hasOne('Loyalty', 'customerId'),
-      notifications: a.hasMany('CustomerNotification', 'customerId'),
-      creditTransactions: a.hasMany('CustomerCredit', 'customerId'),
+      // Define relationships
+      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
+      orders: a.hasMany('Order', 'customerID'),
+      garments: a.hasMany('Garment', 'customerID'),
+      transactions: a.hasMany('Transaction', 'customerID'),
+      notifications: a.hasMany('CustomerNotification', 'customerID'),
+      credits: a.hasMany('CustomerCredit', 'customerID')
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'), // Owner of related Business can CRUD
-      allow.authenticated().to(['read']), 
+      allow.owner(), // Business owner can manage customers
+      allow.authenticated().to(['read']), // Or adjust as needed
     ]),
 
-  // Order Model (for order processing in business)
-  Order: a
+  // Employee Model
+  Employee: a
     .model({
       id: a.id().required(),
-      orderNumber: a.string().required(), // Consider generating this automatically
-      orderDate: a.datetime().required(),
-      dueDate: a.datetime().required(),
-      status: a.enum(['Pending', 'Processing', 'Ready', 'Completed', 'Cancelled']),
-      totalAmount: a.float().required(),
-      notes: a.string(),
-      customerId: a.id().required(),
-      businessId: a.id().required(),
-      // Relationships
-      customer: a.belongsTo('Customer', 'customerId'),
-      business: a.belongsTo('Business', 'businessId'),
-      items: a.hasMany('OrderItem', 'orderId'), // Order has many OrderItems
+      cognitoUserId: a.string().required(), // Link to Cognito User
+      firstName: a.string().required(),
+      lastName: a.string().required(),
+      role: a.string().required(), // e.g., 'manager', 'staff'
+      hireDate: a.date().required(),
+      permissions: a.string(), // Store as JSON string or list of strings
+      businessID: a.string().required(), // Foreign key for Business
+      // Define relationships
+      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
+      transactions: a.hasMany('Transaction', 'employeeID'),
+      orders: a.hasMany('Order', 'employeeID')
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'), // Owner of related Business can CRUD
-      allow.authenticated().to(['read']),
+      allow.owner(), // Business owner can manage employee
     ]),
 
-  // OrderItem Model
-  OrderItem: a
-    .model({
-      id: a.id().required(),
-      quantity: a.integer().required(),
-      priceAtOrder: a.float().required(), // Price of the item when the order was placed
-      notes: a.string(),
-      orderId: a.id().required(),
-      itemId: a.id().required(),
-      // Relationships
-      order: a.belongsTo('Order', 'orderId'),
-      item: a.belongsTo('Item', 'itemId'),
-    })
-    .authorization((allow) => [
-      allow.ownerDefinedIn('order.business.ownerCognitoId'), // Owner of the related Business (via Order) can CRUD
-      allow.authenticated().to(['read']),
-    ]),
-
+  // ... (Keep other models like Garment, Transaction, Order, etc., as they were, including their `belongsTo('Business', ...)` relationships)
   // Garment Model
   Garment: a
     .model({
       id: a.id().required(),
       description: a.string().required(),
-      type: a.string().required(),
+      type: a.string().required(), // e.g., 'shirt', 'pants', 'dress'
       brand: a.string(),
       size: a.string(),
       color: a.string(),
       material: a.string(),
-      qrCode: a.string(),
-      customerId: a.id().required(),
-      businessId: a.id().required(),
-      // Relationships
-      customer: a.belongsTo('Customer', 'customerId'),
-      business: a.belongsTo('Business', 'businessId'),
+      notes: a.string(), // Special instructions or conditions
+      imageUrl: a.url(),
+      qrCode: a.string(), // Unique QR code per garment for tracking
+      status: a.string().required().default('Checked In'), // e.g., 'Checked In', 'Cleaning', 'Ready', 'Claimed'
+      checkInDate: a.datetime().required(),
+      readyDate: a.datetime(),
+      claimedDate: a.datetime(),
+      customerID: a.string().required(), // Foreign key for Customer
+      businessID: a.string().required(), // Foreign key for Business
+      orderItemID: a.string(), // Link to the specific order item if part of an order
+      // Define relationships
+      customer: a.belongsTo('Customer', 'customerID'), // Keep belongsTo
+      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
+      orderItem: a.belongsTo('OrderItem', 'orderItemID')
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'),
-      allow.authenticated().to(['read']),
+      allow.owner(), // Business owner
+      allow.authenticated().to(['read']), // Customer/Employee can read
     ]),
 
   // Transaction Model (for checkout portion)
   Transaction: a
     .model({
       id: a.id().required(),
-      transactionNumber: a.string().required(),
+      transactionNumber: a.string().required(), // Business-specific transaction number
       transactionDate: a.datetime().required(),
-      status: a.enum(['Pending', 'Completed', 'Failed', 'Refunded']),
+      status: a.string().required(), // e.g., 'Completed', 'Pending', 'Refunded'
+      subtotal: a.float().required(),
+      tax: a.float().required(),
+      discount: a.float(),
       total: a.float().required(),
-      paymentMethod: a.enum(['Cash', 'Credit', 'Debit', 'Bank', 'Other']),
-      paymentStatus: a.enum(['Pending', 'Paid', 'Failed', 'Refunded']),
+      paymentMethod: a.string().required(), // e.g., 'Cash', 'Card', 'Credit'
+      paymentStatus: a.string().required(), // e.g., 'Paid', 'Unpaid', 'Partial'
       notes: a.string(),
-      receiptUrl: a.string(),
-      externalTransactionId: a.string(), // For payment processor reference
-      customerId: a.id().required(),
-      businessId: a.id().required(),
-      employeeId: a.id(),
-      orderId: a.id(), // Link to the order this transaction is for (if applicable)
-      qrCode: a.string(),
-      // Relationships
-      customer: a.belongsTo('Customer', 'customerId'),
-      business: a.belongsTo('Business', 'businessId'),
-      employee: a.belongsTo('Employee', 'employeeId'),
-      order: a.belongsTo('Order', 'orderId'),
-      items: a.hasMany('TransactionItem', 'transactionId'),
-      creditTransactions: a.hasMany('CustomerCredit', 'transactionId'),
-      notifications: a.hasMany('CustomerNotification', 'transactionId'),
+      receiptUrl: a.url(), // Link to generated receipt (e.g., S3 URL)
+      externalTransactionId: a.string(), // ID from payment processor
+      customerID: a.string().required(), // Foreign key for Customer
+      businessID: a.string().required(), // Foreign key for Business
+      employeeID: a.string(), // Foreign key for Employee (optional)
+      orderID: a.string(), // Foreign key for Order (optional, if transaction is directly for an order)
+      qrCode: a.string(), // QR Code for receipt lookup?
+      pickupDate: a.datetime(), // Optional pickup date
+      customerPreferences: a.string(), // Optional customer preferences
+      // Define relationships
+      customer: a.belongsTo('Customer', 'customerID'), // Keep belongsTo
+      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
+      employee: a.belongsTo('Employee', 'employeeID'),
+      order: a.belongsTo('Order', 'orderID'),
+      transactionItems: a.hasMany('TransactionItem', 'transactionID'), // Link to items sold
+      credits: a.hasMany('CustomerCredit', 'transactionID'), // Credits applied/used
+      notifications: a.hasMany('CustomerNotification', 'transactionID') // Notifications related
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'),
+      allow.owner(),
       allow.authenticated().to(['read']),
     ]),
 
-  // Transaction Item Model
+  // TransactionItem Model (line item within a transaction)
   TransactionItem: a
     .model({
       id: a.id().required(),
       quantity: a.integer().required(),
-      price: a.float().required(),
-      notes: a.string(),
-      transactionId: a.id().required(),
-      itemId: a.id().required(),
-      // Relationships
-      transaction: a.belongsTo('Transaction', 'transactionId'),
-      item: a.belongsTo('Item', 'itemId'),
+      priceAtTransaction: a.float().required(),
+      transactionID: a.string().required(), // Foreign key for Transaction
+      itemID: a.string().required(), // Foreign key for Item (product/service sold)
+      // Define relationships
+      transaction: a.belongsTo('Transaction', 'transactionID'),
+      item: a.belongsTo('Item', 'itemID')
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('transaction.business.ownerCognitoId'),
+      allow.owner(),
       allow.authenticated().to(['read']),
     ]),
 
-  // Loyalty Program Model
-  Loyalty: a
+  // Order Model (for tracking cleaning/service orders)
+  Order: a
     .model({
       id: a.id().required(),
-      points: a.integer().default(0),
-      level: a.string(),
-      lastActivityDate: a.datetime(),
-      customerId: a.id().required(),
-      businessId: a.id().required(),
-      // Relationships
-      customer: a.belongsTo('Customer', 'customerId'),
-      business: a.belongsTo('Business', 'businessId'),
+      orderNumber: a.string().required(), // Business-specific order number
+      orderDate: a.datetime().required(),
+      dueDate: a.datetime(),
+      status: a.string().required(), // e.g., 'Received', 'Processing', 'Ready for Pickup', 'Completed', 'Cancelled'
+      notes: a.string(),
+      estimatedTotal: a.float(),
+      actualTotal: a.float(), // Final total after completion
+      priority: a.integer().default(0), // 0 = normal, higher = more urgent
+      qrCode: a.string(), // QR code for quick lookup
+      customerID: a.string().required(), // Foreign key for Customer
+      businessID: a.string().required(), // Foreign key for Business
+      employeeID: a.string(), // Foreign key for Employee who took order (optional)
+      // Define relationships
+      customer: a.belongsTo('Customer', 'customerID'), // Keep belongsTo
+      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
+      employee: a.belongsTo('Employee', 'employeeID'),
+      orderItems: a.hasMany('OrderItem', 'orderID'), // Items included in the order
+      transactions: a.hasMany('Transaction', 'orderID'), // Related payments/transactions
+      notifications: a.hasMany('CustomerNotification', 'orderID'), // Notifications related
+      credits: a.hasMany('CustomerCredit', 'orderID') // Credits applied/used
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'),
+      allow.owner(),
       allow.authenticated().to(['read']),
     ]),
 
-  // Counter Model (for generating sequential IDs)
-  Counter: a
+  // OrderItem Model (line item within an order)
+  OrderItem: a
     .model({
-      id: a.id().required(), // Use a predictable ID like "orderCounter" for your business
-      name: a.string().required(), // e.g., "orderCounter", "transactionCounter"
-      currentValue: a.integer().required().default(0),
-      businessId: a.id().required(),
-      // Relationships
-      business: a.belongsTo('Business', 'businessId'),
+      id: a.id().required(),
+      quantity: a.integer().required(),
+      priceAtOrder: a.float().required(), // Price of the service/item when ordered
+      status: a.string(), // Status specific to this item (e.g., 'Cleaning', 'Ready')
+      notes: a.string(),
+      orderID: a.string().required(), // Foreign key for Order
+      itemID: a.string().required(), // Foreign key for Item (service being performed)
+      garmentID: a.string(), // Optional link to a specific garment being serviced
+      // Define relationships
+      order: a.belongsTo('Order', 'orderID'),
+      item: a.belongsTo('Item', 'itemID'),
+      garment: a.hasOne('Garment', 'orderItemID') // Assuming one garment per order item line
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'),
+      allow.owner(),
+      allow.authenticated().to(['read']),
     ]),
 
-  // Customer Notification Model
+  // CustomerNotification Model
   CustomerNotification: a
     .model({
       id: a.id().required(),
-      type: a.enum(['OrderStatus', 'PickupReminder', 'Promotion', 'Other']),
       message: a.string().required(),
-      isRead: a.boolean().default(false),
-      createdAt: a.datetime().required(),
-      customerId: a.id().required(),
-      transactionId: a.id(), // Optional, if notification is related to a transaction
-      // Relationships
-      customer: a.belongsTo('Customer', 'customerId'),
-      transaction: a.belongsTo('Transaction', 'transactionId'),
+      type: a.string().required(), // e.g., 'SMS', 'Email', 'Push'
+      status: a.string().required(), // e.g., 'Sent', 'Delivered', 'Failed'
+      sentAt: a.datetime().required(),
+      customerID: a.string().required(),
+      businessID: a.string().required(),
+      orderID: a.string(), // Related order (optional)
+      transactionID: a.string(), // Related transaction (optional)
+      // Define relationships
+      customer: a.belongsTo('Customer', 'customerID'), // Keep belongsTo
+      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
+      order: a.belongsTo('Order', 'orderID'),
+      transaction: a.belongsTo('Transaction', 'transactionID')
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('customer.business.ownerCognitoId'),
-      allow.authenticated().to(['read']),
+      allow.owner(), // Business owner/staff can manage notifications
     ]),
 
-  // Customer Credit Model
+  // CustomerCredit Model
   CustomerCredit: a
     .model({
       id: a.id().required(),
-      amount: a.float().required(), // Positive for additions, negative for usage
+      amount: a.float().required(), // Amount of this credit transaction (+ve for adding, -ve for using)
       balance: a.float().required(), // Running balance after this transaction
-      description: a.string().required(), // E.g., "Pre-payment", "Used for order #123"
+      description: a.string().required(), // e.g., 'Store Credit Issued', 'Used for Order #123'
       createdAt: a.datetime().required(),
-      customerId: a.id().required(),
-      businessId: a.id().required(),
-      transactionId: a.id(), // Optional, linked to a transaction if this credit was used for payment
-      // Relationships
-      customer: a.belongsTo('Customer', 'customerId'),
-      business: a.belongsTo('Business', 'businessId'),
-      transaction: a.belongsTo('Transaction', 'transactionId'),
+      customerID: a.string().required(),
+      businessID: a.string().required(),
+      transactionID: a.string(), // Related transaction where credit was used/issued (optional)
+      orderID: a.string(), // Related order where credit was used/issued (optional)
+      // Define relationships
+      customer: a.belongsTo('Customer', 'customerID'), // Keep belongsTo
+      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
+      transaction: a.belongsTo('Transaction', 'transactionID'),
+      order: a.belongsTo('Order', 'orderID')
     })
     .authorization((allow) => [
-      allow.ownerDefinedIn('business.ownerCognitoId'),
+      allow.owner(),
       allow.authenticated().to(['read']),
     ]),
-});
 
+}); // End of a.schema({...})
+
+// Define the Schema type explicitly for clarity if needed elsewhere
 export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({
