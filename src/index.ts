@@ -1,4 +1,8 @@
 import { registerRootComponent } from 'expo';
+import { Buffer as BufferPolyfill } from 'buffer';
+
+// Set global Buffer for any libraries that might need it
+global.Buffer = BufferPolyfill;
 
 import App from './App';
 

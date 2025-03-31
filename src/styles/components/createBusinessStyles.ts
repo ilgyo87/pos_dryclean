@@ -111,5 +111,41 @@ export const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
         marginLeft: 10,
-    }
+    },
+    qrCaptureContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+        zIndex: 10
+      },
+      qrCaptureOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      },
+      qrCaptureBox: {
+        width: '80%',
+        padding: 20,
+        backgroundColor: 'white',
+        borderRadius: 10,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      },
+      successText: {
+        color: 'green', // Or your preferred success color
+        fontSize: 12,
+        marginTop: 5,
+        alignSelf: 'flex-start', // Or however you want to align it
+      },
 });

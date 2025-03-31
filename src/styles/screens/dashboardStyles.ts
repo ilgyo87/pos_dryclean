@@ -96,4 +96,24 @@ export const styles = StyleSheet.create({
       color: '#333',
       textAlign: 'center',
     },
+    listContentContainer: {
+      paddingBottom: 20, // Example padding
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#f8f8f8',
+    },
+    loadingText: {
+      marginTop: 10,
+      fontSize: 16,
+      color: '#666',
+    },
+    errorText: {
+        textAlign: 'center',
+        marginTop: 50,
+        fontSize: 18,
+        color: 'red',
+    },
   });
