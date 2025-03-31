@@ -144,12 +144,12 @@ export default function CheckoutScreen() {
       Alert.alert('Error', 'Payment system is not initialized');
       return;
     }
-
+  
     setIsProcessing(true);
-
+  
     try {
       let result: PaymentResult;
-
+  
       if (method === 'card') {
         result = await processCardPayment(total);
       } else if (method === 'applepay' && Platform.OS === 'ios') {
@@ -161,27 +161,27 @@ export default function CheckoutScreen() {
       } else {
         throw new Error('Unsupported payment method');
       }
-
+  
       setPaymentResult(result);
-
+  
       // If payment was successful, create transaction record
       if (result.success) {
-        const txId = await createTransactionRecord(
-          businessId,
-          customerId,
-          items,
-          total,
-          result,
-          pickupDate,
-          customerPreferences
-        );
-
-        if (txId) {
+        try {
+          const txId = await createTransactionRecord(
+            businessId,
+            customerId,
+            items,
+            total,
+            result,
+            pickupDate,
+            customerPreferences
+          );
+  
           setTransactionId(txId);
-
+  
           // Generate receipt HTML
           const receipt = generateReceipt(
-            txId,
+            txId || '',
             businessDetails?.name || 'Dry Cleaning Business',
             customerName,
             items,
@@ -189,14 +189,16 @@ export default function CheckoutScreen() {
             result,
             pickupDate
           );
-
+  
           setReceiptHtml(receipt);
           setIsReceiptReady(true);
           setCurrentStep('receipt');
-        } else {
+        } catch (transactionError: any) {
+          console.error('Transaction creation error:', transactionError);
           Alert.alert(
             'Transaction Error',
-            'Payment was successful, but there was an error creating the transaction record.'
+            'Payment was successful, but there was an error creating the transaction record: ' + 
+            (transactionError.message || 'Unknown error')
           );
         }
       } else {

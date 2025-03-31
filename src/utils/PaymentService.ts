@@ -1,7 +1,6 @@
 // src/utils/PaymentService.ts
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
-import SquareSDK from './SquarePaymentHelper';
 import { CartItem, PaymentResult, MockPaymentResult } from '../types/PaymentTypes';
 
 const client = generateClient<Schema>();
@@ -51,19 +50,19 @@ export const getMockPaymentUIState = () => {
   };
 };
 
-// Initialize Square payment SDK
+// Initialize payment SDK (mock implementation)
 export const initializeSquarePayments = async (): Promise<boolean> => {
   try {
-    // Always returns true with our mock implementation
-    await SquareSDK.SQIPCore.initializePaymentForm();
+    console.log('Initializing mock payment system');
+    // Always returns true for the mock implementation
     return true;
   } catch (error) {
-    console.error('Failed to initialize Square payments:', error);
+    console.error('Failed to initialize payments:', error);
     return false;
   }
 };
 
-// Process a card payment using Square
+// Process a card payment (mock implementation)
 export const processCardPayment = async (
   amount: number,
   currency: string = 'USD'
@@ -78,7 +77,7 @@ export const processCardPayment = async (
   });
 };
 
-// Process Apple Pay payment
+// Process Apple Pay payment (mock implementation)
 export const processApplePayment = async (
   amount: number,
   currency: string = 'USD',
@@ -94,21 +93,41 @@ export const processApplePayment = async (
   });
 };
 
-// Create a transaction record in your database
 export const createTransactionRecord = async (
   businessId: string,
-  customerId: string,
+  customerId: string, // This is required but coming in as undefined
   items: CartItem[],
   total: number,
   paymentResult: PaymentResult,
   pickupDate: string,
   customerPreferences?: string
-): Promise<string | null> => {
+): Promise<string> => {
   try {
+    // Validate required fields
+    if (!businessId) {
+      throw new Error('Business ID is required');
+    }
+    
+    if (!customerId) {
+      // Create a guest customer ID if not provided
+      customerId = `guest-${Date.now()}`;
+      console.log('Created guest customer ID:', customerId);
+    }
+    
+    // Log the input parameters for debugging
+    console.log('Creating transaction with params:', {
+      businessId,
+      customerId, // Now this should never be undefined
+      items: items.length,
+      total,
+      paymentStatus: paymentResult.success ? 'COMPLETED' : 'FAILED',
+      pickupDate
+    });
+
     // Create the transaction in your database
     const result = await client.models.Transaction.create({
       businessID: businessId,
-      customerID: customerId,
+      customerID: customerId, // Now this should never be undefined
       orderId: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       status: paymentResult.success ? 'COMPLETED' : 'FAILED',
       total: total,
@@ -118,17 +137,34 @@ export const createTransactionRecord = async (
       customerPreferences: customerPreferences || '',
       paymentMethod: 'CREDIT_CARD',
       transactionId: paymentResult.transactionId || '',
-      receiptUrl: paymentResult.receiptUrl || ''
+      receiptUrl: paymentResult.receiptUrl || '',
     });
-    
+
+    console.log('Transaction creation response:', JSON.stringify(result, null, 2));
+
     if (!result.data) {
-      throw new Error('Failed to create transaction record');
+      throw new Error('Failed to create transaction record: No data returned');
     }
-    
+
+    console.log('Transaction created successfully with ID:', result.data.id);
     return result.data.id;
   } catch (error) {
-    console.error('Failed to create transaction record:', error);
-    return null;
+    // Enhanced error logging
+    console.error('Transaction creation error details:', error);
+    
+    // Check for specific error types
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      // Log additional details if it's an API error
+      if ('errors' in (error as any)) {
+        console.error('API errors:', (error as any).errors);
+      }
+    }
+    
+    // Rethrow with more context
+    throw new Error(`Failed to create transaction record: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

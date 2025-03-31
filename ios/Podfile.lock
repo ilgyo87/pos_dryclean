@@ -1793,10 +1793,6 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNSquareInAppPayments (1.6.3):
-    - React
-    - SquareBuyerVerificationSDK (= 1.6.3)
-    - SquareInAppPaymentsSDK (= 1.6.3)
   - RNSVG (15.11.2):
     - DoubleConversion
     - glog
@@ -1862,8 +1858,6 @@ PODS:
     - ReactCommon/turbomodule/core
     - Yoga
   - SocketRocket (0.7.1)
-  - SquareBuyerVerificationSDK (1.6.3)
-  - SquareInAppPaymentsSDK (1.6.3)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -1949,7 +1943,6 @@ DEPENDENCIES:
   - RNPermissions (from `../node_modules/react-native-permissions`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNShare (from `../node_modules/react-native-share`)
-  - RNSquareInAppPayments (from `../node_modules/react-native-square-in-app-payments`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNVectorIcons (from `../node_modules/react-native-vector-icons`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
@@ -1958,8 +1951,6 @@ SPEC REPOS:
   trunk:
     - React-Codegen
     - SocketRocket
-    - SquareBuyerVerificationSDK
-    - SquareInAppPaymentsSDK
 
 EXTERNAL SOURCES:
   AmplifyRTNCore:
@@ -2123,8 +2114,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   RNShare:
     :path: "../node_modules/react-native-share"
-  RNSquareInAppPayments:
-    :path: "../node_modules/react-native-square-in-app-payments"
   RNSVG:
     :path: "../node_modules/react-native-svg"
   RNVectorIcons:
@@ -2214,12 +2203,9 @@ SPEC CHECKSUMS:
   RNPermissions: 6b72dd73870bb4eb599aca3a9ae00bc0abfa4681
   RNScreens: ba2dcf7048b83669003a28fa95309b965b52af0f
   RNShare: f8a5c22e331065fecddc479ae773be831abc00e1
-  RNSquareInAppPayments: 4f88784516fec07b025feb6c132baf317afc6096
   RNSVG: bbbdd17e8730c0f2a9cb416e5f37be87e29ebc90
   RNVectorIcons: a24016b773380b1aa37fca501ec6b94a951890a0
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  SquareBuyerVerificationSDK: d325f473a724cfa5684a837296a307152ca52854
-  SquareInAppPaymentsSDK: 4d7f1e984fee5d8d7dbd44a67661ca1aedee7f76
   Yoga: 90d80701b27946c4b23461c00a7207f300a6ff71
 
 PODFILE CHECKSUM: 1fba21bf2d53ae6fe37f1d7c344d7981545a30dc
