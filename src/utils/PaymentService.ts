@@ -1,58 +1,61 @@
-import SquareSDK from './SquarePaymentHelper';
-const { SQIPCore, SQIPCardEntry, SQIPApplePay, isMock } = SquareSDK;
-import { Platform } from 'react-native';
+// src/utils/PaymentService.ts
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
-import type { SquareCardDetails } from './SquarePaymentHelper';
+import SquareSDK from './SquarePaymentHelper';
+import { CartItem, PaymentResult, MockPaymentResult } from '../types/PaymentTypes';
 
-// Initialize Amplify client
 const client = generateClient<Schema>();
 
-// Square location ID - You would replace this with your actual location ID
-// In a production environment, this should be stored in a secure configuration
-const SQUARE_LOCATION_ID = 'YOUR_SQUARE_LOCATION_ID';
-const APPLE_PAY_MERCHANT_ID = 'YOUR_APPLE_PAY_MERCHANT_ID';
+// Mock payment UI state management
+let mockPaymentModalVisible = false;
+let currentMockPaymentAmount = 0;
+let currentMockPaymentMethod: 'card' | 'applepay' = 'card';
+let mockPaymentMerchantName = 'Dry Clean Business';
+let mockPaymentResolve: ((value: PaymentResult) => void) | null = null;
+let mockPaymentReject: ((reason: Error) => void) | null = null;
 
-export interface PaymentResult {
-  success: boolean;
-  transactionId?: string;
-  error?: string;
-  receiptUrl?: string;
-  timestamp: Date;
-}
+// Show the mock payment UI
+export const showMockPaymentUI = (
+  visible: boolean,
+  amount: number = 0,
+  method: 'card' | 'applepay' = 'card'
+) => {
+  mockPaymentModalVisible = visible;
+  currentMockPaymentAmount = amount;
+  currentMockPaymentMethod = method;
+};
 
-export interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  type: 'service' | 'product';
-  serviceId?: string;
-  imageUrl?: string | null;
-}
-
-// Now using the APPLE_PAY_MERCHANT_ID defined at the top of the file
+// Get the current state of the mock payment UI
+export const getMockPaymentUIState = () => {
+  return {
+    visible: mockPaymentModalVisible,
+    amount: currentMockPaymentAmount,
+    paymentMethod: currentMockPaymentMethod,
+    merchantName: mockPaymentMerchantName,
+    onClose: () => {
+      mockPaymentModalVisible = false;
+      if (mockPaymentReject) {
+        mockPaymentReject(new Error('Payment was cancelled'));
+        mockPaymentResolve = null;
+        mockPaymentReject = null;
+      }
+    },
+    onPaymentComplete: (result: MockPaymentResult) => {
+      mockPaymentModalVisible = false;
+      if (mockPaymentResolve) {
+        mockPaymentResolve(result);
+        mockPaymentResolve = null;
+        mockPaymentReject = null;
+      }
+    }
+  };
+};
 
 // Initialize Square payment SDK
 export const initializeSquarePayments = async (): Promise<boolean> => {
   try {
-    // Initialize Square payment form
-    await SQIPCore.initializePaymentForm();
-    
-    // Initialize Apple Pay if on iOS
-    if (Platform.OS === 'ios') {
-      try {
-        // If we're using a mock implementation, this won't actually do anything
-        // but will return success so your code flow works
-        await SQIPApplePay.initializeApplePay();
-        console.log('Apple Pay initialized successfully');
-      } catch (applePayError) {
-        console.error('Failed to initialize Apple Pay:', applePayError);
-        // Continue without Apple Pay - this is not critical
-      }
-    }
-    
-    console.log(`Square SDK initialized successfully (${isMock ? 'Simulator Mock' : 'Real Device'})`);
+    // Always returns true with our mock implementation
+    await SquareSDK.SQIPCore.initializePaymentForm();
     return true;
   } catch (error) {
     console.error('Failed to initialize Square payments:', error);
@@ -65,95 +68,14 @@ export const processCardPayment = async (
   amount: number,
   currency: string = 'USD'
 ): Promise<PaymentResult> => {
-  // Check if SDK is disabled (we're in a simulator)
-  if (SquareSDK.isDisabled) {
-    console.log('Running in simulator - returning mock payment result');
-    // Return a simulated successful payment
-    const mockTransactionId = 'sim_' + Math.random().toString(36).substring(2, 15);
-    return {
-      success: true,
-      transactionId: mockTransactionId,
-      receiptUrl: `https://example.com/receipt/${mockTransactionId}`,
-      timestamp: new Date()
-    };
-  }
+  console.log('Processing card payment with mock implementation');
   
-  try {
-    // Start the card entry flow
-    await SQIPCardEntry.startCardEntryFlow(
-      ({ nonce }: { nonce: string }) => onCardNonceRequestSuccess(nonce, amount, currency),
-      () => onCardEntryCancel()
-    );
-    
-    // This is a placeholder return since the actual result will be handled in callbacks
-    return {
-      success: false,
-      error: 'Payment not completed',
-      timestamp: new Date()
-    };
-  } catch (error: any) {
-    console.error('Error processing card payment:', error);
-    return {
-      success: false,
-      error: error.message || 'An unknown error occurred',
-      timestamp: new Date()
-    };
-  }
-};
-
-// Handle successful nonce generation
-const onCardNonceRequestSuccess = async (
-  nonce: string,
-  amount: number,
-  currency: string
-): Promise<PaymentResult> => {
-  try {
-    // Complete the card entry flow
-    await SQIPCardEntry.completeCardEntry(() => {});
-    
-    // Here you would send the nonce to your backend/server to process the payment
-    // For this example, we'll simulate a successful payment
-    
-    // Normally, you would send the nonce to your server:
-    // const paymentResult = await fetch('your-api-endpoint', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({
-    //     nonce,
-    //     amount,
-    //     currency,
-    //     locationId: SQUARE_LOCATION_ID
-    //   })
-    // }).then(res => res.json());
-    
-    // For testing purposes, simulate a successful payment
-    const mockTransactionId = 'txn_' + Math.random().toString(36).substring(2, 15);
-    
-    return {
-      success: true,
-      transactionId: mockTransactionId,
-      receiptUrl: `https://squareup.com/receipt/${mockTransactionId}`,
-      timestamp: new Date()
-    };
-  } catch (error: any) {
-    console.error('Payment processing error:', error);
-    return {
-      success: false,
-      error: error.message || 'Failed to process payment',
-      timestamp: new Date()
-    };
-  }
-};
-
-// Handle payment cancellation
-const onCardEntryCancel = (): PaymentResult => {
-  return {
-    success: false,
-    error: 'Payment was cancelled',
-    timestamp: new Date()
-  };
+  // Show the mock payment UI
+  return new Promise<PaymentResult>((resolve, reject) => {
+    mockPaymentResolve = resolve;
+    mockPaymentReject = reject;
+    showMockPaymentUI(true, amount, 'card');
+  });
 };
 
 // Process Apple Pay payment
@@ -162,70 +84,14 @@ export const processApplePayment = async (
   currency: string = 'USD',
   summaryLabel: string = 'Your Purchase'
 ): Promise<PaymentResult> => {
-  if (Platform.OS !== 'ios') {
-    return {
-      success: false,
-      error: 'Apple Pay is only available on iOS devices',
-      timestamp: new Date()
-    };
-  }
+  console.log('Processing Apple Pay with mock implementation');
   
-  try {
-    const isApplePayAvailable = await SQIPApplePay.canUseApplePay();
-    
-    if (!isApplePayAvailable) {
-      return {
-        success: false,
-        error: 'Apple Pay is not available on this device',
-        timestamp: new Date()
-      };
-    }
-    
-    let paymentResult: PaymentResult = {
-      success: false,
-      error: 'Payment processing error',
-      timestamp: new Date()
-    };
-    
-    await SQIPApplePay.requestApplePayNonce(
-      amount.toFixed(2),
-      summaryLabel,
-      'US',
-      currency,
-      async (nonce: SquareCardDetails) => {
-        // Process the nonce with your backend
-        // Similar to card processing above
-        const mockTransactionId = 'apay_' + Math.random().toString(36).substring(2, 15);
-        
-        paymentResult = {
-          success: true,
-          transactionId: mockTransactionId,
-          receiptUrl: `https://squareup.com/receipt/${mockTransactionId}`,
-          timestamp: new Date()
-        };
-      },
-      (error: Error) => {
-        paymentResult = {
-          success: false,
-          error: error.message || 'Apple Pay payment failed',
-          timestamp: new Date()
-        };
-      },
-      () => {
-        // This callback is called when Apple Pay sheet is closed
-        console.log('Apple Pay flow completed');
-        SQIPApplePay.completeApplePayAuthorization(paymentResult.success);
-      }
-    );
-    
-    return paymentResult;
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'An error occurred with Apple Pay',
-      timestamp: new Date()
-    };
-  }
+  // Show the mock payment UI
+  return new Promise<PaymentResult>((resolve, reject) => {
+    mockPaymentResolve = resolve;
+    mockPaymentReject = reject;
+    showMockPaymentUI(true, amount, 'applepay');
+  });
 };
 
 // Create a transaction record in your database
@@ -255,30 +121,13 @@ export const createTransactionRecord = async (
       receiptUrl: paymentResult.receiptUrl || ''
     });
     
-    if (result.errors) {
-      throw new Error(result.errors.map(e => e.message).join(', '));
-    }
-    
-    if (!result.data?.id) {
-      throw new Error('Failed to get transaction ID');
-    }
-    
-    // Create transaction items
-    for (const item of items) {
-      await client.models.TransactionItem.create({
-        transactionID: result.data.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        itemType: item.type.toUpperCase(),
-        serviceID: item.serviceId || '',
-        productID: item.type === 'product' ? item.id : ''
-      });
+    if (!result.data) {
+      throw new Error('Failed to create transaction record');
     }
     
     return result.data.id;
   } catch (error) {
-    console.error('Error creating transaction record:', error);
+    console.error('Failed to create transaction record:', error);
     return null;
   }
 };
@@ -319,8 +168,8 @@ export const generateReceipt = (
     <tr>
       <td>${item.name}</td>
       <td>${item.quantity}</td>
-      <td>$${item.price.toFixed(2)}</td>
-      <td>$${(item.price * item.quantity).toFixed(2)}</td>
+      <td>${item.price.toFixed(2)}</td>
+      <td>${(item.price * item.quantity).toFixed(2)}</td>
     </tr>
   `).join('');
   
@@ -385,23 +234,17 @@ export const generateReceipt = (
           background-color: #f8f8f8;
           border-radius: 5px;
         }
-        .pickup-info {
-          margin-top: 20px;
-          padding: 10px;
-          background-color: #f5f5f5;
-          border-radius: 5px;
-        }
       </style>
     </head>
     <body>
       <div class="receipt">
         <div class="header">
           <div class="business-name">${businessName}</div>
-          <div>Receipt</div>
+          <p>Dry Cleaning Receipt</p>
         </div>
         
         <div class="transaction-info">
-          <p><strong>Transaction ID:</strong> ${transactionId}</p>
+          <p><strong>Receipt #:</strong> ${transactionId}</p>
           <p><strong>Date:</strong> ${formatDate(receiptDate)}</p>
           <p><strong>Time:</strong> ${formatTime(receiptDate)}</p>
         </div>
@@ -431,7 +274,7 @@ export const generateReceipt = (
         </table>
         
         <div class="payment-info">
-          <p><strong>Payment Method:</strong> Credit Card</p>
+          <p><strong>Payment Method:</strong> ${paymentResult.cardDetails?.brand || 'Credit Card'} ending in ${paymentResult.cardDetails?.lastFourDigits || 'XXXX'}</p>
           <p><strong>Status:</strong> ${paymentResult.success ? 'Paid' : 'Failed'}</p>
           ${paymentResult.transactionId ? `<p><strong>Payment ID:</strong> ${paymentResult.transactionId}</p>` : ''}
         </div>

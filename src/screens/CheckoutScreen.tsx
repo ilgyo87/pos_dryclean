@@ -17,19 +17,23 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
-import { 
-  processCardPayment, 
-  processApplePayment, 
-  PaymentResult, 
-  createTransactionRecord, 
-  initializeSquarePayments, 
+import {
+  processCardPayment,
+  processApplePayment,
+  createTransactionRecord,
+  initializeSquarePayments,
   generateReceipt,
   saveOrShareReceipt,
-  CartItem
+  getMockPaymentUIState,
+  showMockPaymentUI
 } from '../utils/PaymentService';
+import { CartItem, PaymentResult } from '../types/PaymentTypes';
 import WebView from 'react-native-webview';
 import { captureRef } from 'react-native-view-shot';
 import Share from 'react-native-share';
+// Import the MockPaymentModal component
+import MockPaymentModal from '../utils/MockPaymentUI';
+
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -58,17 +62,17 @@ type CheckoutScreenNavigationProp = NativeStackNavigationProp<RootStackParamList
 export default function CheckoutScreen() {
   const route = useRoute<CheckoutScreenRouteProp>();
   const navigation = useNavigation<CheckoutScreenNavigationProp>();
-  
-  const { 
-    businessId, 
-    customerId, 
-    customerName, 
-    items, 
-    total, 
+
+  const {
+    businessId,
+    customerId,
+    customerName,
+    items,
+    total,
     pickupDate,
-    customerPreferences 
+    customerPreferences
   } = route.params;
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [businessDetails, setBusinessDetails] = useState<Schema['Business']['type'] | null>(null);
   const [currentStep, setCurrentStep] = useState<'checkout' | 'payment' | 'receipt'>('checkout');
@@ -78,18 +82,18 @@ export default function CheckoutScreen() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isReceiptReady, setIsReceiptReady] = useState(false);
-  
+
   // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
       weekday: 'short',
-      month: 'short', 
+      month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
   };
-  
+
   // Initialize Square Payments SDK
   useEffect(() => {
     const init = async () => {
@@ -103,10 +107,10 @@ export default function CheckoutScreen() {
         );
       }
     };
-    
+
     init();
   }, []);
-  
+
   // Fetch business details
   useEffect(() => {
     const fetchBusinessDetails = async () => {
@@ -119,50 +123,50 @@ export default function CheckoutScreen() {
         console.error('Error fetching business details:', error);
       }
     };
-    
+
     fetchBusinessDetails();
   }, [businessId]);
-  
+
   // Calculate subtotal
   const calculateSubtotal = () => {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
-  
+
   // Calculate tax (assuming 8% tax rate - this should be configurable)
   const calculateTax = () => {
     const taxRate = 0.08; // 8%
     return calculateSubtotal() * taxRate;
   };
-  
+
   // Process payment
-  const handlePayment = async (method: 'card' | 'apple-pay') => {
+  const handlePayment = async (method: 'card' | 'applepay') => {
     if (!isInitialized) {
       Alert.alert('Error', 'Payment system is not initialized');
       return;
     }
-    
+
     setIsProcessing(true);
-    
+
     try {
       let result: PaymentResult;
-      
+
       if (method === 'card') {
         result = await processCardPayment(total);
-      } else if (method === 'apple-pay' && Platform.OS === 'ios') {
+      } else if (method === 'applepay' && Platform.OS === 'ios') {
         result = await processApplePayment(
-          total, 
-          'USD', 
+          total,
+          'USD',
           businessDetails?.name || 'Dry Cleaning'
         );
       } else {
         throw new Error('Unsupported payment method');
       }
-      
+
       setPaymentResult(result);
-      
+
       // If payment was successful, create transaction record
       if (result.success) {
-        const txnId = await createTransactionRecord(
+        const txId = await createTransactionRecord(
           businessId,
           customerId,
           items,
@@ -171,13 +175,13 @@ export default function CheckoutScreen() {
           pickupDate,
           customerPreferences
         );
-        
-        if (txnId) {
-          setTransactionId(txnId);
-          
-          // Generate receipt
+
+        if (txId) {
+          setTransactionId(txId);
+
+          // Generate receipt HTML
           const receipt = generateReceipt(
-            txnId,
+            txId,
             businessDetails?.name || 'Dry Cleaning Business',
             customerName,
             items,
@@ -185,7 +189,7 @@ export default function CheckoutScreen() {
             result,
             pickupDate
           );
-          
+
           setReceiptHtml(receipt);
           setIsReceiptReady(true);
           setCurrentStep('receipt');
@@ -211,7 +215,7 @@ export default function CheckoutScreen() {
       setIsProcessing(false);
     }
   };
-  
+
   // Handle viewing receipt in dedicated screen
   const handleViewReceipt = () => {
     if (receiptHtml && isReceiptReady && transactionId) {
@@ -221,22 +225,22 @@ export default function CheckoutScreen() {
       });
     }
   };
-  
+
   // Handle sharing receipt
   const handleShareReceipt = async () => {
     if (receiptHtml && isReceiptReady) {
       try {
         // In a real implementation, you would save the receipt or share it
         await saveOrShareReceipt(receiptHtml, transactionId || 'unknown');
-        
+
         // For demonstration, we'll show a success message
         Alert.alert(
           'Receipt Saved',
           'The receipt has been saved successfully.',
           [
-            { 
-              text: 'Back to Dashboard', 
-              onPress: () => navigation.navigate('Dashboard', {}) 
+            {
+              text: 'Back to Dashboard',
+              onPress: () => navigation.navigate('Dashboard', {})
             }
           ]
         );
@@ -246,26 +250,26 @@ export default function CheckoutScreen() {
       }
     }
   };
-  
+
   // Render checkout summary
   const renderCheckoutSummary = () => (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>Checkout</Text>
-        
+
         <View style={styles.headerRight} />
       </View>
-      
+
       <View style={styles.checkoutSection}>
         <Text style={styles.sectionTitle}>Order Summary</Text>
-        
+
         <View style={styles.customerInfo}>
           <Text style={styles.customerName}>{customerName}</Text>
           <Text style={styles.pickupDate}>Pickup Date: {formatDate(pickupDate)}</Text>
@@ -273,7 +277,7 @@ export default function CheckoutScreen() {
             <Text style={styles.preferences}>Notes: {customerPreferences}</Text>
           ) : null}
         </View>
-        
+
         <View style={styles.itemsContainer}>
           {items.map((item, index) => (
             <View key={`${item.id}-${index}`} style={styles.itemRow}>
@@ -289,30 +293,30 @@ export default function CheckoutScreen() {
             </View>
           ))}
         </View>
-        
+
         <View style={styles.divider} />
-        
+
         <View style={styles.totalSection}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
             <Text style={styles.totalValue}>${calculateSubtotal().toFixed(2)}</Text>
           </View>
-          
+
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Tax (8%)</Text>
             <Text style={styles.totalValue}>${calculateTax().toFixed(2)}</Text>
           </View>
-          
+
           <View style={[styles.totalRow, styles.grandTotal]}>
             <Text style={styles.grandTotalLabel}>Total</Text>
             <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
           </View>
         </View>
       </View>
-      
+
       <View style={styles.paymentSection}>
         <Text style={styles.sectionTitle}>Payment Method</Text>
-        
+
         <TouchableOpacity
           style={styles.paymentButton}
           onPress={() => handlePayment('card')}
@@ -324,11 +328,11 @@ export default function CheckoutScreen() {
             <Text style={styles.paymentButtonText}>Pay with Credit Card</Text>
           )}
         </TouchableOpacity>
-        
+
         {Platform.OS === 'ios' && (
           <TouchableOpacity
             style={[styles.paymentButton, styles.applePayButton]}
-            onPress={() => handlePayment('apple-pay')}
+            onPress={() => handlePayment('applepay')}
             disabled={isProcessing}
           >
             <Text style={[styles.paymentButtonText, styles.applePayButtonText]}>
@@ -339,20 +343,20 @@ export default function CheckoutScreen() {
       </View>
     </ScrollView>
   );
-  
+
   // Render receipt
   const renderReceipt = () => (
     <SafeAreaView style={styles.receiptContainer}>
       <View style={styles.receiptHeader}>
         <Text style={styles.receiptTitle}>Receipt</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.closeButton}
           onPress={() => navigation.navigate('Dashboard', {})}
         >
           <Text style={styles.closeButtonText}>Done</Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.receiptContent}>
         {isReceiptReady ? (
           <>
@@ -360,7 +364,7 @@ export default function CheckoutScreen() {
               source={{ html: receiptHtml }}
               style={styles.webview}
             />
-            
+
             <View style={styles.receiptActions}>
               <TouchableOpacity
                 style={styles.viewButton}
@@ -368,14 +372,14 @@ export default function CheckoutScreen() {
               >
                 <Text style={styles.viewButtonText}>View Full Receipt</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.shareButton}
                 onPress={handleShareReceipt}
               >
                 <Text style={styles.shareButtonText}>Share Receipt</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.doneButton}
                 onPress={() => navigation.navigate('Dashboard', {})}
@@ -393,7 +397,7 @@ export default function CheckoutScreen() {
       </View>
     </SafeAreaView>
   );
-  
+
   // Render loading state
   if (!isInitialized) {
     return (
@@ -403,21 +407,35 @@ export default function CheckoutScreen() {
       </View>
     );
   }
-  
+
+  // Get mock payment UI state
+  const mockPaymentState = getMockPaymentUIState();
+
   // Main render
   return (
     <View style={styles.container}>
       {currentStep === 'checkout' && renderCheckoutSummary()}
       {currentStep === 'receipt' && renderReceipt()}
-      
+
       {/* Modal for showing receipt */}
       <Modal
         visible={showReceipt}
         animationType="slide"
+        transparent={false}
         onRequestClose={() => setShowReceipt(false)}
       >
         {renderReceipt()}
       </Modal>
+
+      {/* Render the MockPaymentModal */}
+      <MockPaymentModal
+        visible={mockPaymentState.visible}
+        amount={mockPaymentState.amount}
+        onClose={mockPaymentState.onClose}
+        onPaymentComplete={mockPaymentState.onPaymentComplete}
+        merchantName={mockPaymentState.merchantName}
+        paymentMethod={mockPaymentState.paymentMethod}
+      />
     </View>
   );
 }
@@ -590,7 +608,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  
+
   // Receipt styles
   receiptContainer: {
     flex: 1,
