@@ -1,19 +1,19 @@
 // src/screens/DashboardScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Image, ActivityIndicator, StyleSheet } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, FlatList, Image, ActivityIndicator } from 'react-native'; // Added ActivityIndicator
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
-import { generateClient } from 'aws-amplify/api';
-import type { Schema } from '../../amplify/data/resource'; // Import generated Schema
-import { getQRCodeURL } from '../utils/qrCodeGenerator';
-import Toast from 'react-native-toast-message';
+import { generateClient } from 'aws-amplify/data';
+import { Schema } from '../../amplify/data/resource';
 import { styles } from '../styles/screens/dashboardStyles';
-
+import Toast from 'react-native-toast-message';
+import { getQRCodeURL } from '../utils/qrCodeGenerator';
 // Use the generated Business type directly for better type safety
-type BusinessData = Schema['Business']['type']; // Define BusinessData using the generated schema type
+// import { BusinessData } from '../types/BusinessTypes'; // Remove this if using generated type
+type BusinessData = Schema['Business']['type']; // Use the generated type
 
-const client = generateClient<Schema>(); // Use the generated Schema type with the client
+const client = generateClient<Schema>();
 
 export default function DashboardScreen({ route }: { route: any }) {
   const { businessId } = route.params || {};
@@ -30,17 +30,14 @@ export default function DashboardScreen({ route }: { route: any }) {
       setBusinessData(null); // Reset previous data
       setQrCodeUrl('');
 
-      // Ensure user ID is available before fetching based on owner field
-      // Amplify uses user.userId for owner checks usually
-      const currentUserId = user?.userId;
-      if (!currentUserId && !businessId) {
+      if (!user?.userId && !businessId) {
         console.log("User or Business ID not available for fetching data.");
         setIsLoading(false); // Stop loading
         return;
       }
 
       try {
-        console.log(`Fetching business data... Business ID: ${businessId}, User Owner ID: ${currentUserId}`);
+        console.log(`Fetching business data... ID: ${businessId}, User: ${user?.userId}`);
         // Initialize fetchedData to null
         let fetchedData: BusinessData | null = null;
 
@@ -50,17 +47,14 @@ export default function DashboardScreen({ route }: { route: any }) {
             // The result.data should match the BusinessData type generated from the schema
             fetchedData = result.data;
           }
-        } else if (currentUserId) { // Use the captured user ID
-          // Use 'owner' field as defined in schema for filtering
+        } else if (user?.userId) {
           const { data: businesses } = await client.models.Business.list({
-            filter: { owner: { eq: currentUserId } },
+            filter: { owner: { eq: user.userId } },
             limit: 1 // Only need the first one if multiple exist for the owner
           });
           if (businesses && businesses.length > 0) {
             // businesses[0] should match the BusinessData type
             fetchedData = businesses[0];
-          } else {
-             console.log("No Business found associated with owner ID:", currentUserId);
           }
         }
 
@@ -97,7 +91,7 @@ export default function DashboardScreen({ route }: { route: any }) {
     };
 
     fetchBusinessData();
-  }, [user, businessId]); // Dependency array includes user and businessId
+  }, [user, businessId]);
 
   // Add a new separate useEffect for handling the seeded data message
   useEffect(() => {
@@ -114,7 +108,7 @@ export default function DashboardScreen({ route }: { route: any }) {
        // This depends on your navigation setup
        // navigation.setParams({ showSeededMessage: undefined });
     }
-  }, [route.params?.showSeededMessage, navigation]); // Added navigation to dependency array if setParams is used
+  }, [route.params?.showSeededMessage]);
 
   const menuItems = [
     { title: 'Product Management', screen: 'ProductManagement', icon: '📦' },
@@ -122,9 +116,8 @@ export default function DashboardScreen({ route }: { route: any }) {
     { title: 'Appointments', screen: 'Appointments', icon: '📅' },
     { title: 'Order Management', screen: 'OrderManagement', icon: '📋' },
     { title: 'Customers', screen: 'CustomerSearch', icon: '👤' }, // Changed screen to CustomerSearch
-    { title: 'Settings', screen: 'BusinessSettings', icon: '⚙️' },
-    // { title: 'Point of Sale', screen: 'PointOfSale', icon: '🛒' }, // Removed POS temporarily
-    // { title: 'Reports', screen: 'Reports', icon: '📊' }, // Removed Reports temporarily
+    { title: 'Reports', screen: 'Reports', icon: '📊' },
+    { title: 'Settings', screen: 'Settings', icon: '⚙️' },
   ];
 
   const navigateToScreen = (screenName: string) => {
@@ -149,52 +142,75 @@ export default function DashboardScreen({ route }: { route: any }) {
     }
   };
 
-  // Loading state UI
+  // Show loading indicator while fetching
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#007AFF" />
         <Text style={styles.loadingText}>Loading Dashboard...</Text>
       </View>
     );
   }
 
-  // No business data found UI
-  if (!businessData) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>No Business Found</Text>
-        <Text style={styles.subtitle}>Could not load business details. Please try again later or contact support.</Text>
-        {/* Optionally add a button to retry or navigate elsewhere */}
-      </View>
-    );
-  }
+  // Handle case where no business data could be loaded
+   if (!businessData) {
+     return (
+       <View style={styles.container}>
+         <Text style={styles.errorText}>Could not load business data.</Text>
+         {/* Optionally add a button to retry or go back */}
+       </View>
+     );
+   }
 
-  // Main dashboard UI
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{businessData?.name || 'Business Dashboard'}</Text>
-      {qrCodeUrl ? (
-        <View style={styles.qrCodeContainer}>
-          <Text style={styles.qrCodeLabel}>Business QR Code:</Text>
-          <Image source={{ uri: qrCodeUrl }} style={styles.qrCodeImage} />
+      <View style={styles.header}>
+        <View style={styles.businessHeader}>
+          <Text style={styles.businessName}>
+            {/* Now safe to access businessData.name */}
+            {(businessData.name ? businessData.name.toUpperCase() : 'NO NAME')}
+          </Text>
         </View>
-      ) : (
-          <Text style={styles.noQrCodeText}>QR Code not available</Text>
-      )}
+        {/* Keep QR code display logic */}
+         <View style={styles.qrCodeContainer}>
+           {qrCodeUrl ? (
+              <View style={styles.qrCodeWrapper}>
+                 <Image
+                    source={{ uri: qrCodeUrl }}
+                    style={{ width: 100, height: 100 }}
+                    resizeMode="contain"
+                    onError={(e) => console.log("Error loading QR image:", e.nativeEvent.error)} // Log image load errors
+                 />
+              </View>
+           ) : (
+              businessData.qrCode && <ActivityIndicator size="small" /> // Show spinner if key exists but URL not loaded yet
+           )}
+         </View>
+        <Text style={styles.subtitle}>DASHBOARD</Text>
+      </View>
+
+      <TouchableOpacity
+        style={styles.startButton}
+        onPress={() => navigateToScreen('CustomerSearch')}
+      >
+        <Text style={styles.startButtonText}>START TRANSACTION</Text>
+      </TouchableOpacity>
+
       <FlatList
         data={menuItems}
+        numColumns={2}
+        keyExtractor={(item) => item.title}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigateToScreen(item.screen)}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigateToScreen(item.screen)}
+          >
             <Text style={styles.menuIcon}>{item.icon}</Text>
-            <Text style={styles.menuText}>{item.title}</Text>
+            <Text style={styles.menuTitle}>{item.title}</Text>
           </TouchableOpacity>
         )}
-        keyExtractor={(item) => item.screen}
-        numColumns={2} // Arrange items in two columns
-        columnWrapperStyle={styles.row} // Style for the row wrapper
+        contentContainerStyle={styles.listContentContainer} // Add some padding if needed
       />
-        <Toast />
     </View>
   );
 }

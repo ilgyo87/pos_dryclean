@@ -2,10 +2,8 @@ import { StyleSheet, Dimensions } from "react-native"
 
 // Calculate dimensions that ensure 2 rows of 4 products fit perfectly
 const screenWidth = Dimensions.get("window").width;
-const screenHeight = Dimensions.get("window").height;
 const numColumns = 4;
 const numRows = 2;
-const itemMargin = 0;
 const itemWidth = screenWidth / numColumns;
 const itemHeight = itemWidth * 1.11; // Maintain the aspect ratio
 

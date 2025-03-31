@@ -22,8 +22,8 @@ import {
   processApplePayment,
   createTransactionRecord,
   initializeSquarePayments,
-  generateReceipt,
-  saveOrShareReceipt,
+  generateReceiptHtml,
+  saveAndShareReceipt,
   getMockPaymentUIState,
   showMockPaymentUI
 } from '../utils/PaymentService';
@@ -167,7 +167,7 @@ export default function CheckoutScreen() {
       // If payment was successful, create transaction record
       if (result.success) {
         try {
-          const txId = await createTransactionRecord(
+          const transactionRecord = await createTransactionRecord(
             businessId,
             customerId,
             items,
@@ -177,15 +177,17 @@ export default function CheckoutScreen() {
             customerPreferences
           );
   
-          setTransactionId(txId);
+          setTransactionId(transactionRecord.id);
   
           // Generate receipt HTML
-          const receipt = generateReceipt(
-            txId || '',
+          const receipt = generateReceiptHtml(
+            transactionRecord.id,
             businessDetails?.name || 'Dry Cleaning Business',
             customerName,
             items,
             total,
+            calculateTax(), // Add tax
+            calculateSubtotal(), // Add subtotal
             result,
             pickupDate
           );
@@ -233,7 +235,7 @@ export default function CheckoutScreen() {
     if (receiptHtml && isReceiptReady) {
       try {
         // In a real implementation, you would save the receipt or share it
-        await saveOrShareReceipt(receiptHtml, transactionId || 'unknown');
+        await saveAndShareReceipt(receiptHtml, transactionId || 'unknown');
 
         // For demonstration, we'll show a success message
         Alert.alert(
