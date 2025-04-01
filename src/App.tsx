@@ -1,6 +1,6 @@
 // src/App.tsx
 import React, { useState, useEffect } from 'react';
-import { Button, View, Text } from 'react-native';
+import { Button, View, Text, ActivityIndicator } from 'react-native'; // Added ActivityIndicator import
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
 import { Amplify } from "aws-amplify";
@@ -36,7 +36,11 @@ function AppContent() {
   const [businessId, setBusinessId] = useState<string>('');
   const [businessName, setBusinessName] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const { authStatus, user } = useAuthenticator();
+  const { authStatus, user, signOut } = useAuthenticator((context) => [ // Destructure signOut
+      context.authStatus,
+      context.user,
+      context.signOut,
+  ]);
   const [dashboardKey, setDashboardKey] = useState(0);
 
   useEffect(() => {
@@ -44,41 +48,54 @@ function AppContent() {
     if (authStatus === 'authenticated') {
       console.log("User authenticated, checking for businesses");
       checkForBusinesses();
+    } else if (authStatus === 'unauthenticated') {
+      // Reset state when user signs out
+      setHasBusinesses(null);
+      setBusinessId('');
+      setBusinessName('');
+      setLoading(true); // Go back to loading state until authenticated again
     }
-  }, [authStatus]);
+  }, [authStatus, user]); // Add user to dependency array
 
   // Check if user has businesses
   const checkForBusinesses = async () => {
-    if (!user?.username) {
-      console.log("User not loaded yet");
+    // Use user directly from useAuthenticator hook
+    if (!user?.userId) { // Use userId which is more reliable than username
+      console.log("User ID not available yet");
+      setLoading(false); // Stop loading if no user ID
+      setHasBusinesses(false); // Assume no businesses without user ID
       return;
     }
 
     setLoading(true);
     try {
-      console.log("Checking for businesses...");
+      console.log(`Checking for businesses for user ID: ${user.userId}`);
+      // Filter by userId (assuming your schema uses userId or owner mapped to it)
       const result = await client.models.Business.list({
-        filter: {
-          owner: { eq: user.username }
-        }
-      });
+         filter: {
+           // Adjust this filter based on your actual schema field for ownership
+           // It might be owner, userId, etc. Make sure it matches amplify/data/resource.ts
+           owner: { eq: user.userId } // Use userId
+         }
+       });
 
-      console.log("Business check result:", JSON.stringify(result));
-      const hasBusiness = result.data && result.data.length > 0;
+      console.log("Business check result:", JSON.stringify(result, null, 2)); // Pretty print result
+      const businesses = result.data || [];
+      const hasBusiness = businesses.length > 0;
       console.log("Has businesses:", hasBusiness);
 
-      if (hasBusiness && result.data && result.data.length > 0) {
-        // Store the business ID and name
-        setBusinessId(result.data[0].id);
-        setBusinessName(result.data[0].name);
+      if (hasBusiness) {
+        // Store the first business ID and name found
+        setBusinessId(businesses[0].id);
+        setBusinessName(businesses[0].name);
       }
 
       setHasBusinesses(hasBusiness);
-      setLoading(false);
     } catch (error) {
       console.error("Error checking for businesses:", error);
-      setHasBusinesses(false);
-      setLoading(false);
+      setHasBusinesses(false); // Set to false on error
+    } finally {
+       setLoading(false); // Ensure loading is set to false
     }
   };
 
@@ -93,23 +110,36 @@ function AppContent() {
 
   function WelcomeScreen() {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Welcome to Dry Cleaning POS</Text>
-        <Text>Please create a business to continue</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Text style={{ fontSize: 18, textAlign: 'center', marginBottom: 10 }}>Welcome to the Dry Cleaning POS</Text>
+        <Text style={{ textAlign: 'center' }}>It looks like you don't have a business set up yet.</Text>
+        <Text style={{ textAlign: 'center' }}>Please create one to continue.</Text>
+        {/* The modal will appear over this screen */}
       </View>
     );
   }
 
-  // Log modal visibility state for debugging
-  const modalVisible = !loading && hasBusinesses === false;
-  console.log("Modal visibility state:", { loading, hasBusinesses, modalVisible });
+  // Determine modal visibility: show when not loading and user is authenticated but has no businesses
+  const modalVisible = !loading && authStatus === 'authenticated' && hasBusinesses === false;
+  console.log("Modal visibility state:", { loading, authStatus, hasBusinesses, modalVisible });
+
+  if (loading && authStatus === 'authenticated') {
+    // Show loading indicator only after authentication while checking for businesses
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+        <Text>Loading business data...</Text>
+      </View>
+    );
+  }
+
 
   return (
     <NavigationContainer>
       {/* Main application navigation */}
       <Stack.Navigator>
-        {hasBusinesses ? (
-          // Only render screens when we have businesses
+        {authStatus === 'authenticated' && hasBusinesses === true ? (
+          // Render business screens ONLY if authenticated AND hasBusinesses is true
           <>
             <Stack.Screen
               key={dashboardKey} // Force remount when business is created
@@ -118,7 +148,7 @@ function AppContent() {
               initialParams={{ businessId, businessName }}
               options={{
                 headerShown: true,
-                title: "DASHBOARD",
+                title: `Dashboard: ${businessName}`, // Show business name in title
                 headerRight: () => <SignOutButton />
               }}
             />
@@ -128,7 +158,7 @@ function AppContent() {
               initialParams={{ businessId, businessName }}
               options={{
                 headerShown: true,
-                title: "CUSTOMERS",
+                title: "Customers",
                 headerRight: () => <SignOutButton />
               }}
             />
@@ -138,7 +168,7 @@ function AppContent() {
               initialParams={{ businessId }}
               options={{
                 headerShown: true,
-                title: "CUSTOMER",
+                title: "Edit Customer",
                 headerRight: () => <SignOutButton />
               }}
             />
@@ -148,7 +178,7 @@ function AppContent() {
               initialParams={{ businessId, businessName }}
               options={{
                 headerShown: true,
-                title: "PRODUCTS",
+                title: "Products & Services",
                 headerRight: () => <SignOutButton />
               }}
             />
@@ -158,7 +188,7 @@ function AppContent() {
               initialParams={{ businessId }}
               options={{
                 headerShown: true,
-                title: "TRANSACTION",
+                title: "New Transaction",
                 headerRight: () => <SignOutButton />
               }}
             />
@@ -166,36 +196,40 @@ function AppContent() {
               name="Checkout"
               component={CheckoutScreen}
               options={{
-                headerShown: false
+                headerShown: false // Typically no header needed here
               }}
             />
             <Stack.Screen
               name="Receipt"
               component={ReceiptScreen}
               options={{
-                headerShown: false
+                headerShown: false // Typically no header needed here
               }}
             />
           </>
         ) : (
-          // Add a placeholder screen when no businesses
+          // Show Welcome screen if authenticated but no businesses, or during initial load before check completes
+           // Or if loading is false, authenticated, but hasBusinesses is explicitly false
           <Stack.Screen
             name="Welcome"
             component={WelcomeScreen}
             options={{
               headerShown: true,
-              title: "WELCOME",
-              headerRight: () => <SignOutButton />
+              title: "Welcome",
+              headerRight: () => (authStatus === 'authenticated' ? <SignOutButton /> : null) // Show sign out only if authenticated
             }}
           />
         )}
       </Stack.Navigator>
 
-      {/* Business modal - only visible when no businesses exist */}
-      <CreateBusinessModal
-        visible={modalVisible}
-        onBusinessCreated={handleBusinessCreated}
-      />
+      {/* Business modal - only visible when authenticated and no businesses exist */}
+      {authStatus === 'authenticated' && ( // Ensure modal only renders if authenticated
+         <CreateBusinessModal
+           isVisible={modalVisible}
+           onBusinessCreated={handleBusinessCreated}
+           onCancel={signOut} // Pass signOut from useAuthenticator
+         />
+       )}
     </NavigationContainer>
   );
 }

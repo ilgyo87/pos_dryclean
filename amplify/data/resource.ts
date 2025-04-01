@@ -8,11 +8,13 @@ const schema = a.schema({
     .model({
       id: a.id().required(),
       name: a.string().required(),
+      firstName: a.string(),
+      lastName: a.string(),
       address: a.string(),
       city: a.string(),
       state: a.string(),
       zipCode: a.string(),
-      phoneNumber: a.phone(),
+      phoneNumber: a.phone().required(),
       email: a.email(),
       website: a.url(),
       description: a.string(),
@@ -22,7 +24,7 @@ const schema = a.schema({
       establishedDate: a.date(),
       taxId: a.string(),
       isActive: a.boolean().default(true),
-      owner: a.string().required(), 
+      userId: a.string(), 
       qrCode: a.string(), // Store the S3 key for the QR code image
 
       // --- Relationships (Commented out to reduce type complexity) ---
@@ -38,7 +40,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(), // Allow owner full access
-      allow.authenticated().to(['read']), // Allow any logged-in user to read
+      allow.authenticated().to(['read', 'update', 'delete', 'create']), // Allow any logged-in user to read
       // Add group-based or other rules if needed
     ]),
 
@@ -55,7 +57,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(['read', 'update', 'delete', 'create']),
     ]),
 
   // Item Model (Service or Product)
@@ -79,7 +81,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(['read', 'update', 'delete', 'create']),
     ]),
 
   // Customer Model
@@ -108,7 +110,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(), // Business owner can manage customers
-      allow.authenticated().to(['read']), // Or adjust as needed
+      allow.authenticated().to(['read', 'update', 'delete', 'create']), // Or adjust as needed
     ]),
 
   // Employee Model
@@ -159,7 +161,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(), // Business owner
-      allow.authenticated().to(['read']), // Customer/Employee can read
+      allow.authenticated().to(['read', 'update', 'delete', 'create']), // Customer/Employee can read
     ]),
 
   // Transaction Model (for checkout portion)
@@ -196,7 +198,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(['read', 'update', 'delete', 'create']),
     ]),
 
   // TransactionItem Model (line item within a transaction)
@@ -213,7 +215,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(['read', 'update', 'delete', 'create']),
     ]),
 
   // Order Model (for tracking cleaning/service orders)
@@ -243,7 +245,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(['read', 'update', 'delete', 'create']),
     ]),
 
   // OrderItem Model (line item within an order)
@@ -264,7 +266,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(['read', 'update', 'delete', 'create']),
     ]),
 
   // CustomerNotification Model
@@ -309,7 +311,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(['read', 'update', 'delete', 'create']),
     ]),
 
 }); // End of a.schema({...})
