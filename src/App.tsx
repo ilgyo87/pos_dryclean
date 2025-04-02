@@ -75,7 +75,7 @@ function AppContent() {
          filter: {
            // Adjust this filter based on your actual schema field for ownership
            // It might be owner, userId, etc. Make sure it matches amplify/data/resource.ts
-           owner: { eq: user.userId } // Use userId
+           userId: { eq: user.userId } // Use userId
          }
        });
 

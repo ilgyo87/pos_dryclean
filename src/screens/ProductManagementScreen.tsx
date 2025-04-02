@@ -21,6 +21,7 @@ import ProductItem from '../components/ProductItem';
 
 // Import types
 import { Service, Product, RouteParams } from '../types/productTypes';
+import { Alert } from 'react-native';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -37,6 +38,7 @@ const ProductManagementScreen: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Client-side mapping of products to services
   const [productServiceMap, setProductServiceMap] = useState<Record<string, string>>({});
@@ -61,38 +63,75 @@ const ProductManagementScreen: React.FC = () => {
   const fetchServicesAndProducts = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch services
-      const servicesResult = await client.models.Service.list({
+      // Fetch categories (formerly services)
+      const categoriesResult = await client.models.Category.list({
         filter: { businessID: { eq: businessId } }
       });
 
-      console.log('Fetched services:', servicesResult.data);
+      console.log('Fetched categories:', categoriesResult.data);
 
-      if (servicesResult.data) {
-        const servicesData = servicesResult.data as unknown as Service[];
+      if (categoriesResult.data) {
+        // Convert to Service type expected by the component
+        const servicesData = categoriesResult.data.map(category => ({
+          id: category.id,
+          name: category.name,
+          description: category.description || '',
+          businessID: category.businessID,
+          // Add any other fields needed by the Service type
+          price: 0, // Default value since Category doesn't have price
+          urlPicture: '' // Default value since Category doesn't have urlPicture
+        })) as unknown as Service[];
+
         setServices(servicesData);
 
-        // Select the first service by default if none is selected
+        // Select the first category by default if none is selected
         if (servicesData.length > 0 && !selectedServiceId) {
           setSelectedServiceId(servicesData[0].id);
-          console.log('Setting default selected service:', servicesData[0].id);
+          console.log('Setting default selected category:', servicesData[0].id);
         }
       }
 
-      // Fetch all products for this business
-      const productsResult = await client.models.Product.list({
+      // Fetch all items (formerly products) for this business
+      const itemsResult = await client.models.Item.list({
         filter: { businessID: { eq: businessId } }
       });
 
-      console.log('Fetched products:', productsResult.data);
+      console.log('Fetched items:', itemsResult.data);
 
-      const allProducts = productsResult.data ? productsResult.data as unknown as Product[] : [];
+      // Convert to Product type expected by the component
+      const allProducts = itemsResult.data ? itemsResult.data.map(item => {
+        console.log('Mapping item to product:', {
+          id: item.id,
+          name: item.name,
+          imageUrl: item.imageUrl || ''
+        });
+        
+        return {
+          id: item.id,
+          name: item.name,
+          description: item.description || '',
+          price: item.price,
+          sku: item.sku || '',
+          imageUrl: item.imageUrl || '',
+          taxable: item.taxable || false,
+          businessID: item.businessID,
+          serviceID: item.categoryID, // Use categoryID as serviceID
+          createdAt: item.createdAt
+        };
+      }) as unknown as Product[] : [];
+
       setProducts(allProducts);
 
       // Initialize product to service mapping if empty
       setProductServiceMap(prevMap => {
-        if (Object.keys(prevMap).length === 0 && allProducts.length > 0 && servicesResult.data) {
-          const servicesData = servicesResult.data as unknown as Service[];
+        if (Object.keys(prevMap).length === 0 && allProducts.length > 0 && categoriesResult.data) {
+          const servicesData = categoriesResult.data.map(category => ({
+            id: category.id,
+            name: category.name,
+            description: category.description || '',
+            businessID: category.businessID
+          })) as unknown as Service[];
+
           if (servicesData.length > 0) {
             // Create a map of product ID to service ID
             const initialMap: Record<string, string> = {};
@@ -116,13 +155,84 @@ const ProductManagementScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [businessId]); // removed productServiceMap from dependencies
+  }, [businessId]);
 
   // Also need to add useEffect to call the function
   useEffect(() => {
-    fetchServicesAndProducts();
-  }, [fetchServicesAndProducts]);
+    const fetchServicesAndProducts = async () => {
+      setIsLoading(true);
+      try {
+        console.log('Fetching services and products...');
+  
+        // Fetch categories
+        const categoriesResult = await client.models.Category.list({
+          filter: { businessID: { eq: businessId } }
+        });
+        console.log('Categories fetched:', categoriesResult.data?.length);
+  
+        // Fetch items
+        const itemsResult = await client.models.Item.list({
+          filter: { businessID: { eq: businessId } }
+        });
+        console.log('Items fetched:', itemsResult.data?.length);
+        console.log('Raw items data:', JSON.stringify(itemsResult.data?.slice(0, 2), null, 2));
 
+        // Convert to Service type expected by the component
+        const allServices = categoriesResult.data ? categoriesResult.data.map(category => ({
+          id: category.id,
+          name: category.name,
+          description: category.description || '',
+          businessID: category.businessID,
+          products: []
+        })) as unknown as Service[] : [];
+        
+        console.log('Mapped services:', allServices.length);
+        console.log('First few services:', allServices.slice(0, 3).map(s => ({ id: s.id, name: s.name })));
+
+        // Convert to Product type expected by the component
+        const allProducts = itemsResult.data ? itemsResult.data.map(item => ({
+          id: item.id,
+          name: item.name,
+          description: item.description || '',
+          price: item.price,
+          sku: item.sku || '',
+          imageUrl: item.imageUrl || '',
+          taxable: item.taxable,
+          businessID: item.businessID,
+          serviceID: item.categoryID, // Use categoryID as serviceID
+          createdAt: item.createdAt
+        })) as unknown as Product[] : [];
+        
+        console.log('Mapped products:', allProducts.length);
+        console.log('First few products:', allProducts.slice(0, 3).map(p => ({ 
+          id: p.id, 
+          name: p.name, 
+          serviceID: p.serviceID, 
+          urlPicture: p.urlPicture 
+        })));
+
+        setServices(allServices);
+        setProducts(allProducts);
+        
+        // Select the first service by default if we don't have one selected
+        if (allServices.length > 0 && !selectedServiceId) {
+          console.log('Setting initial selected service to:', allServices[0].id);
+          setSelectedServiceId(allServices[0].id);
+        } else {
+          console.log('Selected service ID remains:', selectedServiceId);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        Alert.alert('Error', 'Failed to load services and products');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (businessId) {
+      fetchServicesAndProducts();
+    }
+  }, [businessId, refreshKey, selectedServiceId]);
   // Handle service tab selection without refreshing all data
   const handleServiceSelect = (serviceId: string) => {
     setSelectedServiceId(serviceId);
@@ -131,17 +241,23 @@ const ProductManagementScreen: React.FC = () => {
 
   // Filter products by the selected service
   const filteredProducts = useMemo(() => {
-    if (!selectedServiceId) return [...products].sort((a, b) => {
-      // Sort by createdAt (oldest first)
-      if (a.createdAt && b.createdAt) {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      }
-      // Handle cases where one record doesn't have createdAt
-      if (a.createdAt) return -1;
-      if (b.createdAt) return 1;
-      // Fall back to sorting by name
-      return a.name.localeCompare(b.name);
-    });
+    console.log('Filtering products for service ID:', selectedServiceId);
+    console.log('Total products before filtering:', products.length);
+    
+    if (!selectedServiceId) {
+      console.log('No selected service ID, returning all products');
+      return [...products].sort((a, b) => {
+        // Sort by createdAt (oldest first)
+        if (a.createdAt && b.createdAt) {
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+        // Handle cases where one record doesn't have createdAt
+        if (a.createdAt) return -1;
+        if (b.createdAt) return 1;
+        // Fall back to sorting by name
+        return a.name.localeCompare(b.name);
+      });
+    }
 
     // Filter by service ID first, then sort
     const filtered = products.filter(product => product.serviceID === selectedServiceId);
@@ -156,6 +272,7 @@ const ProductManagementScreen: React.FC = () => {
       return a.name.localeCompare(b.name);
     });
   }, [products, selectedServiceId]);
+
   // Update pagination when filtered products change
   useEffect(() => {
     setTotalPages(Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
@@ -225,32 +342,49 @@ const ProductManagementScreen: React.FC = () => {
   }) => {
     try {
       if (isNewService) {
-        // Create new service
-        const result = await client.models.Service.create({
+        // Create new category (formerly service)
+        const result = await client.models.Category.create({
           name: serviceData.name.trim(),
           description: serviceData.description.trim() || undefined,
-          price: parseFloat(serviceData.price),
-          businessID: businessId,
-          urlPicture: serviceData.urlPicture.trim() || undefined
+          businessID: businessId
+          // Note: price and urlPicture are not part of Category model
         });
 
         if (result.data) {
-          setServices(prev => [...prev, result.data as unknown as Service]);
+          // Convert to Service type for UI
+          const newService = {
+            id: result.data.id,
+            name: result.data.name,
+            description: result.data.description || '',
+            businessID: result.data.businessID,
+            price: parseFloat(serviceData.price), // Store locally only
+            urlPicture: serviceData.urlPicture.trim() || undefined // Store locally only
+          } as unknown as Service;
+
+          setServices(prev => [...prev, newService]);
           setSelectedServiceId(result.data.id);
         }
       } else if (editingService) {
-        // Update existing service
-        const result = await client.models.Service.update({
+        // Update existing category
+        const result = await client.models.Category.update({
           id: editingService.id,
           name: serviceData.name.trim(),
           description: serviceData.description.trim() || undefined,
-          price: parseFloat(serviceData.price),
-          urlPicture: serviceData.urlPicture.trim() || undefined,
+          // Note: price and urlPicture are not updated in the database
         });
 
         if (result.data) {
+          // Update local state with all fields including UI-only ones
+          const updatedService = {
+            ...editingService,
+            name: serviceData.name.trim(),
+            description: serviceData.description.trim() || '',
+            price: parseFloat(serviceData.price),
+            urlPicture: serviceData.urlPicture.trim() || undefined
+          };
+
           setServices(prev => prev.map(s =>
-            s.id === editingService.id ? result.data as unknown as Service : s
+            s.id === editingService.id ? updatedService : s
           ));
         }
       }
@@ -270,18 +404,33 @@ const ProductManagementScreen: React.FC = () => {
   }) => {
     try {
       if (isNewProduct) {
-        // Create a new product
-        const result = await client.models.Product.create({
+        // Create a new item (formerly product)
+        const result = await client.models.Item.create({
           name: productData.name.trim(),
           description: productData.description.trim() || undefined,
           price: parseFloat(productData.price),
           businessID: businessId,
-          serviceID: selectedServiceId || '',
-          urlPicture: productData.urlPicture.trim() || undefined
+          categoryID: selectedServiceId || '', // Use selectedServiceId as categoryID
+          imageUrl: productData.urlPicture.trim() || undefined, // Map urlPicture to imageUrl
+          taxable: true // Default value
         });
 
         if (result.data) {
-          const newProduct = result.data as unknown as Product;
+          // Convert to Product type for UI
+          const newProduct = {
+            id: result.data.id,
+            name: result.data.name,
+            description: result.data.description || '',
+            price: result.data.price,
+            businessID: result.data.businessID,
+            serviceID: result.data.categoryID, // Use categoryID as serviceID
+            urlPicture: result.data.imageUrl || '', // Map imageUrl to urlPicture
+            imageUrl: result.data.imageUrl || '',
+            sku: result.data.sku || '',
+            taxable: result.data.taxable,
+            createdAt: result.data.createdAt
+          } as unknown as Product;
+
           setProducts(prev => [...prev, newProduct]);
 
           // Associate this new product with the currently selected service
@@ -293,20 +442,31 @@ const ProductManagementScreen: React.FC = () => {
           }
         }
       } else if (editingProduct) {
-        // Update existing product
-        const result = await client.models.Product.update({
+        // Update existing item
+        const result = await client.models.Item.update({
           id: editingProduct.id,
           name: productData.name.trim(),
           description: productData.description.trim() || undefined,
           price: parseFloat(productData.price),
-          serviceID: selectedServiceId || editingProduct.serviceID,
-          urlPicture: productData.urlPicture.trim() || undefined,
+          categoryID: selectedServiceId || editingProduct.serviceID, // Use selectedServiceId as categoryID
+          imageUrl: productData.urlPicture.trim() || undefined, // Map urlPicture to imageUrl
           businessID: businessId
         });
 
         if (result.data) {
+          // Convert to Product type for UI
+          const updatedProduct = {
+            ...editingProduct,
+            name: result.data.name,
+            description: result.data.description || '',
+            price: result.data.price,
+            serviceID: result.data.categoryID, // Use categoryID as serviceID
+            urlPicture: result.data.imageUrl || '', // Map imageUrl to urlPicture
+            imageUrl: result.data.imageUrl || ''
+          };
+
           setProducts(prev =>
-            prev.map(p => p.id === editingProduct.id ? result.data as unknown as Product : p)
+            prev.map(p => p.id === editingProduct.id ? updatedProduct : p)
           );
         }
       }
@@ -323,8 +483,8 @@ const ProductManagementScreen: React.FC = () => {
 
     try {
       if (itemToDelete.type === 'service') {
-        // Delete service
-        await client.models.Service.delete({ id: itemToDelete.id });
+        // Delete category (formerly service)
+        await client.models.Category.delete({ id: itemToDelete.id });
         setServices(prev => prev.filter(s => s.id !== itemToDelete.id));
 
         // If the deleted service was selected, select another one
@@ -343,8 +503,8 @@ const ProductManagementScreen: React.FC = () => {
         setProductServiceMap(updatedMap);
 
       } else {
-        // Delete product
-        await client.models.Product.delete({ id: itemToDelete.id });
+        // Delete item (formerly product)
+        await client.models.Item.delete({ id: itemToDelete.id });
         const updatedProducts = products.filter(p => p.id !== itemToDelete.id);
         setProducts(updatedProducts);
 
@@ -425,76 +585,84 @@ const ProductManagementScreen: React.FC = () => {
                         resizeMode="cover"
                       />
                     ) : null}
-                    <Text style={{ fontSize: 14, fontWeight: 'bold' }}>{services.find(s => s.id === selectedServiceId)?.name}</Text>
+                    <Text style={{ fontWeight: 'bold', fontSize: 14 }}>
+                      {services.find(s => s.id === selectedServiceId)?.name}
+                    </Text>
                   </View>
-                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#4CAF50' }}>${services.find(s => s.id === selectedServiceId)?.price.toFixed(2)}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                  <Text style={{ fontSize: 12, color: '#666' }} numberOfLines={1}>
-                    {services.find(s => s.id === selectedServiceId)?.description || 'No description'}
-                  </Text>
-                  <TouchableOpacity onPress={() => {
-                    const service = services.find(s => s.id === selectedServiceId);
-                    if (service) handleEditService(service);
-                  }}>
-                    <Text style={{ fontSize: 12, color: '#1890ff' }}>Edit</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      const service = services.find(s => s.id === selectedServiceId);
+                      if (service) handleEditService(service);
+                    }}
+                    style={{ padding: 4 }}
+                  >
+                    <Text style={{ color: '#007aff', fontSize: 12 }}>Edit</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
 
             {/* Products grid */}
-            <View style={{ flex: 1, backgroundColor: 'white', paddingVertical: 0 }}>
-              <FlatList
-                data={paginatedProducts}
-                renderItem={(props) => <ProductItem
-                  {...props}
-                  onEdit={handleEditProduct}
-                  onDelete={(id) => handleDeletePrompt('product', id)}
-                />}
-                keyExtractor={(item) => item.id}
-                numColumns={4}
-                key="four-column"
-                columnWrapperStyle={{ justifyContent: 'flex-start', paddingHorizontal: 0 }} // Change to flex-start 
-                contentContainerStyle={{ paddingBottom: 0, paddingHorizontal: 0 }}
-                style={{ flex: 1, marginBottom: 0 }}
-                scrollEnabled={false} // Prevent scrolling to maximize visible space
-              />
-            </View>
+            {paginatedProducts.length > 0 ? (
+              <View style={{ flex: 1 }}>
+                <FlatList
+                  data={paginatedProducts}
+                  renderItem={({ item }) => (
+                    <ProductItem
+                      item={item}
+                      onEdit={handleEditProduct}
+                      onDelete={(id) => handleDeletePrompt('product', id)}
+                    />
+                  )}
+                  keyExtractor={item => item.id}
+                  numColumns={2}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                />
 
-            {/* Pagination controls - only show if more than 16 items */}
-            {/* Pagination container - always show */}
-            <View style={styles.paginationContainer}>
-              {totalPages > 1 ? (
-                <>
-                  <TouchableOpacity
-                    onPress={handlePrevPage}
-                    disabled={currentPage === 0}
-                    style={[styles.paginationButton, currentPage === 0 && styles.paginationButtonDisabled]}
-                  >
-                    <Text style={styles.paginationButtonText}>Previous</Text>
-                  </TouchableOpacity>
-
-                  <Text style={styles.paginationText}>
-                    Page {currentPage + 1} of {totalPages}
-                  </Text>
-
-                  <TouchableOpacity
-                    onPress={handleNextPage}
-                    disabled={currentPage >= totalPages - 1}
-                    style={[styles.paginationButton, currentPage >= totalPages - 1 && styles.paginationButtonDisabled]}
-                  >
-                    <Text style={styles.paginationButtonText}>Next</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <View style={{ height: 40 }} />
-              )}
-            </View>
+                {/* Pagination controls */}
+                {totalPages > 1 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
+                    <TouchableOpacity
+                      onPress={handlePrevPage}
+                      disabled={currentPage === 0}
+                      style={{ padding: 8, opacity: currentPage === 0 ? 0.5 : 1 }}
+                    >
+                      <Text>Previous</Text>
+                    </TouchableOpacity>
+                    <Text style={{ padding: 8 }}>
+                      Page {currentPage + 1} of {totalPages}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={handleNextPage}
+                      disabled={currentPage === totalPages - 1}
+                      style={{ padding: 8, opacity: currentPage === totalPages - 1 ? 0.5 : 1 }}
+                    >
+                      <Text>Next</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Text>No products found for this service.</Text>
+                <TouchableOpacity
+                  style={{ marginTop: 10, padding: 10, backgroundColor: '#007aff', borderRadius: 5 }}
+                  onPress={handleAddProduct}
+                >
+                  <Text style={{ color: 'white' }}>Add Product</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ) : (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>No services found. Add a service to get started.</Text>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text>No services found. Add a service to get started.</Text>
+            <TouchableOpacity
+              style={{ marginTop: 10, padding: 10, backgroundColor: '#007aff', borderRadius: 5 }}
+              onPress={handleAddService}
+            >
+              <Text style={{ color: 'white' }}>Add Service</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -522,9 +690,9 @@ const ProductManagementScreen: React.FC = () => {
         visible={isDeleteModalVisible}
         onClose={() => setIsDeleteModalVisible(false)}
         onConfirm={handleDeleteConfirm}
-        itemType={itemToDelete?.type || 'item'}
+        itemType={itemToDelete?.type || 'product'}
       />
-    </View >
+    </View>
   );
 };
 

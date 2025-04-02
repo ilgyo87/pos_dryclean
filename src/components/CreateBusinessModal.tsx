@@ -1,5 +1,5 @@
 // src/components/CreateBusinessModal.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback} from 'react';
 import {
   Modal,
   View,
@@ -96,10 +96,10 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
   const checkPhoneNumberExists = useCallback(
     debounce(async (phone: string) => {
       if (!phone || phone.length < 10) { // Basic check
-          setIsCheckingPhone(false);
-          setPhoneExists(false);
-          setPhoneCheckComplete(false);
-          return;
+        setIsCheckingPhone(false);
+        setPhoneExists(false);
+        setPhoneCheckComplete(false);
+        return;
       }
       setIsCheckingPhone(true);
       setPhoneCheckComplete(false);
@@ -141,16 +141,16 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
       return;
     }
     if (!isFormValid || isCheckingPhone || phoneExists) {
-        Alert.alert('Validation Error', 'Please ensure all required fields are filled correctly and the phone number is valid and unique.');
-        return;
+      Alert.alert('Validation Error', 'Please ensure all required fields are filled correctly and the phone number is valid and unique.');
+      return;
     }
 
     setIsLoading(true); // START loading
     try {
       const newBusinessInput = {
         name: businessName,
-        ownerFirstName: firstName,
-        ownerLastName: lastName,
+        firstName: firstName,
+        lastName: lastName,
         phoneNumber: phoneNumber, // Use cleaned number
         // address: address || undefined, // Use undefined if empty
         // city: city || undefined,
@@ -193,42 +193,42 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
     setQrCaptureVisible(false); // Hide scanner view regardless of outcome
 
     try {
-        if (qrCodeKey && createdBusinessId) {
-          console.log(`QR Code captured/uploaded for business ${createdBusinessId}. Attaching key: ${qrCodeKey}`);
-          // Assuming attachQRCodeKeyToEntity returns a boolean success status
-          const success = await attachQRCodeKeyToEntity('Business', createdBusinessId, qrCodeKey);
+      if (qrCodeKey && createdBusinessId) {
+        console.log(`QR Code captured/uploaded for business ${createdBusinessId}. Attaching key: ${qrCodeKey}`);
+        // Assuming attachQRCodeKeyToEntity returns a boolean success status
+        const success = await attachQRCodeKeyToEntity('Business', createdBusinessId, qrCodeKey);
 
-          if (success) {
-            console.log(`Successfully attached QR key to business ${createdBusinessId}`);
-            Alert.alert('Success', `Business "${createdBusinessName}" created with QR code.`);
-            onBusinessCreated(createdBusinessId, createdBusinessName); // Notify parent
-            resetForm(); // Reset everything
-          } else {
-            Alert.alert('Error', 'Business created, but failed to attach QR code. You may need to do this manually.');
-            // Still notify parent, business exists
-            onBusinessCreated(createdBusinessId, createdBusinessName);
-            resetForm();
-          }
-        } else if (createdBusinessId) {
-          // Case: User skipped (qrCodeKey is null)
-          Alert.alert('Skipped', `Business "${createdBusinessName}" created without a QR code.`);
+        if (success) {
+          console.log(`Successfully attached QR key to business ${createdBusinessId}`);
+          Alert.alert('Success', `Business "${createdBusinessName}" created with QR code.`);
           onBusinessCreated(createdBusinessId, createdBusinessName); // Notify parent
           resetForm(); // Reset everything
         } else {
-          // Case: Should not happen if logic is correct
-          console.error("handleQrComplete called unexpectedly without a business ID.");
-          Alert.alert('Error', 'An unexpected error occurred during QR processing.');
+          Alert.alert('Error', 'Business created, but failed to attach QR code. You may need to do this manually.');
+          // Still notify parent, business exists
+          onBusinessCreated(createdBusinessId, createdBusinessName);
           resetForm();
-          onCancel(); // Close modal as state is likely inconsistent
         }
-    } catch (qrError: any) {
-        console.error("Error during QR attachment/handling:", qrError);
-        Alert.alert('Error', `Failed during QR step: ${qrError.message || 'Unknown error'}`);
-        // Decide if you still call onBusinessCreated or just reset/cancel
+      } else if (createdBusinessId) {
+        // Case: User skipped (qrCodeKey is null)
+        Alert.alert('Skipped', `Business "${createdBusinessName}" created without a QR code.`);
+        onBusinessCreated(createdBusinessId, createdBusinessName); // Notify parent
+        resetForm(); // Reset everything
+      } else {
+        // Case: Should not happen if logic is correct
+        console.error("handleQrComplete called unexpectedly without a business ID.");
+        Alert.alert('Error', 'An unexpected error occurred during QR processing.');
         resetForm();
-        // Maybe call onCancel() if the state is inconsistent?
+        onCancel(); // Close modal as state is likely inconsistent
+      }
+    } catch (qrError: any) {
+      console.error("Error during QR attachment/handling:", qrError);
+      Alert.alert('Error', `Failed during QR step: ${qrError.message || 'Unknown error'}`);
+      // Decide if you still call onBusinessCreated or just reset/cancel
+      resetForm();
+      // Maybe call onCancel() if the state is inconsistent?
     } finally {
-        setIsLoading(false); // ALWAYS stop loading indicator after QR step completes or fails
+      setIsLoading(false); // ALWAYS stop loading indicator after QR step completes or fails
     }
   };
 
@@ -249,41 +249,34 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
 
           {/* Conditional Rendering for Form vs QR Scanner */}
           {qrCaptureVisible ? (
-            // --- QR Scanner View ---
-            <View style={{ flex: 1 }}>
-              <Text style={styles.modalTitle}>Generating Business QR Code</Text>
-              {/* Ensure this only renders when newBusinessId is available */}
-              {newBusinessId ? (
-                  <QRCodeCapture
-                    // Pass correct props based on QRCodeCapture.tsx definition
-                    value={newBusinessId} // Pass the business ID as the value to encode
-                    entityType="Business"
-                    entityId={newBusinessId} // Pass the business ID for the S3 key path
-                    onCapture={handleQrComplete} // This function will be called with the S3 key after generation/upload
-                    size={250} // Optional: Adjust size
-                    // Remove unsupported props:
-                    // onQrCodeScanned={...}
-                    // onUploadComplete={...}
-                    // onError={...}
-                    // promptText={...}
-                  />
-              ) : (
-                  // Optionally show a placeholder or loading state if ID isn't ready
-                  <ActivityIndicator size="large" color="#007bff" />
-              )}
-              <Text style={{ textAlign: 'center', marginTop: 10, color: '#555' }}>
-                Generating and saving QR code...
-              </Text>
-              <View style={{ marginTop: 15, alignItems: 'center' }}>
+             // --- QR Scanner View ---
+             <View style={{ flex: 1 }}>
+               <Text style={styles.modalTitle}>Generating Business QR Code</Text>
+               {newBusinessId ? (
+                 <QRCodeCapture
+                   value={newBusinessId} 
+                   entityType="Business"
+                   entityId={newBusinessId} 
+                   onCapture={handleQrComplete} 
+                   size={250} 
+                 />
+               ) : (
+                 <ActivityIndicator size="large" color="#007bff" />
+               )}
+               <Text style={{ textAlign: 'center', marginTop: 10, color: '#555' }}>
+                 Generating and saving QR code...
+               </Text>
+               <View style={{ marginTop: 15, alignItems: 'center' }}>
                  <TouchableOpacity
-                  style={[styles.button, styles.cancelButton, { alignSelf: 'center'}, isLoading ? styles.disabledButton : null]}
-                  onPress={() => handleQrComplete(null)} // Pass null to indicate skip/cancel
-                  disabled={isLoading}
+                   style={[styles.button, styles.cancelButton, { alignSelf: 'center' }, isLoading ? styles.disabledButton : null]}
+                   onPress={() => handleQrComplete(null)} 
+                   disabled={isLoading}
                  >
                    <Text style={styles.buttonText}>Skip / Cancel</Text>
                  </TouchableOpacity>
-              </View>
-            </View>
+               </View>
+             </View>
+             
           ) : (
             // --- Form View ---
             <>
@@ -344,13 +337,13 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
                     />
                     {/* Indicators */}
                     <View style={styles.phoneCheckIndicator}>
-                        {isCheckingPhone && <ActivityIndicator size="small" color="#007bff"/>}
-                        {phoneCheckComplete && !isCheckingPhone && !phoneExists && (
-                            <Icon name="check-circle" size={20} color="green" />
-                        )}
-                        {phoneCheckComplete && !isCheckingPhone && phoneExists && (
-                            <Icon name="alert-circle" size={20} color="red" />
-                        )}
+                      {isCheckingPhone ? <ActivityIndicator size="small" color="#007bff" /> : null}
+                      {phoneCheckComplete && !isCheckingPhone && !phoneExists ? (
+                        <Icon name="check-circle" size={20} color="green" />
+                      ) : null}
+                      {phoneCheckComplete && !isCheckingPhone && phoneExists ? (
+                        <Icon name="alert-circle" size={20} color="red" />
+                      ) : null}
                     </View>
                   </View>
                   {phoneCheckComplete && phoneExists && <Text style={styles.errorMessage}>This phone number is already registered.</Text>}
@@ -408,32 +401,32 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
 
               {/* Button Container */}
               <View style={styles.buttonContainer}>
-                 <TouchableOpacity
-                   style={[styles.button, styles.cancelButton, isLoading ? styles.disabledButton : null]}
-                   onPress={() => { if (!isLoading) { resetForm(); onCancel(); } }}
-                   disabled={isLoading}
-                 >
-                   <Text style={styles.buttonText}>Cancel</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity
-                   style={[styles.button, styles.clearButton, isLoading ? styles.disabledButton : null]}
-                   onPress={() => { if (!isLoading) { resetForm(); }}} // Only reset fields, don't close
-                   disabled={isLoading}
-                 >
-                   <Text style={styles.buttonText}>Clear</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity
-                   style={[
-                     styles.button,
-                     styles.createButton,
-                     (!isFormValid || isLoading || isCheckingPhone || phoneExists) ? styles.disabledButton : null // More comprehensive disabled check
-                   ]}
-                   onPress={handleCreateBusiness}
-                   disabled={!isFormValid || isLoading || isCheckingPhone || phoneExists}
-                 >
-                   <Text style={styles.buttonText}>Create</Text>
-                 </TouchableOpacity>
-               </View>
+                <TouchableOpacity
+                  style={[styles.button, styles.cancelButton, isLoading ? styles.disabledButton : null]}
+                  onPress={() => { if (!isLoading) { resetForm(); onCancel(); } }}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.clearButton, isLoading ? styles.disabledButton : null]}
+                  onPress={() => { if (!isLoading) { resetForm(); } }} // Only reset fields, don't close
+                  disabled={isLoading}
+                >
+                  <Text style={styles.buttonText}>Clear</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.button,
+                    styles.createButton,
+                    (!isFormValid || isLoading || isCheckingPhone || phoneExists) ? styles.disabledButton : null // More comprehensive disabled check
+                  ]}
+                  onPress={handleCreateBusiness}
+                  disabled={!isFormValid || isLoading || isCheckingPhone || phoneExists}
+                >
+                  <Text style={styles.buttonText}>Create</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
 
@@ -449,6 +442,6 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
       </View>
     </Modal>
   );
-}; 
+};
 
 export default CreateBusinessModal; 
