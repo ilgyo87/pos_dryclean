@@ -19,7 +19,10 @@ const ProductItem: React.FC<ProductItemProps> = ({
   onEdit, 
   onDelete 
 }) => (
-  <View style={styles.listItemContainer}>
+  <TouchableOpacity 
+    style={styles.listItemContainer}
+    onPress={() => onEdit(item)}
+  >
     <View style={styles.listImageContainer}>
       {item.urlPicture ? (
         <Image 
@@ -37,22 +40,9 @@ const ProductItem: React.FC<ProductItemProps> = ({
     <Text style={styles.listItemDescription} numberOfLines={1}>
       {item.description || 'No description'}
     </Text>
-    <Text style={styles.listItemPrice}>${item.price.toFixed(2)}</Text>
-    <View style={styles.listItemActions}>
-      <TouchableOpacity
-        style={styles.listEditButton}
-        onPress={() => onEdit(item)}
-      >
-        <Text style={styles.listEditIcon}>✏️</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.listDeleteButton}
-        onPress={() => onDelete(item.id)}
-      >
-        <Text style={styles.listDeleteIcon}>🗑️</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
+    <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
+  </TouchableOpacity>
 );
+
 
 export default ProductItem;

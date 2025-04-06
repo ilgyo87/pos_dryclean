@@ -9,7 +9,7 @@ import { styles } from '../styles/screens/productManagementStyles';
 
 interface DeleteConfirmationModalProps {
   visible: boolean;
-  itemType: 'service' | 'product' | 'item';
+  itemType: 'category' | 'product' | 'item';
   onClose: () => void;
   onConfirm: () => void;
 }

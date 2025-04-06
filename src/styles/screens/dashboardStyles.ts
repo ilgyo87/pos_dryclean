@@ -116,4 +116,9 @@ export const styles = StyleSheet.create({
         fontSize: 18,
         color: 'red',
     },
+    noQrText: {
+      fontSize: 12,
+      color: '#999',
+      textAlign: 'center',
+    },
   });

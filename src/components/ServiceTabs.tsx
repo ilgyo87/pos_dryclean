@@ -1,3 +1,4 @@
+// src/components/ServiceTabs.tsx
 import React from 'react';
 import {
   ScrollView,
@@ -5,22 +6,28 @@ import {
   Text,
 } from 'react-native';
 import { styles } from '../styles/screens/productManagementStyles';
-import { Service } from '../types/productTypes';
+import { Schema } from '../../amplify/data/resource';
+import { Category as AppCategory } from '../types/productTypes';
 
-interface ServiceTabsProps {
-  services: Service[];
-  selectedServiceId: string | null;
-  onSelect: (serviceId: string) => void;
+
+// Use the Category type from the schema instead of Service
+type Category = Schema['Category']['type'];
+
+interface CategoryTabsProps {
+  categories: AppCategory[];
+  selectedCategoryId: string | null;
+  onSelect: (categoryId: string) => void;
 }
 
-const ServiceTabs: React.FC<ServiceTabsProps> = ({ 
-  services, 
-  selectedServiceId, 
+// Rename component to CategoryTabs for consistency
+const CategoryTabs: React.FC<CategoryTabsProps> = ({ 
+  categories, 
+  selectedCategoryId, 
   onSelect 
 }) => {
-  // Sort services with specific priority order, then by createdAt
-  const sortedServices = [...services].sort((a, b) => {
-    // Priority: Sort remaining services by createdAt (oldest first)
+  // Sort categories by createdAt date (oldest first)
+  const sortedCategories = [...categories].sort((a, b) => {
+    // Both have createdAt timestamps
     if (a.createdAt && b.createdAt) {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     }
@@ -29,7 +36,7 @@ const ServiceTabs: React.FC<ServiceTabsProps> = ({
     if (a.createdAt) return -1;
     if (b.createdAt) return 1;
     
-    // Fall back to sorting by name
+    // Fall back to sorting by name if no timestamps
     return a.name.localeCompare(b.name);
   });
 
@@ -39,22 +46,22 @@ const ServiceTabs: React.FC<ServiceTabsProps> = ({
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 0 }}
     >
-      {sortedServices.map((service) => (
+      {sortedCategories.map((category) => (
         <TouchableOpacity
-          key={service.id}
+          key={category.id}
           style={[
             styles.tab,
-            selectedServiceId === service.id && styles.activeTab
+            selectedCategoryId === category.id && styles.activeTab
           ]}
-          onPress={() => onSelect(service.id)}
+          onPress={() => onSelect(category.id)}
         >
           <Text
             style={[
               styles.tabText,
-              selectedServiceId === service.id && styles.activeTabText
+              selectedCategoryId === category.id && styles.activeTabText
             ]}
           >
-            {service.name}
+            {category.name}
           </Text>
         </TouchableOpacity>
       ))}
@@ -62,4 +69,6 @@ const ServiceTabs: React.FC<ServiceTabsProps> = ({
   );
 };
 
-export default ServiceTabs;
+// Export as both names for backward compatibility during transition
+export { CategoryTabs as ServiceTabs };
+export default CategoryTabs;

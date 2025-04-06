@@ -179,11 +179,15 @@ export default function DashboardScreen({ route }: { route: any }) {
                 source={{ uri: qrCodeUrl }}
                 style={{ width: 100, height: 100 }}
                 resizeMode="contain"
-                onError={(e) => console.log("Error loading QR image:", e.nativeEvent.error)} // Log image load errors
+                onError={(e) => console.log("Error loading QR image:", e.nativeEvent.error)}
               />
             </View>
           ) : (
-            businessData.qrCode && <ActivityIndicator size="small" /> // Show spinner if key exists but URL not loaded yet
+            businessData.qrCode ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <Text style={styles.noQrText}>No QR Code</Text>
+            )
           )}
         </View>
         <Text style={styles.subtitle}>DASHBOARD</Text>

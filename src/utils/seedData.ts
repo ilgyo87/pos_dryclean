@@ -12,6 +12,7 @@ interface SeedItem {
   businessID: string;
   categoryID: string;
   taxable?: boolean;
+  createdAt?: string;
 }
 
 interface SeedCategory {
@@ -19,6 +20,7 @@ interface SeedCategory {
   name: string;
   description?: string;
   businessID: string;
+  createdAt?: string;
 }
 
 // Function to seed business data

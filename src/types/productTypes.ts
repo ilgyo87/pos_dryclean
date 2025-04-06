@@ -6,16 +6,16 @@ export interface RouteParams {
   }
   
   // Service interface
-  export interface Service {
+  export interface Category {
     id: string;
     name: string;
-    description?: string;
+    description: string;
+    imageUrl?: string;
     price: number;
-    estimatedTime: number
     businessID: string;
-    urlPicture?: string;
-    createdAt?: string; 
-  updatedAt?: string; 
+    products: Product[];
+    createdAt: string;
+    estimatedTime: number;
   }
   
   // Product interface
@@ -25,7 +25,7 @@ export interface RouteParams {
     description?: string;
     price: number;
     businessID: string;
-    serviceID: string;
+    categoryID: string;
     urlPicture?: string;
     createdAt?: string; 
     updatedAt?: string; 

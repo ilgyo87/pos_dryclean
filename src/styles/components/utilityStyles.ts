@@ -20,18 +20,24 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 4,      // Reduced from 8
+    marginBottom: 4,   // Reduced from 8
   },
-
+  
   paginationButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,         // Reduced from 32
+    height: 24,        // Reduced from 32
+    borderRadius: 12,  // Reduced from 16
     backgroundColor: "#f0f0f0",
     justifyContent: "center",
     alignItems: "center",
-    marginHorizontal: 8,
+    marginHorizontal: 4, // Reduced from 8
+  },
+  
+  paginationText: {
+    fontSize: 10,      // Reduced from 12
+    color: "#666",
+    marginHorizontal: 6, // Reduced from 12
   },
 
   paginationButtonText: {
@@ -43,11 +49,5 @@ export const styles = StyleSheet.create({
 
   paginationButtonDisabled: {
     opacity: 0.5,
-  },
-
-  paginationText: {
-    fontSize: 12,
-    color: "#666",
-    marginHorizontal: 12,
   },
 });

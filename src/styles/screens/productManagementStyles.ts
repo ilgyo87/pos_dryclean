@@ -1,11 +1,10 @@
 import { StyleSheet, Dimensions } from "react-native"
 
-// Calculate dimensions that ensure 2 rows of 4 products fit perfectly
+// Calculate dimensions 
 const screenWidth = Dimensions.get("window").width;
 const numColumns = 4;
-const numRows = 2;
+const numRows = 3; 
 const itemWidth = screenWidth / numColumns;
-const itemHeight = itemWidth * 1.11; // Maintain the aspect ratio
 
 export const styles = StyleSheet.create({
   container: {
@@ -87,7 +86,7 @@ export const styles = StyleSheet.create({
 
   // Product grid styles
   productGrid: {
-    height: itemHeight * numRows,
+    height: '100%',
     paddingHorizontal: 0,
     marginHorizontal: 0,
     paddingVertical: 0,
@@ -96,21 +95,19 @@ export const styles = StyleSheet.create({
 
   // Square product item (GRID VIEW)
   productItem: {
-    width: itemWidth,
-    height: itemHeight,
-    backgroundColor: "white",
-    borderRadius: 0,
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 4,
     padding: 4,
-    borderWidth: 0,
-    margin: 0,
-    justifyContent: "space-between",
+    overflow: 'hidden'
   },
 
   // Image container that takes more space (GRID VIEW)
   productImageContainer: {
-    height: itemWidth * 0.7,
+    height: '100%',
     borderRadius: 4,
     marginBottom: 2, // Reduce bottom margin
+    backgroundColor: 'transparent',
   },
 
   // Image to fill the space completely
@@ -342,60 +339,92 @@ export const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // List view styles (renamed to avoid duplicates)
-  listItemContainer: {
-    width: itemWidth,
-    height: itemHeight,
-    backgroundColor: "white",
-    borderRadius: 0,
-    padding: 4,
-    borderWidth: 0, 
+  gridContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    alignContent: 'flex-start',
+    width: '100%',
+    padding: 5,
     margin: 0,
-    justifyContent: "space-between",
+    backgroundColor: 'white', // Remove the green debug color
+    height: '80%', // Adjust height to better fit 3 rows
   },
-  
-  listImageContainer: {
-    height: itemWidth * 0.7, // Match the grid view proportions
+
+  // For each grid item ***ADJUST HEIGHT HERE
+  gridItem: {
+    width: '19%',  // Keep 4 columns
+    height: 300,   // Make items slightly taller for 3 rows
+    padding: 3,
+    margin: 0,
+    backgroundColor: 'transparent',
+  },
+
+  // For the image container
+  imageContainer: {
+    height: '60%', // Take up 60% of the item height
     borderRadius: 4,
-    marginBottom: 2,
-    overflow: "hidden",
+    marginBottom: 4,
+    overflow: 'hidden',
+    backgroundColor: 'transparent', // Changed from yellow
   },
-  
-  // Adjust text sizes to fit the narrow width
+
+  // For the item info text
+  itemName: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+
+  itemPrice: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#333',
+  },
+
+  // Container for the list item
+  listItemContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 5,
+    borderWidth: 0.5,
+    borderColor: '#ddd',
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+
+  // Image container within list item
+  listImageContainer: {
+    height: '55%',
+    borderRadius: 4,
+    marginBottom: 4,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+
+  // Product name text style
   listItemName: {
     fontSize: 12,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     marginBottom: 2,
+    color: '#333',
   },
-  
+
+  // Product description text style
   listItemDescription: {
     fontSize: 10,
-    color: "#666",
+    color: '#666',
     marginBottom: 2,
   },
-  
-  listItemPrice: {
-    fontSize: 12,
-    color: "#333",
-  },
-  
-  listItemActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 2,
-  },
-  listEditButton: {
-    padding: 6,
-  },
-  listDeleteButton: {
-    padding: 6,
-    marginLeft: 4,
-  },
-  listEditIcon: {
-    fontSize: 16,
-  },
-  listDeleteIcon: {
-    fontSize: 16,
+
+  // Item description (if referenced separately)
+  itemDescription: {
+    fontSize: 10,
+    color: '#666',
+    marginBottom: 2,
   },
 })
 

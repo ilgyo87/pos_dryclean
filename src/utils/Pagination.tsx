@@ -36,8 +36,9 @@ const Pagination: React.FC<PaginationProps> = ({
         <Text>←</Text>
       </TouchableOpacity>
 
+      {/* Simplified text */}
       <Text style={styles.paginationText}>
-        Page {currentPage + 1} of {totalPages}
+        {currentPage + 1}/{totalPages}
       </Text>
 
       <TouchableOpacity

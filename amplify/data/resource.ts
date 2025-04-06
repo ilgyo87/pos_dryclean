@@ -53,7 +53,8 @@ const schema = a.schema({
       businessID: a.string().required(), // Foreign key for Business
       // Define relationships
       // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
-      items: a.hasMany('Item', 'categoryID')
+      items: a.hasMany('Item', 'categoryID'),
+      imageUrl: a.string(),
     })
     .authorization((allow) => [
       allow.owner(),
