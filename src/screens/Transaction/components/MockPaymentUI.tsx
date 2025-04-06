@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 
 // Import card logos from our placeholder asset file
-import cardLogos from './CreditCardAssets';
+import cardLogos from '../../../../assets/CreditCardAssets';
 
 // Mock payment result type
 export interface MockPaymentResult {

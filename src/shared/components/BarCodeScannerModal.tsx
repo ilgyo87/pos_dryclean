@@ -1,4 +1,4 @@
-// src/components/BarcodeScannerModal.tsx
+// src/shared/components/BarCodeScannerModal.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Modal,
@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Camera, CameraType } from 'react-native-camera-kit';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
-import { styles } from '../styles/components/barcodeScannerModalStyles';
+import { styles } from '../styles/barcodeScannerModalStyles';
 
 interface BarcodeScannerModalProps {
     visible: boolean;

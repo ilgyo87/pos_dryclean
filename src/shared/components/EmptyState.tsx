@@ -3,7 +3,7 @@ import {
   View,
   Text,
 } from 'react-native';
-import { styles } from '../styles/components/utilityStyles';
+import { styles } from '../styles/utilityStyles';
 
 interface EmptyStateProps {
   message: string;

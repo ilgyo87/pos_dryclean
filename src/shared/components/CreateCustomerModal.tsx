@@ -11,13 +11,13 @@ import {
   Alert
 } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
-import { styles } from '../styles/components/createCustomerModalStyles';
-import type { Schema } from '../../amplify/data/resource';
+import { styles } from '../styles/createCustomerModalStyles';
+import type { Schema } from '../../../amplify/data/resource';
 import { Customer } from '../types/CustomerTypes';
 import {
   generateQRCodeData,
   attachQRCodeKeyToEntity
-} from '../utils/qrCodeGenerator';
+} from './qrCodeGenerator';
 import QRCodeCapture from './QRCodeCapture';
 
 // Initialize Amplify client

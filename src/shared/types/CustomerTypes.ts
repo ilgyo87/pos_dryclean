@@ -16,4 +16,5 @@ export type Customer = {
   lastActiveDate?: string | null;
   qrCode?: string | null;
   preferences?: string | null;
+  cognitoUserId?: string | null;
 };

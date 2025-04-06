@@ -16,7 +16,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import type { Schema } from '../../../../amplify/data/resource';
 import {
   processCardPayment,
   processApplePayment,
@@ -26,13 +26,13 @@ import {
   saveAndShareReceipt,
   getMockPaymentUIState,
   showMockPaymentUI
-} from '../utils/PaymentService';
-import { CartItem, PaymentResult } from '../types/PaymentTypes';
+} from './PaymentService';
+import { CartItem, PaymentResult } from '../../../shared/types/PaymentTypes';
 import WebView from 'react-native-webview';
 import { captureRef } from 'react-native-view-shot';
 import Share from 'react-native-share';
 // Import the MockPaymentModal component
-import MockPaymentModal from '../utils/MockPaymentUI';
+import MockPaymentModal from './MockPaymentUI';
 
 
 // Initialize Amplify client

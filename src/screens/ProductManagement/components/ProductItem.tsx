@@ -6,8 +6,8 @@ import {
   Image,
   StyleSheet,
 } from 'react-native';
-import { styles } from '../styles/screens/productManagementStyles';
-import { Product } from '../types/productTypes';
+import { styles } from '../styles/productManagementStyles';
+import { Product } from '../../../shared/types/productTypes';
 
 interface ProductItemProps {
   item: Product;

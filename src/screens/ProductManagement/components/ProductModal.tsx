@@ -7,74 +7,71 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { styles } from '../styles/screens/productManagementStyles';
-import { Service } from '../types/productTypes';
+import { styles } from '../styles/productManagementStyles';
+import { Product } from '../../../shared/types/productTypes';
 
-interface ServiceModalProps {
+interface ProductModalProps {
   visible: boolean;
-  isNewService: boolean;
-  service: Service | null;
+  isNewProduct: boolean;
+  product: Product | null;
   onClose: () => void;
-  onSave: (serviceData: {
+  onSave: (productData: {
     name: string;
     description: string;
     price: string;
-    category?: string;
-    urlPicture: string;
+    imageUrl: string;
   }) => void;
   onDelete?: () => void;
 }
 
-const ServiceModal: React.FC<ServiceModalProps> = ({
+const ProductModal: React.FC<ProductModalProps> = ({
   visible,
-  isNewService,
-  service,
+  isNewProduct,
+  product,
   onClose,
   onSave,
   onDelete,
 }) => {
   // Form state
-  const [serviceName, setServiceName] = useState('');
-  const [serviceDescription, setServiceDescription] = useState('');
-  const [servicePrice, setServicePrice] = useState('');
-  const [serviceCategory, setServiceCategory] = useState('');
-  const [serviceUrlPicture, setServiceUrlPicture] = useState('');
+  const [productName, setProductName] = useState('');
+  const [productDescription, setProductDescription] = useState('');
+  const [productPrice, setProductPrice] = useState('');
+  const [productUrlPicture, setProductUrlPicture] = useState('');
 
-  // Reset form when service changes
+  // Reset form when product changes
   useEffect(() => {
-    if (service) {
-      setServiceName(service.name);
-      setServiceDescription(service.description || '');
-      setServicePrice(service.price.toString());
-      setServiceUrlPicture(service.urlPicture || '');
+    if (product) {
+      setProductName(product.name);
+      setProductDescription(product.description || '');
+      setProductPrice(product.price.toString());
+      setProductUrlPicture(product.urlPicture || '');
     } else {
-      setServiceName('');
-      setServiceDescription('');
-      setServicePrice('');
-      setServiceUrlPicture('');
+      setProductName('');
+      setProductDescription('');
+      setProductPrice('');
+      setProductUrlPicture('');
     }
-  }, [service]);
+  }, [product]);
 
   // Validate form and save
   const handleSave = () => {
     // Validate required fields
-    if (!serviceName.trim()) {
-      Alert.alert('Error', 'Service name is required');
+    if (!productName.trim() || !productPrice.trim()) {
+      Alert.alert('Error', 'Product name and price are required.');
       return;
     }
 
-    if (!servicePrice.trim() || isNaN(parseFloat(servicePrice))) {
+    if (isNaN(parseFloat(productPrice))) {
       Alert.alert('Error', 'Please enter a valid price');
       return;
     }
 
     // Call onSave with form data
     onSave({
-      name: serviceName,
-      description: serviceDescription,
-      price: servicePrice,
-      category: serviceCategory,
-      urlPicture: serviceUrlPicture,
+      name: productName,
+      description: productDescription,
+      price: productPrice,
+      imageUrl: productUrlPicture,
     });
   };
 
@@ -88,17 +85,17 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle || { fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>
-            {isNewService ? 'Add New Service' : 'Edit Service'}
+            {isNewProduct ? 'Add New Product' : 'Edit Product'}
           </Text>
           
           {/* Form fields */}
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Service Name *</Text>
+            <Text style={styles.formLabel}>Product Name *</Text>
             <TextInput
               style={styles.formInput}
-              value={serviceName}
-              onChangeText={setServiceName}
-              placeholder="Enter service name"
+              value={productName}
+              onChangeText={setProductName}
+              placeholder="Enter product name"
             />
           </View>
   
@@ -106,9 +103,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             <Text style={styles.formLabel}>Description</Text>
             <TextInput
               style={[styles.formInput, styles.textArea]}
-              value={serviceDescription}
-              onChangeText={setServiceDescription}
-              placeholder="Enter service description"
+              value={productDescription}
+              onChangeText={setProductDescription}
+              placeholder="Enter product description"
               multiline
               numberOfLines={3}
             />
@@ -118,8 +115,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             <Text style={styles.formLabel}>Price *</Text>
             <TextInput
               style={styles.formInput}
-              value={servicePrice}
-              onChangeText={setServicePrice}
+              value={productPrice}
+              onChangeText={setProductPrice}
               placeholder="Enter price"
               keyboardType="numeric"
             />
@@ -129,8 +126,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             <Text style={styles.formLabel}>Image URL</Text>
             <TextInput
               style={styles.formInput}
-              value={serviceUrlPicture}
-              onChangeText={setServiceUrlPicture}
+              value={productUrlPicture}
+              onChangeText={setProductUrlPicture}
               placeholder="Enter image URL"
             />
           </View>
@@ -157,4 +154,4 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   );
 };
 
-export default ServiceModal;
+export default ProductModal;

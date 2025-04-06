@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   Modal,
 } from 'react-native';
-import { styles } from '../styles/screens/productManagementStyles';
+import { styles } from '../../screens/ProductManagement/styles/productManagementStyles';
 
 interface DeleteConfirmationModalProps {
   visible: boolean;

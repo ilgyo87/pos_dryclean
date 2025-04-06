@@ -8,20 +8,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
-  Image
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import type { Schema } from '../../../amplify/data/resource';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import EditCustomerModal from '../components/EditCustomerModal';
-import BarcodeScannerModal from '../components/BarCodeScannerModal';
+import EditCustomerModal from '../../shared/components/EditCustomerModal';
+import BarcodeScannerModal from '../../shared/components/BarCodeScannerModal';
 import QRCode from 'react-native-qrcode-svg';
-import { generateQRCodeData } from '../utils/qrCodeGenerator';
-import { styles } from '../styles/screens/customerEditStyles';
-import { Customer } from './../types/CustomerTypes';
+import { generateQRCodeData } from '../../shared/components/qrCodeGenerator';
+import { styles } from './styles/customerEditStyles';
+import { Customer } from '../../shared/types/CustomerTypes';
 // Import QRCode directly for dynamic generation
 
 // Initialize Amplify client

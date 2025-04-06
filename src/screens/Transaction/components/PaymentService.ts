@@ -1,7 +1,7 @@
 // src/utils/PaymentService.ts
 import { generateClient } from 'aws-amplify/api'; // Correct API import
-import type { Schema } from '../../amplify/data/resource';
-import { CartItem, PaymentResult, MockPaymentResult } from '../types/PaymentTypes'; // Make sure this path is correct
+import type { Schema } from '../../../../amplify/data/resource';
+import { CartItem, PaymentResult, MockPaymentResult } from './../../../shared/types/PaymentTypes'; // Make sure this path is correct
 import { Share } from 'react-native';
 import RNFS from 'react-native-fs'; // Ensure react-native-fs is installed
 

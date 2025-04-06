@@ -17,7 +17,8 @@ import { Calendar } from 'react-native-calendars';
 import { generateClient } from 'aws-amplify/data';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { Schema } from '../../amplify/data/resource';
+import type { Schema } from '../../../amplify/data/resource';
+import { Product } from '../../shared/types/productTypes';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -28,15 +29,15 @@ type CartItem = {
   name: string;
   price: number;
   quantity: number;
-  type: 'service' | 'product';
-  serviceId?: string; // For products, to track which service they belong to
+  type: 'category' | 'product';
+  categoryId?: string; // For products, to track which category they belong to
   imageUrl?: string | null; // Add image URL for products
 };
 
-// Define service with products
-type ServiceWithProducts = {
-  service: Schema['Service']['type'];
-  products: Schema['Product']['type'][];
+// Define category with products
+type CategoryWithProducts = {
+  category: Schema['Category']['type'];
+  products: Product[];
 };
 
 // Define RootStackParamList if not defined elsewhere
@@ -67,11 +68,11 @@ const TransactionSelectionScreen = () => {
   const { businessId, customerId, customerName } = route.params || {};
   
   const [loading, setLoading] = useState(true);
-  const [services, setServices] = useState<ServiceWithProducts[]>([]);
-  const [selectedServiceIndex, setSelectedServiceIndex] = useState(0);
+  const [category, setCategory] = useState<CategoryWithProducts[]>([]);
+  const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Schema['Product']['type'] | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [currentProductPage, setCurrentProductPage] = useState(0); // Track current page of products
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [customerPreferences, setCustomerPreferences] = useState<string>('');
@@ -90,10 +91,10 @@ const TransactionSelectionScreen = () => {
   
   const [pickupDate, setPickupDate] = useState<Date>(getDefaultPickupDate());
   
-  // Reset product page when changing services
+  // Reset product page when changing categories
   useEffect(() => {
-    setCurrentProductPage(0);
-  }, [selectedServiceIndex]);
+    setCurrentProductPage(0)  ;
+  }, [selectedCategoryIndex]);
   
   // Format date for display
   const formatDate = (date: Date) => {
@@ -118,37 +119,37 @@ const TransactionSelectionScreen = () => {
   const fetchServicesAndProducts = async () => {
     setLoading(true);
     try {
-      // Fetch services for this business
-      const servicesResult = await client.models.Service.list({
+      // Fetch categories for this business
+      const categoriesResult = await client.models.Category.list({
         filter: { businessID: { eq: businessId as string } }
       });
       
-      if (servicesResult.errors) {
-        console.error('Error fetching services:', servicesResult.errors);
-        Alert.alert('Error', 'Failed to fetch services');
+      if (categoriesResult.errors) {
+        console.error('Error fetching categories:', categoriesResult.errors);
+        Alert.alert('Error', 'Failed to fetch categories');
         setLoading(false);
         return;
       }
       
-      const servicesData = servicesResult.data ?? [];
+      const categoriesData = categoriesResult.data ?? [];
       
-      if (servicesData.length === 0) {
+      if (categoriesData.length === 0) {
         setLoading(false);
-        Alert.alert('No Services', 'No services found for this business. Please check with your administrator.');
+        Alert.alert('No Categories', 'No categories found for this business. Please check with your administrator.');
         return;
       }
       
-      // For each service, fetch related products
-      const servicesWithProducts: ServiceWithProducts[] = [];
+      // For each category, fetch related products
+      const categoriesWithProducts: CategoryWithProducts[] = [];
       
-      for (const service of servicesData) {
-        // Fetch products for this service
-        const productsResult = await client.models.Product.list({
-          filter: { serviceID: { eq: service.id } }
+      for (const category of categoriesData) {
+        // Fetch products for this category
+        const productsResult = await client.models.Item.list({
+          filter: { categoryID: { eq: category.id } }
         });
         
         if (productsResult.errors) {
-          console.error('Error fetching products for service:', service.id, productsResult.errors);
+          console.error('Error fetching products for category:', category.id, productsResult.errors);
           continue;
         }
         
@@ -157,36 +158,39 @@ const TransactionSelectionScreen = () => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return dateA - dateB; // Ascending order (oldest first)
-        });
+        }).map(product => ({
+          ...product,
+          description: product.description || undefined // Convert null to undefined
+        }));
         
-        servicesWithProducts.push({
-          service,
+        categoriesWithProducts.push({
+          category,
           products: sortedProducts
         });
       }
       
-      // Sort services by createdAt date (oldest first)
-      const sortedServices = [...servicesWithProducts].sort((a, b) => {
-        const dateA = a.service.createdAt ? new Date(a.service.createdAt).getTime() : 0;
-        const dateB = b.service.createdAt ? new Date(b.service.createdAt).getTime() : 0;
+      // Sort categories by createdAt date (oldest first)
+      const sortedCategories = [...categoriesWithProducts].sort((a, b) => {
+        const dateA = a.category.createdAt ? new Date(a.category.createdAt).getTime() : 0;
+        const dateB = b.category.createdAt ? new Date(b.category.createdAt).getTime() : 0;
         return dateA - dateB; // Ascending order (oldest first)
       });
       
-      setServices(sortedServices);
+      setCategory(sortedCategories);
     } catch (error) {
-      console.error('Error fetching services and products:', error);
-      Alert.alert('Error', 'Failed to fetch services and products');
+      console.error('Error fetching categories and products:', error);
+      Alert.alert('Error', 'Failed to fetch categories and products');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewProductDetails = (product: Schema['Product']['type']) => {
+  const handleViewProductDetails = (product: Product) => {
     // Add to cart directly instead of showing details
-    addToCart(product, 'product', product.serviceID);
+    addToCart(product, 'product', product.categoryID);
   };
   
-  const addToCart = (item: Schema['Service']['type'] | Schema['Product']['type'], type: 'service' | 'product', serviceId?: string) => {
+  const addToCart = (item: Schema['Category']['type'] | Product, type: 'category' | 'product', categoryId?: string) => {
     // Check if item already exists in cart
     const existingItemIndex = cart.findIndex(
       cartItem => cartItem.id === item.id && cartItem.type === type
@@ -204,11 +208,11 @@ const TransactionSelectionScreen = () => {
         {
           id: item.id,
           name: item.name,
-          price: type === 'service' ? (item as Schema['Service']['type']).price : (item as Schema['Product']['type']).price,
+          price: type === 'product' ? (item as Product).price : 0,
           quantity: 1,
           type,
-          serviceId: type === 'product' ? serviceId : undefined,
-          imageUrl: type === 'product' ? (item as Schema['Product']['type']).urlPicture : null
+          categoryId: type === 'product' ? categoryId : undefined,
+          imageUrl: type === 'product' ? (item as Product).urlPicture : null
         }
       ]);
     }
@@ -250,7 +254,7 @@ const TransactionSelectionScreen = () => {
       price: item.price,
       quantity: item.quantity,
       type: item.type,
-      serviceId: item.serviceId,
+      categoryId: item.categoryId,
       imageUrl: item.imageUrl
     }));
     
@@ -266,8 +270,8 @@ const TransactionSelectionScreen = () => {
     });
   };
   
-  // Render service tabs at the top
-  const renderServiceTabs = () => {
+  // Render category tabs at the top
+  const renderCategoryTabs = () => {
     return (
       <ScrollView 
         horizontal 
@@ -275,22 +279,22 @@ const TransactionSelectionScreen = () => {
         style={styles.tabsContainer}
         contentContainerStyle={styles.tabsContent}
       >
-        {services.map((serviceItem, index) => (
+        {category.map((categoryItem, index) => (
           <TouchableOpacity
-            key={serviceItem.service.id}
+            key={categoryItem.category.id}
             style={[
               styles.tabItem,
-              selectedServiceIndex === index && styles.tabItemActive
+              selectedCategoryIndex === index && styles.tabItemActive
             ]}
-            onPress={() => setSelectedServiceIndex(index)}
+            onPress={() => setSelectedCategoryIndex(index)}
           >
             <Text 
               style={[
                 styles.tabText,
-                selectedServiceIndex === index && styles.tabTextActive
+                selectedCategoryIndex === index && styles.tabTextActive
               ]}
             >
-              {serviceItem.service.name}
+              {categoryItem.category.name}
             </Text>
           </TouchableOpacity>
         ))}
@@ -298,28 +302,28 @@ const TransactionSelectionScreen = () => {
     );
   };
 
-  // Render the selected service's content
-  const renderSelectedServiceContent = () => {
-    if (services.length === 0) return null;
+  // Render the selected category's content
+  const renderSelectedCategoryContent = () => {
+    if (category.length === 0) return null;
     
-    const { service, products } = services[selectedServiceIndex];
-    
+    const selectedCategory = category[selectedCategoryIndex];
+    const { category: categoryData, products } = selectedCategory;
     return (
       <View style={styles.serviceContainer}>
         <View style={styles.serviceHeader}>
-          <Text style={styles.serviceName}>{service.name}</Text>
+          <Text style={styles.serviceName}>{categoryData.name}</Text>
           <TouchableOpacity 
             style={styles.addButton}
-            onPress={() => addToCart(service, 'service')}
+            onPress={() => addToCart(categoryData, 'category')}
           >
             <Text style={styles.addButtonText}>+ Add</Text>
           </TouchableOpacity>
         </View>
         
-        {service.description && (
-          <Text style={styles.serviceDescription}>{service.description}</Text>
+        {categoryData.description && (
+          <Text style={styles.serviceDescription}>{categoryData.description}</Text>
         )}
-        <Text style={styles.servicePrice}>Base Price: ${service.price.toFixed(2)}</Text>
+        <Text style={styles.servicePrice}>Base Price: ${categoryData.price ? categoryData.price.toFixed(2) : '0.00'}</Text>
         
         <Text style={styles.productsHeader}>Products:</Text>
         
@@ -331,7 +335,7 @@ const TransactionSelectionScreen = () => {
             renderItem={({ item }) => (
               <TouchableOpacity 
                 style={styles.productItem}
-                onPress={() => addToCart(item, 'product', item.serviceID)}
+                onPress={() => addToCart(item, 'product', categoryData.id)}
               >
                 {item.urlPicture && (
                   <Image 
@@ -394,7 +398,7 @@ const TransactionSelectionScreen = () => {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0000ff" />
-          <Text style={styles.loadingText}>Loading services and products...</Text>
+          <Text style={styles.loadingText}>Loading categories and products...</Text>
         </View>
       ) : (
         <>
@@ -429,11 +433,11 @@ const TransactionSelectionScreen = () => {
             {/* Left Column: Service Content */}
             <View style={styles.leftColumn}>
               {/* Service tabs */}
-              {renderServiceTabs()}
+              {renderCategoryTabs()}
               
               {/* Selected service content */}
               <View style={styles.serviceContentScroll}>
-    {renderSelectedServiceContent()}
+    {renderSelectedCategoryContent()}
   </View>
               
               {/* Calendar Section - Moved here for better visibility */}
@@ -490,7 +494,7 @@ const TransactionSelectionScreen = () => {
                 ) : (
                   <View style={styles.emptyCartContainer}>
                     <Text style={styles.emptyCartText}>Your cart is empty</Text>
-                    <Text style={styles.emptyCartSubtext}>Add services or products to get started</Text>
+                    <Text style={styles.emptyCartSubtext}>Add categories or products to get started</Text>
                   </View>
                 )}
               </View>

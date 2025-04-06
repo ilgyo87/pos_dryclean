@@ -1,9 +1,9 @@
 // src/utils/qrCodeGenerator.tsx
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource'; // Ensure this import is correct and the file is up-to-date
+import type { Schema } from '../../../amplify/data/resource'; // Ensure this import is correct and the file is up-to-date
 import QRCode from 'react-native-qrcode-svg';
 import { View } from 'react-native';
-import { getUrl, uploadData, remove } from 'aws-amplify/storage';
+import { getUrl } from 'aws-amplify/storage';
 
 
 // Initialize the Amplify client with your schema

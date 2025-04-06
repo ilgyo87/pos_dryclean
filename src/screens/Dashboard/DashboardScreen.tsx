@@ -5,10 +5,10 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { generateClient } from 'aws-amplify/data';
-import { Schema } from '../../amplify/data/resource';
-import { styles } from '../styles/screens/dashboardStyles';
+import { Schema } from '../../../amplify/data/resource';
+import { styles } from './styles/dashboardStyles';
 import Toast from 'react-native-toast-message';
-import { getQRCodeURL } from '../utils/qrCodeGenerator';
+import { getQRCodeURL } from './../../shared/components/qrCodeGenerator';
 // Use the generated Business type directly for better type safety
 // import { BusinessData } from '../types/BusinessTypes'; // Remove this if using generated type
 type BusinessData = Schema['Business']['type']; // Use the generated type

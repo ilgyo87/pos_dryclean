@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   Text,
 } from 'react-native';
-import { styles } from '../styles/screens/productManagementStyles';
-import { Schema } from '../../amplify/data/resource';
-import { Category as AppCategory } from '../types/productTypes';
+import { styles } from '../styles/productManagementStyles';
+import { Schema } from '../../../../amplify/data/resource';
+import { Category as AppCategory } from '../../../shared/types/productTypes';
 
 
 // Use the Category type from the schema instead of Service

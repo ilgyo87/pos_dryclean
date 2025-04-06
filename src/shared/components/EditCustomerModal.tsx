@@ -16,11 +16,11 @@ import {
   Image,
 } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
-import { styles } from '../styles/components/editCustomerModalStyles';
+import type { Schema } from '../../../amplify/data/resource';
+import { styles } from '../styles/editCustomerModalStyles';
 import QRCode from 'react-native-qrcode-svg';
-import { generateQRCodeData } from '../utils/qrCodeGenerator';
-import { Customer } from './../types/CustomerTypes';
+import { generateQRCodeData } from './qrCodeGenerator';
+import { Customer } from '../types/CustomerTypes';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();

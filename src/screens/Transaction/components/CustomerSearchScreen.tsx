@@ -16,10 +16,10 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import type { Schema } from './../../../../amplify/data/resource';
 import { v4 as uuidv4 } from 'uuid';
-import CreateCustomerModal from '../components/CreateCustomerModal';
-import { Customer } from '../types/CustomerTypes';
+import CreateCustomerModal from './../../../shared/components/CreateCustomerModal';
+import { Customer } from './../../../shared/types/CustomerTypes';
 
 // Route params type
 type CustomerSearchScreenRouteParams = {
@@ -94,7 +94,7 @@ const CustomerSearchScreen: React.FC = () => {
     const lowerCaseQuery = text.toLowerCase();
     const filtered = customers.filter(customer => {
       const fullName = `${customer.firstName} ${customer.lastName}`.toLowerCase();
-      const phone = customer.phoneNumber || '';
+      const phone = customer.phone || '';
       const email = customer.email?.toLowerCase() || '';
       
       return fullName.includes(lowerCaseQuery) || 
@@ -136,18 +136,30 @@ const CustomerSearchScreen: React.FC = () => {
     return phone;
   };
 
-  // Search for existing customer profiles globally by phone number
+  // Search for existing customer profiles globally by cognitoUserId and phone number
   const searchGlobalCustomers = async (phone: string) => {
     setSearchingGlobally(true);
     try {
       const formattedPhone = formatPhoneNumber(phone);
-      const result = await client.models.Customer.list({
-        filter: { phoneNumber: { eq: formattedPhone } }
-      });
       
-      if (result.errors) {
+      // First try to find by cognitoUserId if the user is authenticated
+      let result;
+      if (user?.userId) {
+        result = await client.models.Customer.list({
+          filter: { cognitoUserId: { eq: user.userId } }
+        });
+      }
+      
+      // If no results by cognitoUserId or no userId available, search by phone
+      if (!result?.data?.length) {
+        result = await client.models.Customer.list({
+          filter: { phone: { eq: formattedPhone } }
+        });
+      }
+      
+      if (result?.errors) {
         console.error('Error searching customers:', result.errors);
-      } else if (result.data && result.data.length > 0) {
+      } else if (result?.data && result.data.length > 0) {
         // Filter out customers from the current business
         const otherBusinessCustomers = result.data.filter(c => c.businessID !== businessId);
         setGlobalSearchResults(otherBusinessCustomers as unknown as Customer[]);
@@ -210,19 +222,24 @@ const CustomerSearchScreen: React.FC = () => {
   // Create a new customer based on an existing one from another business
   const createCustomerFromExisting = async (existingCustomer: Customer) => {
     try {
-      // Use the same global ID if it exists, or create a new one
-      const globalId = existingCustomer.globalId || generateGlobalId();
+      // Use the same cognito user ID if it exists, or create a new one
+      const cognitoId = existingCustomer.cognitoUserId || (user?.userId || null);
       
+      // Create a new customer with the current date as join date
       const result = await client.models.Customer.create({
         businessID: businessId,
         firstName: existingCustomer.firstName,
         lastName: existingCustomer.lastName,
-        phoneNumber: existingCustomer.phoneNumber,
+        phone: existingCustomer.phone,
         email: existingCustomer.email || undefined,
+        address: existingCustomer.address || undefined,
+        city: existingCustomer.city || undefined,
+        state: existingCustomer.state || undefined,
+        zipCode: existingCustomer.zipCode || undefined,
+        notes: existingCustomer.notes || undefined,
+        joinDate: new Date().toISOString(), // Required field in the type but not in schema
         qrCode: existingCustomer.qrCode, // Use the same QR code for recognition
-        globalId: globalId, // Link to the same customer across businesses
-        preferredContactMethod: 'EMAIL',
-        notificationPreferences: 'true'
+        cognitoUserId: cognitoId // Link to the same customer across businesses
       });
       
       if (result.errors) {
@@ -289,7 +306,7 @@ const CustomerSearchScreen: React.FC = () => {
               >
                 <View style={styles.customerInfo}>
                   <Text style={styles.customerName}>{item.firstName} {item.lastName}</Text>
-                  <Text style={styles.customerPhone}>{formatPhoneNumberForDisplay(item.phoneNumber)}</Text>
+                  <Text style={styles.customerPhone}>{formatPhoneNumberForDisplay(item.phone)}</Text>
                   {item.email && <Text style={styles.customerEmail}>{item.email}</Text>}
                 </View>
                 <View style={styles.selectButtonContainer}>
@@ -319,7 +336,7 @@ const CustomerSearchScreen: React.FC = () => {
         businessId={businessId}
         onClose={() => setModalVisible(false)}
         onCustomerCreated={handleNewCustomerCreated}
-        initialData={{ phoneNumber: searchText.length > 5 ? searchText : undefined }}
+        initialData={{ phone: searchText.length > 5 ? searchText : undefined }}
       />
 
       {/* QR Code Scanner Modal would go here */}

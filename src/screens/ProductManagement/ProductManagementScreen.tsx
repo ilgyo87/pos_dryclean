@@ -8,21 +8,21 @@ import {
   Image,
 } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import type { Schema } from '../../../amplify/data/resource';
 import { useRoute } from '@react-navigation/native';
-import { styles } from '../styles/screens/productManagementStyles';
+import { styles } from './styles/productManagementStyles';
 
 // Import components
-import ServiceModal from '../components/ServiceModal';
-import ProductModal from '../components/ProductModal';
-import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
-import ProductItem from '../components/ProductItem';
+import ServiceModal from './components/ServiceModal';
+import ProductModal from './components/ProductModal';
+import DeleteConfirmationModal from '../../shared/components/DeleteConfirmationModal';
+import ProductItem from './components/ProductItem';
 
 // Import types
-import { Category, Product, RouteParams } from '../types/productTypes';
+import { Category, Product, RouteParams } from '../../shared/types/productTypes';
 import { Alert } from 'react-native';
-import CategoryTabs from '../components/ServiceTabs';
-import Pagination from '../utils/Pagination';
+import CategoryTabs from './components/ServiceTabs';
+import Pagination from '../../shared/components/Pagination';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -97,7 +97,6 @@ const ProductManagementScreen: React.FC = () => {
         price: item.price,
         sku: item.sku || '',
         imageUrl: item.imageUrl || undefined,
-        urlPicture: item.imageUrl || undefined,
         taxable: item.taxable || false,
         businessID: item.businessID,
         categoryID: item.categoryID,
@@ -238,7 +237,7 @@ const ProductManagementScreen: React.FC = () => {
     name: string;
     description: string;
     price: string;
-    urlPicture: string;
+    imageUrl: string;
   }) => {
     try {
       if (isNewService) {
@@ -258,7 +257,7 @@ const ProductManagementScreen: React.FC = () => {
             description: result.data.description || '',
             businessID: result.data.businessID,
             price: parseFloat(categoryData.price), // Store locally only
-            urlPicture: categoryData.urlPicture.trim() || undefined // Store locally only
+            imageUrl: categoryData.imageUrl.trim() || undefined // Store locally only
           } as unknown as Category;
 
           setCategories(prev => [...prev, newService]);
@@ -270,7 +269,7 @@ const ProductManagementScreen: React.FC = () => {
           id: editingCategory.id,
           name: categoryData.name.trim(),
           description: categoryData.description.trim() || undefined,
-          // Note: price and urlPicture are not updated in the database
+          // Note: price and imageUrl are not updated in the database
         });
 
         if (result.data) {
@@ -280,7 +279,7 @@ const ProductManagementScreen: React.FC = () => {
             name: categoryData.name.trim(),
             description: categoryData.description.trim() || '',
             price: parseFloat(categoryData.price),
-            urlPicture: categoryData.urlPicture.trim() || undefined
+            imageUrl: categoryData.imageUrl.trim() || undefined
           } as unknown as Category;
 
           setCategories(prev => prev.map(s =>
@@ -300,7 +299,7 @@ const ProductManagementScreen: React.FC = () => {
     name: string;
     description: string;
     price: string;
-    urlPicture: string;
+    imageUrl: string;
   }) => {
     try {
       if (isNewProduct) {
@@ -310,9 +309,9 @@ const ProductManagementScreen: React.FC = () => {
           description: productData.description.trim() || undefined,
           price: parseFloat(productData.price),
           businessID: businessId,
-          categoryID: selectedCategoryId || '', // Use selectedCategoryId as categoryID
-          imageUrl: productData.urlPicture.trim() || undefined, // Map urlPicture to imageUrl
-          taxable: true // Default value
+          categoryID: selectedCategoryId || '',
+          imageUrl: productData.imageUrl.trim() || undefined, // Use urlPicture directly
+          taxable: true
         });
 
         if (result.data) {
@@ -348,8 +347,8 @@ const ProductManagementScreen: React.FC = () => {
           name: productData.name.trim(),
           description: productData.description.trim() || undefined,
           price: parseFloat(productData.price),
-          categoryID: selectedCategoryId || editingProduct.categoryID, // Use selectedCategoryId as categoryID
-          imageUrl: productData.urlPicture.trim() || undefined, // Map urlPicture to imageUrl
+          categoryID: selectedCategoryId || editingProduct.categoryID,
+          imageUrl: productData.imageUrl.trim() || undefined, // Use urlPicture directly
           businessID: businessId
         });
 
@@ -361,7 +360,6 @@ const ProductManagementScreen: React.FC = () => {
             description: result.data.description || '',
             price: result.data.price,
             categoryID: result.data.categoryID, // Use categoryID as categoryID
-            urlPicture: result.data.imageUrl || '', // Map imageUrl to urlPicture
             imageUrl: result.data.imageUrl || ''
           };
 
@@ -507,7 +505,7 @@ const ProductManagementScreen: React.FC = () => {
               <View style={{ flex: 1 }}>
                 <View style={styles.gridContainer}>
                   {paginatedProducts.map((item, index) => (
-                    <View key={item.id} style={ [styles.gridItem] }>
+                    <View key={item.id} style={[styles.gridItem]}>
                       <ProductItem
                         item={item}
                         onEdit={handleEditProduct}
@@ -530,11 +528,11 @@ const ProductManagementScreen: React.FC = () => {
                     right: 0,
                   }}>
                     <Pagination
-    currentPage={currentPage}
-    totalPages={totalPages}
-    onPrevPage={handlePrevPage}
-    onNextPage={handleNextPage}
-  />
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPrevPage={handlePrevPage}
+                      onNextPage={handleNextPage}
+                    />
                   </View>
                 )}
               </View>
@@ -568,7 +566,7 @@ const ProductManagementScreen: React.FC = () => {
         visible={isServiceModalVisible}
         onClose={() => setIsServiceModalVisible(false)}
         onSave={handleSaveCategory}
-        service={editingCategory}
+        category={editingCategory}
         isNewService={isNewService}
       />
 

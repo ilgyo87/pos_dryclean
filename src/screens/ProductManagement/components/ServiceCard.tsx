@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import { Category } from '../types/productTypes';
+import { Category } from '../../../shared/types/productTypes';
 
 interface CategoryCardProps {
   category: Category;

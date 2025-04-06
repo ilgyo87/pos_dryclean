@@ -7,71 +7,70 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { styles } from '../styles/screens/productManagementStyles';
-import { Product } from '../types/productTypes';
+import { styles } from '../styles/productManagementStyles';
+import { Category } from '../../../shared/types/productTypes';
 
-interface ProductModalProps {
+interface CategoryModalProps {
   visible: boolean;
-  isNewProduct: boolean;
-  product: Product | null;
+  isNewService: boolean;
+  category: Category | null;
   onClose: () => void;
-  onSave: (productData: {
+  onSave: (serviceData: {
     name: string;
     description: string;
     price: string;
-    urlPicture: string;
+    category?: string;
+    imageUrl: string;
   }) => void;
   onDelete?: () => void;
 }
 
-const ProductModal: React.FC<ProductModalProps> = ({
+const CategoryModal: React.FC<CategoryModalProps> = ({
   visible,
-  isNewProduct,
-  product,
+  isNewService,
+  category,
   onClose,
   onSave,
   onDelete,
 }) => {
   // Form state
-  const [productName, setProductName] = useState('');
-  const [productDescription, setProductDescription] = useState('');
-  const [productPrice, setProductPrice] = useState('');
-  const [productUrlPicture, setProductUrlPicture] = useState('');
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryDescription, setCategoryDescription] = useState('');
+  const [categoryPrice, setCategoryPrice] = useState('');
+  const [categoryUrlPicture, setCategoryUrlPicture] = useState('');
 
-  // Reset form when product changes
+  // Reset form when service changes
   useEffect(() => {
-    if (product) {
-      setProductName(product.name);
-      setProductDescription(product.description || '');
-      setProductPrice(product.price.toString());
-      setProductUrlPicture(product.urlPicture || '');
+    if (category) {
+      setCategoryName(category.name);
+      setCategoryDescription(category.description || '');
+      setCategoryPrice(category.price.toString());
     } else {
-      setProductName('');
-      setProductDescription('');
-      setProductPrice('');
-      setProductUrlPicture('');
+      setCategoryName('');
+      setCategoryDescription('');
+      setCategoryPrice('');
     }
-  }, [product]);
+  }, [category]);
 
   // Validate form and save
   const handleSave = () => {
     // Validate required fields
-    if (!productName.trim() || !productPrice.trim()) {
-      Alert.alert('Error', 'Product name and price are required.');
+    if (!categoryName.trim()) {
+      Alert.alert('Error', 'Category name is required');
       return;
     }
 
-    if (isNaN(parseFloat(productPrice))) {
+    if (!categoryPrice.trim() || isNaN(parseFloat(categoryPrice))) {
       Alert.alert('Error', 'Please enter a valid price');
       return;
     }
 
     // Call onSave with form data
     onSave({
-      name: productName,
-      description: productDescription,
-      price: productPrice,
-      urlPicture: productUrlPicture,
+      name: categoryName,
+      description: categoryDescription,
+      price: categoryPrice,
+      imageUrl: categoryUrlPicture,
     });
   };
 
@@ -85,17 +84,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle || { fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>
-            {isNewProduct ? 'Add New Product' : 'Edit Product'}
+            {isNewService ? 'Add New Service' : 'Edit Service'}
           </Text>
           
           {/* Form fields */}
           <View style={styles.formGroup}>
-            <Text style={styles.formLabel}>Product Name *</Text>
+            <Text style={styles.formLabel}>Service Name *</Text>
             <TextInput
               style={styles.formInput}
-              value={productName}
-              onChangeText={setProductName}
-              placeholder="Enter product name"
+              value={categoryName}
+              onChangeText={setCategoryName}
+              placeholder="Enter service name"
             />
           </View>
   
@@ -103,9 +102,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <Text style={styles.formLabel}>Description</Text>
             <TextInput
               style={[styles.formInput, styles.textArea]}
-              value={productDescription}
-              onChangeText={setProductDescription}
-              placeholder="Enter product description"
+              value={categoryDescription}
+              onChangeText={setCategoryDescription}
+              placeholder="Enter service description"
               multiline
               numberOfLines={3}
             />
@@ -115,8 +114,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <Text style={styles.formLabel}>Price *</Text>
             <TextInput
               style={styles.formInput}
-              value={productPrice}
-              onChangeText={setProductPrice}
+              value={categoryPrice}
+              onChangeText={setCategoryPrice}
               placeholder="Enter price"
               keyboardType="numeric"
             />
@@ -126,8 +125,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
             <Text style={styles.formLabel}>Image URL</Text>
             <TextInput
               style={styles.formInput}
-              value={productUrlPicture}
-              onChangeText={setProductUrlPicture}
+              value={categoryUrlPicture}
+              onChangeText={setCategoryUrlPicture}
               placeholder="Enter image URL"
             />
           </View>
@@ -154,4 +153,4 @@ const ProductModal: React.FC<ProductModalProps> = ({
   );
 };
 
-export default ProductModal;
+export default CategoryModal;

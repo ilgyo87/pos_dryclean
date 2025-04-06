@@ -51,6 +51,7 @@ const schema = a.schema({
       name: a.string().required(),
       description: a.string(),
       businessID: a.string().required(), // Foreign key for Business
+      price: a.float(), // Optional: price for category
       // Define relationships
       // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
       items: a.hasMany('Item', 'categoryID'),

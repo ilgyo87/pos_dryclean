@@ -8,15 +8,15 @@ import { Authenticator, useAuthenticator } from "@aws-amplify/ui-react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import CreateBusinessModal from './components/CreateBusinessModal';
-import DashboardScreen from './screens/DashboardScreen';
+import CreateBusinessModal from './shared/components/CreateBusinessModal';
+import DashboardScreen from './screens/Dashboard/DashboardScreen';
 import outputs from "../amplify_outputs.json";
-import CustomerEditScreen from './screens/CustomerEditScreen';
-import TransactionSelectionScreen from './screens/TransactionSelectionScreen';
-import ProductManagementScreen from './screens/ProductManagementScreen';
-import CheckoutScreen from './screens/CheckoutScreen';
-import ReceiptScreen from './screens/ReceiptScreen';
-import CustomerSearchScreen from './screens/CustomerSearchScreen';
+import CustomerEditScreen from './screens/CustomerManagement/CustomerEditScreen';
+import TransactionSelectionScreen from './screens/Transaction/TransactionSelectionScreen';
+import ProductManagementScreen from './screens/ProductManagement/ProductManagementScreen';
+import CheckoutScreen from './screens/Transaction/components/CheckoutScreen';
+import ReceiptScreen from './screens/Transaction/components/ReceiptScreen';
+import CustomerSearchScreen from './screens/Transaction/CustomerSearchScreen';
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);

@@ -12,13 +12,13 @@ import {
   Platform
 } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import type { Schema } from '../../../amplify/data/resource';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
-import { seedBusinessData } from '../utils/seedData'; // Import seeding function
-import QRCodeCapture from './QRCodeCapture'; // Import the QR code capture component
-import { attachQRCodeKeyToEntity } from '../utils/qrCodeGenerator'; // Import the new function
-import { styles } from '../styles/components/createBusinessStyles'; // Import styles
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Import Icon
+import { seedBusinessData } from './seedData'; 
+import QRCodeCapture from './QRCodeCapture'; 
+import { attachQRCodeKeyToEntity } from './qrCodeGenerator'; 
+import { styles } from '../styles/createBusinessStyles'; 
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; 
 
 const client = generateClient<Schema>();
 
