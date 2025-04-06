@@ -1,5 +1,5 @@
 // src/components/CreateBusinessModal.tsx
-import React, { useState, useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Modal,
   View,
@@ -249,108 +249,105 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
 
           {/* Conditional Rendering for Form vs QR Scanner */}
           {qrCaptureVisible ? (
-             // --- QR Scanner View ---
-             <View style={{ flex: 1 }}>
-               <Text style={styles.modalTitle}>Generating Business QR Code</Text>
-               {newBusinessId ? (
-                 <QRCodeCapture
-                   value={newBusinessId} 
-                   entityType="Business"
-                   entityId={newBusinessId} 
-                   onCapture={handleQrComplete} 
-                   size={250} 
-                 />
-               ) : (
-                 <ActivityIndicator size="large" color="#007bff" />
-               )}
-               <Text style={{ textAlign: 'center', marginTop: 10, color: '#555' }}>
-                 Generating and saving QR code...
-               </Text>
-               <View style={{ marginTop: 15, alignItems: 'center' }}>
-                 <TouchableOpacity
-                   style={[styles.button, styles.cancelButton, { alignSelf: 'center' }, isLoading ? styles.disabledButton : null]}
-                   onPress={() => handleQrComplete(null)} 
-                   disabled={isLoading}
-                 >
-                   <Text style={styles.buttonText}>Skip / Cancel</Text>
-                 </TouchableOpacity>
-               </View>
-             </View>
-             
+            // --- QR Scanner View ---
+            <View style={{ flex: 1 }}>
+              <Text style={styles.modalTitle}>Generating Business QR Code</Text>
+              {newBusinessId ? (
+                <QRCodeCapture
+                  value={newBusinessId}
+                  entityType="Business"
+                  entityId={newBusinessId}
+                  onCapture={handleQrComplete}
+                  size={250}
+                />
+              ) : (
+                <ActivityIndicator size="large" color="#007bff" />
+              )}
+              <Text style={{ textAlign: 'center', marginTop: 10, color: '#555' }}>Generating and saving QR code...</Text>
+              <View style={{ marginTop: 15, alignItems: 'center' }}>
+                <TouchableOpacity
+                  style={[styles.button, styles.cancelButton, { alignSelf: 'center' }, isLoading ? styles.disabledButton : null]}
+                  onPress={() => handleQrComplete(null)}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.buttonText}>Skip / Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           ) : (
-            // --- Form View ---
-            <>
-              <Text style={styles.modalTitle}>Create New Business</Text>
-              {/* ScrollView should contain all inputs */}
-              <ScrollView style={styles.scrollView}>
-                {/* Business Name */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Business Name *</Text>
-                  <TextInput
-                    style={[styles.input, !businessName && isFormValid === false ? styles.inputError : null]} // Example validation style
-                    placeholder="Enter business name"
-                    value={businessName}
-                    onChangeText={setBusinessName}
-                    editable={!isLoading}
-                  />
-                  {/* Simple error message example */}
-                  {/* {!businessName && isFormValid === false && <Text style={styles.errorMessage}>Business name is required.</Text>} */}
-                </View>
+          // --- Form View ---
+          <>
+            <Text style={styles.modalTitle}>Create New Business</Text>
+            {/* ScrollView should contain all inputs */}
+            <ScrollView style={styles.scrollView}>
+              {/* Business Name */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Business Name *</Text>
+                <TextInput
+                  style={[styles.input, !businessName && isFormValid === false ? styles.inputError : null]} // Example validation style
+                  placeholder="Enter business name"
+                  value={businessName}
+                  onChangeText={setBusinessName}
+                  editable={!isLoading}
+                />
+                {/* Simple error message example */}
+                {/* {!businessName && isFormValid === false && <Text style={styles.errorMessage}>Business name is required.</Text>} */}
+              </View>
 
-                {/* First Name */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Owner First Name *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter owner's first name"
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    editable={!isLoading}
-                  />
-                </View>
+              {/* First Name */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Owner First Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter owner's first name"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  editable={!isLoading}
+                />
+              </View>
 
-                {/* Last Name */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Owner Last Name *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter owner's last name"
-                    value={lastName}
-                    onChangeText={setLastName}
-                    editable={!isLoading}
-                  />
-                </View>
+              {/* Last Name */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Owner Last Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter owner's last name"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  editable={!isLoading}
+                />
+              </View>
 
-                {/* Phone Number */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Phone Number *</Text>
-                  <View> {/* Wrap input and indicator */}
-                    <TextInput
-                      style={[styles.input, phoneExists ? styles.inputError : null]}
-                      placeholder="Enter phone number (e.g., 5551234567)"
-                      value={phoneNumber} // Display cleaned number
-                      onChangeText={handlePhoneChange}
-                      keyboardType="phone-pad"
-                      autoComplete={Platform.OS === 'ios' ? 'tel' : 'tel-national'} // Platform specific autocomplete
-                      maxLength={15} // Set reasonable max length
-                      editable={!isLoading && !isCheckingPhone}
-                    />
-                    {/* Indicators */}
-                    <View style={styles.phoneCheckIndicator}>
-                      {isCheckingPhone ? <ActivityIndicator size="small" color="#007bff" /> : null}
-                      {phoneCheckComplete && !isCheckingPhone && !phoneExists ? (
-                        <Icon name="check-circle" size={20} color="green" />
-                      ) : null}
-                      {phoneCheckComplete && !isCheckingPhone && phoneExists ? (
-                        <Icon name="alert-circle" size={20} color="red" />
-                      ) : null}
-                    </View>
+              {/* Phone Number */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Phone Number *</Text>
+                <View> {/* Wrap input and indicator */}
+                  <TextInput
+                    style={[styles.input, phoneExists ? styles.inputError : null]}
+                    placeholder="Enter phone number (e.g., 5551234567)"
+                    value={phoneNumber} // Display cleaned number
+                    onChangeText={handlePhoneChange}
+                    keyboardType="phone-pad"
+                    autoComplete={Platform.OS === 'ios' ? 'tel' : 'tel-national'} // Platform specific autocomplete
+                    maxLength={15} // Set reasonable max length
+                    editable={!isLoading && !isCheckingPhone}
+                  />
+                  {/* Indicators */}
+                  <View style={styles.phoneCheckIndicator}>
+                    {isCheckingPhone ? <ActivityIndicator size="small" color="#007bff" /> : null}
+                    {phoneCheckComplete && !isCheckingPhone && !phoneExists ? (
+                      <Icon name="check-circle" size={20} color="green" />
+                    ) : null}
+                    {phoneCheckComplete && !isCheckingPhone && phoneExists ? (
+                      <Icon name="alert-circle" size={20} color="red" />
+                    ) : null}
                   </View>
-                  {phoneCheckComplete && phoneExists && <Text style={styles.errorMessage}>This phone number is already registered.</Text>}
                 </View>
+                {phoneCheckComplete && phoneExists && <Text style={styles.errorMessage}>This phone number is already registered.</Text>}
+              </View>
 
-                {/* Address */}
-                {/* <View style={styles.inputGroup}>
+              {/* Address */}
+              {/* <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Address</Text>
                   <TextInput
                     style={styles.input}
@@ -361,8 +358,8 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
                   />
                 </View> */}
 
-                {/* City */}
-                {/* <View style={styles.inputGroup}>
+              {/* City */}
+              {/* <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>City</Text>
                   <TextInput
                     style={styles.input}
@@ -373,8 +370,8 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
                   />
                 </View> */}
 
-                {/* State */}
-                {/* <View style={styles.inputGroup}>
+              {/* State */}
+              {/* <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>State</Text>
                   <TextInput
                     style={styles.input}
@@ -385,8 +382,8 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
                   />
                 </View> */}
 
-                {/* Zip Code */}
-                {/* <View style={styles.inputGroup}>
+              {/* Zip Code */}
+              {/* <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Zip/Postal Code</Text>
                   <TextInput
                     style={styles.input}
@@ -397,37 +394,37 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
                     editable={!isLoading}
                   />
                 </View> */}
-              </ScrollView>
+            </ScrollView>
 
-              {/* Button Container */}
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity
-                  style={[styles.button, styles.cancelButton, isLoading ? styles.disabledButton : null]}
-                  onPress={() => { if (!isLoading) { resetForm(); onCancel(); } }}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.clearButton, isLoading ? styles.disabledButton : null]}
-                  onPress={() => { if (!isLoading) { resetForm(); } }} // Only reset fields, don't close
-                  disabled={isLoading}
-                >
-                  <Text style={styles.buttonText}>Clear</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.button,
-                    styles.createButton,
-                    (!isFormValid || isLoading || isCheckingPhone || phoneExists) ? styles.disabledButton : null // More comprehensive disabled check
-                  ]}
-                  onPress={handleCreateBusiness}
-                  disabled={!isFormValid || isLoading || isCheckingPhone || phoneExists}
-                >
-                  <Text style={styles.buttonText}>Create</Text>
-                </TouchableOpacity>
-              </View>
-            </>
+            {/* Button Container */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton, isLoading ? styles.disabledButton : null]}
+                onPress={() => { if (!isLoading) { resetForm(); onCancel(); } }}
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.clearButton, isLoading ? styles.disabledButton : null]}
+                onPress={() => { if (!isLoading) { resetForm(); } }} // Only reset fields, don't close
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.createButton,
+                  (!isFormValid || isLoading || isCheckingPhone || phoneExists) ? styles.disabledButton : null // More comprehensive disabled check
+                ]}
+                onPress={handleCreateBusiness}
+                disabled={!isFormValid || isLoading || isCheckingPhone || phoneExists}
+              >
+                <Text style={styles.buttonText}>Create</Text>
+              </TouchableOpacity>
+            </View>
+          </>
           )}
 
           {/* Loading Indicator - Rendered *outside* the conditional, covers modalContent */}

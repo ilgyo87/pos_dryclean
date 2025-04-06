@@ -1,5 +1,7 @@
 // src/components/EditCustomerModal.tsx
 import React, { useState, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+
 import {
   View,
   Text,
@@ -17,25 +19,11 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { styles } from '../styles/components/editCustomerModalStyles';
 import QRCode from 'react-native-qrcode-svg';
-import { generateQRCodeData, EntityType } from '../utils/qrCodeGenerator';
+import { generateQRCodeData } from '../utils/qrCodeGenerator';
+import { Customer } from './../types/CustomerTypes';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
-
-interface Customer {
-  id?: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber: string;
-  email?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  notes?: string;
-  globalId?: string;
-  businessID: string;
-}
 
 interface EditCustomerModalProps {
   visible: boolean;
@@ -59,16 +47,21 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
   initialCustomerData,
 }) => {
   const [customer, setCustomer] = useState<Customer>({
-    firstName: '',
-    lastName: '',
-    phoneNumber: '',
-    email: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    notes: '',
+    id: initialCustomerData?.id || '',
+    firstName: initialCustomerData?.firstName || '',
+    lastName: initialCustomerData?.lastName || '',
+    phone: initialCustomerData?.phone || '',
+    email: initialCustomerData?.email || '',
+    address: initialCustomerData?.address || '',
+    city: initialCustomerData?.city || '',
+    state: initialCustomerData?.state || '',
+    zipCode: initialCustomerData?.zipCode || '',
+    notes: initialCustomerData?.notes || '',
     businessID: businessId,
+    joinDate: initialCustomerData?.joinDate || new Date().toISOString(),
+    qrCode: initialCustomerData?.qrCode || '',
+    lastActiveDate: initialCustomerData?.lastActiveDate || new Date().toISOString(),
+    preferences: initialCustomerData?.preferences || '',
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -87,9 +80,10 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           });
         } else {
           setCustomer({
+            id: uuidv4(),
             firstName: '',
             lastName: '',
-            phoneNumber: '',
+            phone: '',
             email: '',
             address: '',
             city: '',
@@ -97,6 +91,10 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
             zipCode: '',
             notes: '',
             businessID: businessId,
+            joinDate: new Date().toISOString(),
+            qrCode: '',
+            lastActiveDate: new Date().toISOString(),
+            preferences: '',
           });
         }
       } else if (customerId) {
@@ -117,15 +115,18 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           id: response.data.id,
           firstName: response.data.firstName,
           lastName: response.data.lastName,
-          phoneNumber: response.data.phoneNumber,
+          phone: response.data.phone || '',
           email: response.data.email || '',
           address: response.data.address || '',
           city: response.data.city || '',
           state: response.data.state || '',
           zipCode: response.data.zipCode || '',
           notes: response.data.notes || '',
-          globalId: response.data.globalId || '',
           businessID: response.data.businessID,
+          joinDate: response.data.joinDate,
+          qrCode: response.data.qrCode,
+          lastActiveDate: response.data.lastActiveDate,
+          preferences: response.data.preferences,
         });
       }
     } catch (error) {
@@ -142,7 +143,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
         id: customer.id,
         firstName: customer.firstName,
         lastName: customer.lastName,
-        phoneNumber: customer.phoneNumber,
+        phone: customer.phone,
         businessID: customer.businessID,
       };
 
@@ -150,7 +151,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
         qrDataInput.id &&
         qrDataInput.firstName &&
         qrDataInput.lastName &&
-        qrDataInput.phoneNumber &&
+        qrDataInput.phone &&
         qrDataInput.businessID
       ) {
         const qrString = generateQRCodeData('Customer', qrDataInput);
@@ -172,13 +173,13 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.phoneNumber.trim()) {
+    if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.phone.trim()) {
       Alert.alert('Required Fields', 'First name, last name, and phone number are required.');
       return;
     }
 
     const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(customer.phoneNumber.replace(/\D/g, ''))) {
+    if (!phoneRegex.test(customer.phone.replace(/\D/g, ''))) {
       Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number');
       return;
     }
@@ -200,7 +201,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
         const createInput: any = {
           firstName: customer.firstName,
           lastName: customer.lastName,
-          phoneNumber: customer.phoneNumber,
+          phone: customer.phone,
           email: customer.email,
           businessID: businessId,
         };
@@ -210,7 +211,10 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
         if (customer.state && customer.state.trim() !== '') createInput.state = customer.state;
         if (customer.zipCode && customer.zipCode.trim() !== '') createInput.zipCode = customer.zipCode;
         if (customer.notes && customer.notes.trim() !== '') createInput.notes = customer.notes;
-        if (customer.globalId && customer.globalId.trim() !== '') createInput.globalId = customer.globalId;
+        if (customer.joinDate && customer.joinDate.trim() !== '') createInput.joinDate = customer.joinDate;
+        if (customer.qrCode && customer.qrCode.trim() !== '') createInput.qrCode = customer.qrCode;
+        if (customer.lastActiveDate && customer.lastActiveDate.trim() !== '') createInput.lastActiveDate = customer.lastActiveDate;
+        if (customer.preferences && customer.preferences.trim() !== '') createInput.preferences = customer.preferences;
 
         const result = await client.models.Customer.create(createInput);
 
@@ -219,7 +223,6 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
         }
 
         if (result.data && result.data.id) {
-          const newCustomerId = result.data.id;
           const fullName = `${customer.firstName} ${customer.lastName}`;
           onSave(fullName);
         } else {
@@ -230,7 +233,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           id: customer.id,
           firstName: customer.firstName,
           lastName: customer.lastName,
-          phoneNumber: customer.phoneNumber,
+          phone: customer.phone,
           email: customer.email,
         };
 
@@ -239,6 +242,10 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
         if (customer.state && customer.state.trim() !== '') updateInput.state = customer.state;
         if (customer.zipCode && customer.zipCode.trim() !== '') updateInput.zipCode = customer.zipCode;
         if (customer.notes && customer.notes.trim() !== '') updateInput.notes = customer.notes;
+        if (customer.joinDate && customer.joinDate.trim() !== '') updateInput.joinDate = customer.joinDate;
+        if (customer.qrCode && customer.qrCode.trim() !== '') updateInput.qrCode = customer.qrCode;
+        if (customer.lastActiveDate && customer.lastActiveDate.trim() !== '') updateInput.lastActiveDate = customer.lastActiveDate;
+        if (customer.preferences && customer.preferences.trim() !== '') updateInput.preferences = customer.preferences;
 
         const result = await client.models.Customer.update(updateInput);
 
@@ -349,8 +356,8 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                 <Text style={styles.inputLabel}>Phone Number *</Text>
                 <TextInput
                   style={styles.textInput}
-                  value={customer.phoneNumber}
-                  onChangeText={(text) => handleInputChange('phoneNumber', text)}
+                  value={customer.phone}
+                  onChangeText={(text) => handleInputChange('phone', text)}
                   placeholder="Enter phone number"
                   keyboardType="phone-pad"
                 />
@@ -361,7 +368,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                 <Text style={styles.inputLabel}>Email *</Text>
                 <TextInput
                   style={styles.textInput}
-                  value={customer.email}
+                  value={customer.email || ''}
                   onChangeText={(text) => handleInputChange('email', text)}
                   placeholder="Enter email address"
                   keyboardType="email-address"
@@ -374,7 +381,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                 <Text style={styles.inputLabel}>Address</Text>
                 <TextInput
                   style={styles.textInput}
-                  value={customer.address}
+                  value={customer.address || ''}
                   onChangeText={(text) => handleInputChange('address', text)}
                   placeholder="Enter street address"
                 />
@@ -386,7 +393,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   <Text style={styles.inputLabel}>City</Text>
                   <TextInput
                     style={styles.textInput}
-                    value={customer.city}
+                    value={customer.city || ''}
                     onChangeText={(text) => handleInputChange('city', text)}
                     placeholder="City"
                   />
@@ -396,7 +403,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   <Text style={styles.inputLabel}>State</Text>
                   <TextInput
                     style={styles.textInput}
-                    value={customer.state}
+                    value={customer.state || ''}
                     onChangeText={(text) => handleInputChange('state', text)}
                     placeholder="State"
                     maxLength={2}
@@ -408,7 +415,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                   <Text style={styles.inputLabel}>ZIP</Text>
                   <TextInput
                     style={styles.textInput}
-                    value={customer.zipCode}
+                    value={customer.zipCode || ''}
                     onChangeText={(text) => handleInputChange('zipCode', text)}
                     placeholder="Zip"
                     keyboardType="number-pad"
@@ -422,7 +429,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                 <Text style={styles.inputLabel}>Notes</Text>
                 <TextInput
                   style={[styles.textInput, styles.multilineInput]}
-                  value={customer.notes}
+                  value={customer.notes || ''}
                   onChangeText={(text) => handleInputChange('notes', text)}
                   placeholder="Add notes about this customer"
                   multiline

@@ -14,12 +14,12 @@ const client = generateClient<Schema>();
 // are actually defined in your amplify/data/resource.ts schema.
 export type EntityType = 'Business' | 'Employee' | 'Customer' | 'Garment';
 
-// Define a common interface for entity data that includes an 'id' and optionally 'name', 'phoneNumber' etc.
+// Define a common interface for entity data that includes an 'id' and optionally 'name', 'phone' etc.
 // Adjust this based on common fields used in generateQRCodeData
 interface BaseEntityData {
   id: string;
   name?: string;
-  phoneNumber?: string;
+  phone?: string;
   // Add other potential common fields if needed
 }
 
@@ -43,7 +43,7 @@ export const generateQRCodeData = <T extends BaseEntityData>(
     case 'Business':
       specificData = {
         name: data.name,
-        phoneNumber: data.phoneNumber,
+        phone: data.phone,
         // Add other relevant Business fields from 'data'
       };
       break;
@@ -56,10 +56,10 @@ export const generateQRCodeData = <T extends BaseEntityData>(
       };
       break;
     case 'Customer':
-      // Assuming Customer has name and phoneNumber
+      // Assuming Customer has name and phone
       specificData = {
         name: data.name,
-        phoneNumber: data.phoneNumber,
+        phone: data.phone,
         // Add other relevant Customer fields from 'data'
       };
       break;

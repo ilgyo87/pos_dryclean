@@ -65,13 +65,13 @@ export default function DashboardScreen({ route }: { route: any }) {
           // Fetch QR code URL if the business has a qrCode field
           if (fetchedData.qrCode) {
             try {
-                const url = await getQRCodeURL(fetchedData.qrCode);
-                console.log('Generated QR Code URL:', url);
-                setQrCodeUrl(url);
+              const url = await getQRCodeURL(fetchedData.qrCode);
+              console.log('Generated QR Code URL:', url);
+              setQrCodeUrl(url);
             } catch (qrError) {
-                console.error("Error fetching QR Code URL:", qrError);
-                // Optionally show a toast or message about QR code failure
-                Toast.show({ type: 'error', text1: 'Could not load QR Code' });
+              console.error("Error fetching QR Code URL:", qrError);
+              // Optionally show a toast or message about QR code failure
+              Toast.show({ type: 'error', text1: 'Could not load QR Code' });
             }
           } else {
             console.log("Business has no QR code key stored.");
@@ -83,7 +83,7 @@ export default function DashboardScreen({ route }: { route: any }) {
         }
       } catch (error) {
         console.error('Error fetching business data:', error);
-         Toast.show({ type: 'error', text1: 'Failed to load business data' });
+        Toast.show({ type: 'error', text1: 'Failed to load business data' });
         // Keep businessData as null
       } finally {
         setIsLoading(false); // Stop loading regardless of outcome
@@ -104,9 +104,9 @@ export default function DashboardScreen({ route }: { route: any }) {
         visibilityTime: 5000, // Increased visibility time
         position: 'bottom', // Show at the bottom
       });
-       // Optional: Clear the param to prevent showing the message again on navigation changes
-       // This depends on your navigation setup
-       // navigation.setParams({ showSeededMessage: undefined });
+      // Optional: Clear the param to prevent showing the message again on navigation changes
+      // This depends on your navigation setup
+      // navigation.setParams({ showSeededMessage: undefined });
     }
   }, [route.params?.showSeededMessage]);
 
@@ -123,22 +123,22 @@ export default function DashboardScreen({ route }: { route: any }) {
   const navigateToScreen = (screenName: string) => {
     // Only navigate if business data is loaded
     if (!businessData?.id) {
-         Toast.show({ type: 'info', text1: 'Loading business data...' });
-        return;
+      Toast.show({ type: 'info', text1: 'Loading business data...' });
+      return;
     }
     const currentBusinessId = businessData.id;
     const currentBusinessName = businessData.name || 'Business'; // Provide a fallback name
 
-    const params: { businessId: string; businessName: string; [key: string]: any } = {
+    const params: { businessId: string; businessName: string;[key: string]: any } = {
       businessId: currentBusinessId,
       businessName: currentBusinessName,
     };
 
-     // Special case for Customer screen to ensure it goes to search/list first
+    // Special case for Customer screen to ensure it goes to search/list first
     if (screenName === 'CustomerEdit') {
-        navigation.navigate('CustomerSearch', params); // Redirect CustomerEdit to CustomerSearch
+      navigation.navigate('CustomerSearch', params); // Redirect CustomerEdit to CustomerSearch
     } else {
-        navigation.navigate(screenName, params);
+      navigation.navigate(screenName, params);
     }
   };
 
@@ -153,14 +153,14 @@ export default function DashboardScreen({ route }: { route: any }) {
   }
 
   // Handle case where no business data could be loaded
-   if (!businessData) {
-     return (
-       <View style={styles.container}>
-         <Text style={styles.errorText}>Could not load business data.</Text>
-         {/* Optionally add a button to retry or go back */}
-       </View>
-     );
-   }
+  if (!businessData) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Could not load business data.</Text>
+        {/* Optionally add a button to retry or go back */}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -172,20 +172,20 @@ export default function DashboardScreen({ route }: { route: any }) {
           </Text>
         </View>
         {/* Keep QR code display logic */}
-         <View style={styles.qrCodeContainer}>
-           {qrCodeUrl ? (
-              <View style={styles.qrCodeWrapper}>
-                 <Image
-                    source={{ uri: qrCodeUrl }}
-                    style={{ width: 100, height: 100 }}
-                    resizeMode="contain"
-                    onError={(e) => console.log("Error loading QR image:", e.nativeEvent.error)} // Log image load errors
-                 />
-              </View>
-           ) : (
-              businessData.qrCode && <ActivityIndicator size="small" /> // Show spinner if key exists but URL not loaded yet
-           )}
-         </View>
+        <View style={styles.qrCodeContainer}>
+          {qrCodeUrl ? (
+            <View style={styles.qrCodeWrapper}>
+              <Image
+                source={{ uri: qrCodeUrl }}
+                style={{ width: 100, height: 100 }}
+                resizeMode="contain"
+                onError={(e) => console.log("Error loading QR image:", e.nativeEvent.error)} // Log image load errors
+              />
+            </View>
+          ) : (
+            businessData.qrCode && <ActivityIndicator size="small" /> // Show spinner if key exists but URL not loaded yet
+          )}
+        </View>
         <Text style={styles.subtitle}>DASHBOARD</Text>
       </View>
 

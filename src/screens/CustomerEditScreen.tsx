@@ -21,27 +21,11 @@ import BarcodeScannerModal from '../components/BarCodeScannerModal';
 import QRCode from 'react-native-qrcode-svg';
 import { generateQRCodeData } from '../utils/qrCodeGenerator';
 import { styles } from '../styles/screens/customerEditStyles';
+import { Customer } from './../types/CustomerTypes';
 // Import QRCode directly for dynamic generation
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
-
-// Define the Customer type 
-interface Customer {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber: string;
-  email?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  notes?: string;
-  globalId?: string;
-  businessID: string;
-  qrCodeImageUrl?: string;
-}
 
 // Define our route parameter types
 type RootStackParamList = {
@@ -84,14 +68,14 @@ const CustomerEditScreen = () => {
           id: customer.id,
           firstName: customer.firstName,
           lastName: customer.lastName,
-          phoneNumber: customer.phoneNumber,
+          phone: customer.phone,
           email: customer.email || undefined,
           address: customer.address || undefined,
           city: customer.city || undefined,
           state: customer.state || undefined,
           zipCode: customer.zipCode || undefined,
           notes: customer.notes || undefined,
-          globalId: customer.globalId || undefined,
+          joinDate: customer.joinDate,
           businessID: customer.businessID
         }));
         
@@ -129,14 +113,13 @@ const CustomerEditScreen = () => {
           id: customerResult.data.id,
           firstName: customerResult.data.firstName,
           lastName: customerResult.data.lastName,
-          phoneNumber: customerResult.data.phoneNumber,
+          phone: customerResult.data.phone,
           email: customerResult.data.email || undefined,
           address: customerResult.data.address || undefined,
           city: customerResult.data.city || undefined,
           state: customerResult.data.state || undefined,
           zipCode: customerResult.data.zipCode || undefined,
           notes: customerResult.data.notes || undefined,
-          globalId: customerResult.data.globalId || undefined,
           businessID: customerResult.data.businessID
         };
         handleSelectCustomer(customer as Customer);
@@ -168,7 +151,7 @@ const CustomerEditScreen = () => {
           and: [
             {
               or: [
-                { phoneNumber: { eq: searchValue.trim() } },
+                { phone: { eq: searchValue.trim() } },
                 { email: { eq: searchValue.trim().toLowerCase() } }
               ]
             },
@@ -184,14 +167,14 @@ const CustomerEditScreen = () => {
           id: existingCustomer.id,
           firstName: existingCustomer.firstName,
           lastName: existingCustomer.lastName,
-          phoneNumber: existingCustomer.phoneNumber,
+          phone: existingCustomer.phone || '',
           email: existingCustomer.email || undefined,
           address: existingCustomer.address || undefined,
           city: existingCustomer.city || undefined,
           state: existingCustomer.state || undefined,
           zipCode: existingCustomer.zipCode || undefined,
+          joinDate: existingCustomer.joinDate,
           notes: existingCustomer.notes || undefined,
-          globalId: existingCustomer.globalId || undefined,
           businessID: existingCustomer.businessID
         }]);
         setShowQuickAdd(false);
@@ -204,7 +187,7 @@ const CustomerEditScreen = () => {
           and: [
             {
               or: [
-                { phoneNumber: { eq: searchValue.trim() } },
+                { phone: { eq: searchValue.trim() } },
                 { email: { eq: searchValue.trim().toLowerCase() } }
               ]
             },
@@ -220,14 +203,14 @@ const CustomerEditScreen = () => {
           id: '', // Will be created with a new ID
           firstName: externalCustomer.firstName,
           lastName: externalCustomer.lastName,
-          phoneNumber: externalCustomer.phoneNumber,
+          phone: externalCustomer.phone || '',
           email: externalCustomer.email || undefined,
           address: externalCustomer.address || undefined,
           city: externalCustomer.city || undefined,
           state: externalCustomer.state || undefined,
           zipCode: externalCustomer.zipCode || undefined,
           notes: externalCustomer.notes || undefined,
-          globalId: externalCustomer.globalId || externalCustomer.id, // Use existing globalId or the customer's id as the globalId
+          joinDate: externalCustomer.joinDate,
           businessID: businessId // Will be assigned to the current business
         });
         setShowQuickAdd(true);
@@ -265,15 +248,15 @@ const CustomerEditScreen = () => {
       const result = await client.models.Customer.create({
         firstName: foundExternalCustomer.firstName,
         lastName: foundExternalCustomer.lastName,
-        phoneNumber: foundExternalCustomer.phoneNumber,
+        phone: foundExternalCustomer.phone,
         email: foundExternalCustomer.email,
         address: foundExternalCustomer.address,
         city: foundExternalCustomer.city,
         state: foundExternalCustomer.state,
         zipCode: foundExternalCustomer.zipCode,
         notes: foundExternalCustomer.notes,
-        globalId: foundExternalCustomer.globalId,
-        businessID: businessId
+        businessID: businessId,
+        joinDate: new Date().toISOString()
       });
       
       if (result.errors) {
@@ -316,7 +299,7 @@ const CustomerEditScreen = () => {
     const filtered = customers.filter(customer => 
       customer.firstName?.toLowerCase().includes(searchTerm) ||
       customer.lastName?.toLowerCase().includes(searchTerm) ||
-      customer.phoneNumber?.includes(searchTerm) ||
+      customer.phone?.includes(searchTerm) ||
       (customer.email && customer.email.toLowerCase().includes(searchTerm))
     );
     
@@ -340,9 +323,10 @@ const CustomerEditScreen = () => {
           id: '',
           firstName: '',
           lastName: '',
-          phoneNumber: isEmail ? '' : quickSearchPhoneOrEmail,
+          phone: isEmail ? '' : quickSearchPhoneOrEmail,
           email: isEmail ? quickSearchPhoneOrEmail : '',
-          businessID: businessId
+          businessID: businessId,
+          joinDate: new Date().toISOString()
         });
       }
     }
@@ -388,14 +372,13 @@ const CustomerEditScreen = () => {
           id: customer.id,
           firstName: customer.firstName,
           lastName: customer.lastName,
-          phoneNumber: customer.phoneNumber,
+          phone: customer.phone,
           email: customer.email || undefined,
           address: customer.address || undefined,
           city: customer.city || undefined,
           state: customer.state || undefined,
           zipCode: customer.zipCode || undefined,
           notes: customer.notes || undefined,
-          globalId: customer.globalId || undefined,
           businessID: customer.businessID
         }));
         
@@ -488,10 +471,9 @@ const CustomerEditScreen = () => {
         <View style={styles.customerInfoContainer}>
           <Text style={styles.customerName}>
             {item.firstName} {item.lastName}
-            {item.globalId && <Text style={styles.globalBadge}> • Shared</Text>}
           </Text>
           <Text style={styles.customerDetails}>
-            {item.phoneNumber} {item.email ? `• ${item.email}` : ''}
+            {item.phone} {item.email ? `• ${item.email}` : ''}
           </Text>
           {item.address ? (
             <Text style={styles.customerAddress}>
@@ -553,7 +535,7 @@ const CustomerEditScreen = () => {
                   {foundExternalCustomer.firstName} {foundExternalCustomer.lastName}
                 </Text>
                 <Text style={styles.foundProfileDetails}>
-                  {foundExternalCustomer.phoneNumber} • {foundExternalCustomer.email || 'No email'}
+                  {foundExternalCustomer.phone} • {foundExternalCustomer.email || 'No email'}
                 </Text>
                 <View style={styles.quickActionButtons}>
                   <TouchableOpacity
