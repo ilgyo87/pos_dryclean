@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   Image,
+  StyleSheet,
 } from 'react-native';
 import { styles } from '../styles/screens/productManagementStyles';
 import { Product } from '../types/productTypes';
@@ -32,17 +33,51 @@ const ProductItem: React.FC<ProductItemProps> = ({
         />
       ) : (
         <View style={{ width: '100%', height: '100%', backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ fontSize: 10, color: '#aaa' }}>No Image</Text>
+          <Text style={{ fontSize: 40, color: '#aaa' }}>No Image</Text>
         </View>
       )}
+      {/* Name overlay on the image */}
+      <View style={imageOverlayStyles.nameOverlay}>
+        <Text style={imageOverlayStyles.nameText} numberOfLines={1}>{item.name}</Text>
+        {/* Price inside the overlay below the name */}
+        <Text style={imageOverlayStyles.priceText}>${item.price.toFixed(2)}</Text>
+      </View>
     </View>
-    <Text style={styles.listItemName} numberOfLines={1}>{item.name}</Text>
-    <Text style={styles.listItemDescription} numberOfLines={1}>
-      {item.description || 'No description'}
-    </Text>
-    <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
   </TouchableOpacity>
 );
 
+// Additional styles for the overlay
+const imageOverlayStyles = StyleSheet.create({
+  nameOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  nameText: {
+    color: 'white',
+    fontSize: 30, // 4x larger
+    fontWeight: 'bold',
+    marginBottom: 4,
+    // Text shadow properties
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
+  },
+  priceText: {
+    color: '#90EE90', // Green
+    fontSize: 40, // 4x larger
+    fontWeight: 'bold',
+    // Text shadow properties
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  }
+});
 
 export default ProductItem;

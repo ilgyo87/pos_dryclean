@@ -348,39 +348,17 @@ export const styles = StyleSheet.create({
     width: '100%',
     padding: 5,
     margin: 0,
-    backgroundColor: 'white', // Remove the green debug color
-    height: '80%', // Adjust height to better fit 3 rows
+    backgroundColor: 'white',
+    height: '92%',
   },
 
-  // For each grid item ***ADJUST HEIGHT HERE
+  // For each grid item
   gridItem: {
-    width: '19%',  // Keep 4 columns
-    height: 300,   // Make items slightly taller for 3 rows
+    width: '20%',
+    height: 250,  // Slightly reduced height since we don't show description
     padding: 3,
     margin: 0,
     backgroundColor: 'transparent',
-  },
-
-  // For the image container
-  imageContainer: {
-    height: '60%', // Take up 60% of the item height
-    borderRadius: 4,
-    marginBottom: 4,
-    overflow: 'hidden',
-    backgroundColor: 'transparent', // Changed from yellow
-  },
-
-  // For the item info text
-  itemName: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-
-  itemPrice: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#333',
   },
 
   // Container for the list item
@@ -389,42 +367,19 @@ export const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: 'white',
     borderRadius: 8,
-    padding: 5,
+    padding: 4,
     borderWidth: 0.5,
     borderColor: '#ddd',
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
 
-  // Image container within list item
+  // Image container within list item - increased to take more space
   listImageContainer: {
-    height: '55%',
+    height: '85%',  // Increased from 55% to 85% to take more space
     borderRadius: 4,
-    marginBottom: 4,
     overflow: 'hidden',
-    backgroundColor: 'transparent',
-  },
-
-  // Product name text style
-  listItemName: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 2,
-    color: '#333',
-  },
-
-  // Product description text style
-  listItemDescription: {
-    fontSize: 10,
-    color: '#666',
-    marginBottom: 2,
-  },
-
-  // Item description (if referenced separately)
-  itemDescription: {
-    fontSize: 10,
-    color: '#666',
-    marginBottom: 2,
+    backgroundColor: 'white',
+    position: 'relative', // Added to support absolute positioning of name overlay
   },
 })
-

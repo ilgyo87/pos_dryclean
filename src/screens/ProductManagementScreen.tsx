@@ -22,6 +22,7 @@ import ProductItem from '../components/ProductItem';
 import { Category, Product, RouteParams } from '../types/productTypes';
 import { Alert } from 'react-native';
 import CategoryTabs from '../components/ServiceTabs';
+import Pagination from '../utils/Pagination';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -55,7 +56,7 @@ const ProductManagementScreen: React.FC = () => {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [itemToDelete, setItemToDelete] = useState<{ type: 'category' | 'product', id: string } | null>(null);
-  const ITEMS_PER_PAGE = 12;
+  const ITEMS_PER_PAGE = 15;
 
   // Fetch categories and products from the database
   const fetchCategoriesAndProducts = useCallback(async () => {
@@ -464,7 +465,7 @@ const ProductManagementScreen: React.FC = () => {
         {categories.length > 0 ? (
           <View style={{ flex: 1, marginTop: 0 }}>
             {/* Category tabs */}
-            <View style={{ height: 24, marginBottom: 0 }}>
+            <View style={{ height: 25, marginBottom: 0 }}>
               <CategoryTabs
                 categories={categories}
                 selectedCategoryId={selectedCategoryId}
@@ -474,7 +475,7 @@ const ProductManagementScreen: React.FC = () => {
 
             {/* Category info card */}
             {selectedCategoryId && (
-              <View style={{ paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'white', borderRadius: 4, borderWidth: 1, borderColor: '#eee', marginVertical: 4 }}>
+              <View style={{ paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'beige', borderRadius: 4, borderWidth: 1, borderColor: '#eee', marginVertical: 4 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     {categories.find(s => s.id === selectedCategoryId)?.imageUrl ? (
@@ -503,10 +504,10 @@ const ProductManagementScreen: React.FC = () => {
 
             {/* Products grid */}
             {paginatedProducts.length > 0 ? (
-              <View style={{ flex: 1, backgroundColor: 'white' }}>
-                <View style={[ styles.gridContainer ]}>
+              <View style={{ flex: 1 }}>
+                <View style={styles.gridContainer}>
                   {paginatedProducts.map((item, index) => (
-                    <View key={item.id} style={ styles.gridItem }>
+                    <View key={item.id} style={ [styles.gridItem] }>
                       <ProductItem
                         item={item}
                         onEdit={handleEditProduct}
@@ -528,27 +529,12 @@ const ProductManagementScreen: React.FC = () => {
                     left: 0,
                     right: 0,
                   }}>
-                    <TouchableOpacity
-                      onPress={handlePrevPage}
-                      disabled={currentPage === 0}
-                      style={{
-                        padding: 4, // Reduced from 8
-                        opacity: currentPage === 0 ? 0.5 : 1
-                      }}
-                    >
-                      <Text>←</Text>
-                    </TouchableOpacity>
-                    <Text style={{ padding: 4 }}>{currentPage + 1}/{totalPages}</Text>
-                    <TouchableOpacity
-                      onPress={handleNextPage}
-                      disabled={currentPage === totalPages - 1}
-                      style={{
-                        padding: 4, // Reduced from 8
-                        opacity: currentPage === totalPages - 1 ? 0.5 : 1
-                      }}
-                    >
-                      <Text>→</Text>
-                    </TouchableOpacity>
+                    <Pagination
+    currentPage={currentPage}
+    totalPages={totalPages}
+    onPrevPage={handlePrevPage}
+    onNextPage={handleNextPage}
+  />
                   </View>
                 )}
               </View>
