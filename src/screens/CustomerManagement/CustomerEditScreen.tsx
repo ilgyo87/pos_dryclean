@@ -8,7 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { generateClient } from 'aws-amplify/data';
@@ -18,7 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import EditCustomerModal from '../../shared/components/EditCustomerModal';
 import BarcodeScannerModal from '../../shared/components/BarCodeScannerModal';
 import QRCode from 'react-native-qrcode-svg';
-import { generateQRCodeData, EntityType } from '../../shared/components/qrCodeGenerator';
+import { generateQRCodeData, EntityType, getQRCodeURL } from '../../shared/components/qrCodeGenerator';
 import { styles } from './styles/customerEditStyles';
 
 // Initialize Amplify client
@@ -51,6 +52,8 @@ const CustomerEditScreen = () => {
   const [isNewCustomer, setIsNewCustomer] = useState(true);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [barcodeModalVisible, setBarcodeModalVisible] = useState(false);
+  const [loadingQrCodes, setLoadingQrCodes] = useState<Record<string, boolean>>({});
+  const [qrCodeUrls, setQrCodeUrls] = useState<Record<string, string>>({});
   const inputRef = useRef<TextInput>(null);
 
   // Function to fetch all customers for current business
@@ -73,13 +76,15 @@ const CustomerEditScreen = () => {
           state: customer.state || undefined,
           zipCode: customer.zipCode || undefined,
           notes: customer.notes || undefined,
-          businessID: customer.businessID
+          businessID: customer.businessID,
+          qrCode: customer.qrCode || undefined
         }));
 
         setCustomers(customerData as Customer[]);
         setFilteredCustomers(customerData as Customer[]);
 
-        // No need to trigger QR generation anymore as we're generating them dynamically
+        // Load QR code URLs for customers with qrCode field
+        loadQrCodeUrls(customerData as Customer[]);
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -88,6 +93,32 @@ const CustomerEditScreen = () => {
       setIsLoading(false);
     }
   }, [businessId, client]);
+
+  // Load QR code URLs for customers
+  const loadQrCodeUrls = async (customerList: Customer[]) => {
+    const newQrCodeUrls: Record<string, string> = { ...qrCodeUrls };
+    const newLoadingStates: Record<string, boolean> = { ...loadingQrCodes };
+
+    // Process customers with QR codes
+    for (const customer of customerList) {
+      if (customer.qrCode && !newQrCodeUrls[customer.id]) {
+        try {
+          newLoadingStates[customer.id] = true;
+          setLoadingQrCodes(newLoadingStates);
+
+          const qrCodeUrl = await getQRCodeURL(customer.qrCode);
+          newQrCodeUrls[customer.id] = qrCodeUrl;
+        } catch (error) {
+          console.error(`Error loading QR code for customer ${customer.id}:`, error);
+        } finally {
+          newLoadingStates[customer.id] = false;
+        }
+      }
+    }
+
+    setQrCodeUrls(newQrCodeUrls);
+    setLoadingQrCodes(newLoadingStates);
+  };
 
   // Fetch all customers for the current business on component mount
   useEffect(() => {
@@ -98,8 +129,6 @@ const CustomerEditScreen = () => {
       openCustomerById(customerId);
     }
   }, [businessId, customerId]);
-
-  // We don't need the QR code generation effects anymore
 
   // Open a specific customer by ID
   const openCustomerById = async (id: string) => {
@@ -117,7 +146,8 @@ const CustomerEditScreen = () => {
           state: customerResult.data.state || undefined,
           zipCode: customerResult.data.zipCode || undefined,
           notes: customerResult.data.notes || undefined,
-          businessID: customerResult.data.businessID
+          businessID: customerResult.data.businessID,
+          qrCode: customerResult.data.qrCode || undefined
         };
         handleSelectCustomer(customer as Customer);
       }
@@ -245,13 +275,12 @@ const CustomerEditScreen = () => {
         zipCode: foundExternalCustomer.zipCode,
         notes: foundExternalCustomer.notes,
         businessID: businessId,
+        qrCode: foundExternalCustomer.qrCode // Preserve the QR code from the original customer
       });
 
       if (result.errors) {
         throw new Error(result.errors.map(e => e.message).join(', '));
       }
-
-      // No need to generate QR code here as we're generating them dynamically in the render function
 
       Alert.alert(
         'Success',
@@ -370,11 +399,15 @@ const CustomerEditScreen = () => {
           state: customer.state || undefined,
           zipCode: customer.zipCode || undefined,
           notes: customer.notes || undefined,
-          businessID: customer.businessID
+          businessID: customer.businessID,
+          qrCode: customer.qrCode || undefined
         }));
 
         setCustomers(customerData as Customer[]);
         setFilteredCustomers(customerData as Customer[]);
+        
+        // Load QR code URLs for the search results
+        loadQrCodeUrls(customerData as Customer[]);
       }
     } catch (error) {
       console.error('Error searching customers:', error);
@@ -386,16 +419,27 @@ const CustomerEditScreen = () => {
 
   // View full QR code
   const viewFullQRCode = (customer: Customer) => {
-    // In the future, this could be enhanced to show a modal with
-    // a larger QR code that could be saved or shared
-    Alert.alert(
-      'QR Code',
-      `Customer: ${customer.firstName} ${customer.lastName}\nThis QR code can be scanned for quick identification.`,
-      [
-        { text: 'OK', onPress: () => console.log('QR Code viewed') }
-      ],
-      { cancelable: true }
-    );
+    if (customer.qrCode && qrCodeUrls[customer.id]) {
+      // Show QR code from S3
+      Alert.alert(
+        'Customer QR Code',
+        `${customer.firstName} ${customer.lastName}`,
+        [
+          { text: 'Close', style: 'cancel' }
+        ],
+        { cancelable: true }
+      );
+    } else {
+      // Show dynamically generated QR code
+      Alert.alert(
+        'QR Code',
+        `Customer: ${customer.firstName} ${customer.lastName}\nThis QR code can be scanned for quick identification.`,
+        [
+          { text: 'OK', onPress: () => console.log('QR Code viewed') }
+        ],
+        { cancelable: true }
+      );
+    }
   };
 
   // Handle customer selection for editing
@@ -460,6 +504,7 @@ const CustomerEditScreen = () => {
           zipCode: customer.zipCode,
           notes: customer.notes,
           businessID: businessId,
+          qrCode: customer.qrCode
         });
 
         if (result.errors) {
@@ -483,7 +528,8 @@ const CustomerEditScreen = () => {
           city: customer.city,
           state: customer.state,
           zipCode: customer.zipCode,
-          notes: customer.notes
+          notes: customer.notes,
+          qrCode: customer.qrCode
         });
 
         if (result.errors) {
@@ -508,6 +554,8 @@ const CustomerEditScreen = () => {
   // Render customer item
   const renderCustomerItem = ({ item }: { item: Customer }) => {
     const fullName = `${item.firstName} ${item.lastName}`;
+    const hasStoredQrCode = item.qrCode && qrCodeUrls[item.id];
+    
     // Create a BaseEntityData-compatible object from the Customer item
     const entityData = {
       id: item.id,
@@ -530,12 +578,24 @@ const CustomerEditScreen = () => {
           style={styles.qrCodeContainer}
           onPress={() => viewFullQRCode(item)}
         >
-          <QRCode
-            value={qrData}
-            size={50}
-            backgroundColor='white'
-            color='black'
-          />
+          {hasStoredQrCode ? (
+            loadingQrCodes[item.id] ? (
+              <ActivityIndicator size="small" color="#4f46e5" />
+            ) : (
+              <Image 
+                source={{ uri: qrCodeUrls[item.id] }} 
+                style={{ width: 50, height: 50 }} 
+                resizeMode="contain"
+              />
+            )
+          ) : (
+            <QRCode
+              value={qrData}
+              size={50}
+              backgroundColor='white'
+              color='black'
+            />
+          )}
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -660,6 +720,7 @@ const CustomerEditScreen = () => {
           onClose={() => setModalVisible(false)}
           onSave={handleSaveCustomer}
           onDelete={handleDeleteCustomer}
+          initialCustomerData={selectedCustomer as any} // Type casting to fix type compatibility issue
         />
 
         {/* Barcode Scanner Modal */}

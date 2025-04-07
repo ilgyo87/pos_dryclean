@@ -19,9 +19,8 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { styles } from '../styles/editCustomerModalStyles';
 import QRCode from 'react-native-qrcode-svg';
-import { generateQRCodeData } from './qrCodeGenerator';
-import { LazyLoader } from '@aws-amplify/data-schema/dist/esm/runtime/client';
-
+import { generateQRCodeData, attachQRCodeKeyToEntity, getQRCodeURL } from './qrCodeGenerator';
+import QRCodeCapture from './QRCodeCapture';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -68,8 +67,10 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
   const [qrCodeString, setQrCodeString] = useState<string | null>(null);
+  const [qrCaptureVisible, setQrCaptureVisible] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [loadingQrCode, setLoadingQrCode] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -156,12 +157,32 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           notifications: response.data.notifications || null,
           credits: response.data.credits || null
         } as unknown as Customer);
+
+        // Load QR code URL if available
+        if (response.data.qrCode) {
+          loadQrCodeUrl(response.data.qrCode);
+        }
       }
     } catch (error) {
       console.error('Error fetching customer data:', error);
       Alert.alert('Error', 'Failed to load customer data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Load QR code URL from S3
+  const loadQrCodeUrl = async (qrCodeKey: string) => {
+    if (!qrCodeKey) return;
+    
+    setLoadingQrCode(true);
+    try {
+      const url = await getQRCodeURL(qrCodeKey);
+      setQrCodeUrl(url);
+    } catch (error) {
+      console.error('Error loading QR code URL:', error);
+    } finally {
+      setLoadingQrCode(false);
     }
   };
 
@@ -198,6 +219,48 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
       ...prev,
       [field]: value,
     }));
+  };
+
+  // Handle QR Code Capture
+  const handleQrCapture = () => {
+    if (!customer.id) {
+      Alert.alert('Error', 'Customer ID is required for QR code generation');
+      return;
+    }
+    setQrCaptureVisible(true);
+  };
+
+  // Handle QR Code Completion
+  const handleQrComplete = async (qrCodeKey: string | null) => {
+    setQrCaptureVisible(false);
+
+    if (!qrCodeKey) {
+      // User skipped QR code capture
+      return;
+    }
+
+    try {
+      // Attach QR code key to customer
+      const success = await attachQRCodeKeyToEntity('Customer', customer.id, qrCodeKey);
+      
+      if (success) {
+        // Update local customer state with QR code
+        setCustomer(prev => ({
+          ...prev,
+          qrCode: qrCodeKey
+        }));
+        
+        // Load the QR code URL
+        loadQrCodeUrl(qrCodeKey);
+        
+        Alert.alert('Success', 'QR code updated successfully');
+      } else {
+        Alert.alert('Error', 'Failed to attach QR code to customer');
+      }
+    } catch (error) {
+      console.error('Error during QR code attachment:', error);
+      Alert.alert('Error', 'Failed to process QR code');
+    }
   };
 
   const handleSave = async () => {
@@ -239,6 +302,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           phone: formattedCustomer.phone?.replace(/\D/g, '') || '',
           email: formattedCustomer.email?.trim().toLowerCase() || '',
           businessID: formattedCustomer.businessID,
+          qrCode: formattedCustomer.qrCode || undefined,
         };
         const result = await client.models.Customer.create(createInput);
 
@@ -256,6 +320,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           phone: formattedCustomer.phone?.replace(/\D/g, '') || '',
           email: formattedCustomer.email?.trim().toLowerCase() || '',
           updatedAt: formattedCustomer.updatedAt,
+          qrCode: formattedCustomer.qrCode || undefined,
         };
         const result = await client.models.Customer.update(updateInput);
 
@@ -322,170 +387,230 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
         style={styles.modalContainer}
       >
         <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {isNewCustomer ? 'New Customer' : 'Edit Customer'}
-            </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#2196F3" />
-              <Text style={styles.loadingText}>Loading customer data...</Text>
-            </View>
-          ) : (
-            <ScrollView style={styles.formScrollView}>
-              {/* First Name */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>First Name *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={customer.firstName}
-                  onChangeText={(text) => handleInputChange('firstName', text)}
-                  placeholder="Enter first name"
-                />
-              </View>
-
-              {/* Last Name */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Last Name *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={customer.lastName}
-                  onChangeText={(text) => handleInputChange('lastName', text)}
-                  placeholder="Enter last name"
-                />
-              </View>
-
-              {/* Phone Number */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Phone Number *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={customer.phone || ''}
-                  onChangeText={(text) => handleInputChange('phone', text)}
-                  placeholder="Enter phone number"
-                  keyboardType="phone-pad"
-                />
-              </View>
-
-              {/* Email */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Email *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={customer.email || ''}
-                  onChangeText={(text) => handleInputChange('email', text)}
-                  placeholder="Enter email address"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
-
-              {/* Address */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Address</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={customer.address || ''}
-                  onChangeText={(text) => handleInputChange('address', text)}
-                  placeholder="Enter street address"
-                />
-              </View>
-
-              {/* City, State, Zip in one row */}
-              <View style={styles.rowInputContainer}>
-                <View style={[styles.inputGroup, { flex: 2, marginRight: 8 }]}>
-                  <Text style={styles.inputLabel}>City</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={customer.city || ''}
-                    onChangeText={(text) => handleInputChange('city', text)}
-                    placeholder="City"
-                  />
-                </View>
-
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                  <Text style={styles.inputLabel}>State</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={customer.state || ''}
-                    onChangeText={(text) => handleInputChange('state', text)}
-                    placeholder="State"
-                    maxLength={2}
-                    autoCapitalize="characters"
-                  />
-                </View>
-
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>ZIP</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={customer.zipCode || ''}
-                    onChangeText={(text) => handleInputChange('zipCode', text)}
-                    placeholder="Zip"
-                    keyboardType="number-pad"
-                    maxLength={5}
-                  />
-                </View>
-              </View>
-
-              {/* Notes */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Notes</Text>
-                <TextInput
-                  style={[styles.textInput, styles.multilineInput]}
-                  value={customer.notes || ''}
-                  onChangeText={(text) => handleInputChange('notes', text)}
-                  placeholder="Add notes about this customer"
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-
-              {/* QR Code Display */}
-              {qrCodeString ? (
-                <View style={styles.qrCodeContainer}>
-                  <Text style={styles.inputLabel}>QR Code</Text>
-                  <View style={styles.qrCodeWrapper}>
-                    <QRCode
-                      value={qrCodeString}
-                      size={150}
-                      backgroundColor="white"
-                      color="black"
-                    />
-                  </View>
-                </View>
-              ) : null}
-
-              {/* Button Row */}
-              <View style={styles.buttonRow}>
-                {!isNewCustomer && (
-                  <TouchableOpacity
-                    style={[styles.button, styles.deleteButton]}
-                    onPress={handleDelete}
-                    disabled={isDeleting}
-                  >
-                    <Text style={styles.buttonText}>
-                      {isDeleting ? 'Deleting...' : 'Delete'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.button, styles.saveButton, isNewCustomer ? { flex: 1 } : {}]}
-                  onPress={handleSave}
-                  disabled={isSaving}
-                >
-                  <Text style={styles.buttonText}>
-                    {isSaving ? 'Saving...' : 'Save'}
-                  </Text>
+          {qrCaptureVisible ? (
+            // QR Capture View
+            <View style={{ flex: 1 }}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Capture QR Code</Text>
+                <TouchableOpacity onPress={() => setQrCaptureVisible(false)} style={styles.closeButton}>
+                  <Text style={styles.closeButtonText}>✕</Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
+              
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                {customer.id ? (
+                  <QRCodeCapture
+                    value={customer.id}
+                    entityType="Customer"
+                    entityId={customer.id}
+                    onCapture={handleQrComplete}
+                    size={250}
+                  />
+                ) : (
+                  <ActivityIndicator size="large" color="#4f46e5" />
+                )}
+                <Text style={{ textAlign: 'center', marginTop: 10, color: '#555' }}>
+                  Generating and saving QR code...
+                </Text>
+                <TouchableOpacity
+                  style={[styles.button, styles.cancelButton, { marginTop: 20 }]}
+                  onPress={() => setQrCaptureVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            // Regular Edit View
+            <>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {isNewCustomer ? 'New Customer' : 'Edit Customer'}
+                </Text>
+                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                  <Text style={styles.closeButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#2196F3" />
+                  <Text style={styles.loadingText}>Loading customer data...</Text>
+                </View>
+              ) : (
+                <ScrollView style={styles.formScrollView}>
+                  {/* First Name */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>First Name *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={customer.firstName}
+                      onChangeText={(text) => handleInputChange('firstName', text)}
+                      placeholder="Enter first name"
+                    />
+                  </View>
+
+                  {/* Last Name */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Last Name *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={customer.lastName}
+                      onChangeText={(text) => handleInputChange('lastName', text)}
+                      placeholder="Enter last name"
+                    />
+                  </View>
+
+                  {/* Phone Number */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Phone Number *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={customer.phone || ''}
+                      onChangeText={(text) => handleInputChange('phone', text)}
+                      placeholder="Enter phone number"
+                      keyboardType="phone-pad"
+                    />
+                  </View>
+
+                  {/* Email */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Email *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={customer.email || ''}
+                      onChangeText={(text) => handleInputChange('email', text)}
+                      placeholder="Enter email address"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  </View>
+
+                  {/* Address */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Address</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={customer.address || ''}
+                      onChangeText={(text) => handleInputChange('address', text)}
+                      placeholder="Enter street address"
+                    />
+                  </View>
+
+                  {/* City, State, Zip in one row */}
+                  <View style={styles.rowInputContainer}>
+                    <View style={[styles.inputGroup, { flex: 2, marginRight: 8 }]}>
+                      <Text style={styles.inputLabel}>City</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={customer.city || ''}
+                        onChangeText={(text) => handleInputChange('city', text)}
+                        placeholder="City"
+                      />
+                    </View>
+
+                    <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+                      <Text style={styles.inputLabel}>State</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={customer.state || ''}
+                        onChangeText={(text) => handleInputChange('state', text)}
+                        placeholder="State"
+                        maxLength={2}
+                        autoCapitalize="characters"
+                      />
+                    </View>
+
+                    <View style={[styles.inputGroup, { flex: 1 }]}>
+                      <Text style={styles.inputLabel}>ZIP</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={customer.zipCode || ''}
+                        onChangeText={(text) => handleInputChange('zipCode', text)}
+                        placeholder="Zip"
+                        keyboardType="number-pad"
+                        maxLength={5}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Notes */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Notes</Text>
+                    <TextInput
+                      style={[styles.textInput, styles.multilineInput]}
+                      value={customer.notes || ''}
+                      onChangeText={(text) => handleInputChange('notes', text)}
+                      placeholder="Add notes about this customer"
+                      multiline
+                      numberOfLines={4}
+                    />
+                  </View>
+
+                  {/* QR Code Display */}
+                  <View style={styles.qrCodeContainer}>
+                    <View style={styles.qrCodeHeader}>
+                      <Text style={styles.inputLabel}>QR Code</Text>
+                      {!isNewCustomer && (
+                        <TouchableOpacity
+                          style={styles.recaptureButton}
+                          onPress={handleQrCapture}
+                        >
+                          <Text style={styles.recaptureButtonText}>Recapture QR</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <View style={styles.qrCodeWrapper}>
+                      {loadingQrCode ? (
+                        <ActivityIndicator size="large" color="#4f46e5" />
+                      ) : customer.qrCode && qrCodeUrl ? (
+                        <Image 
+                          source={{ uri: qrCodeUrl }} 
+                          style={{ width: 150, height: 150 }} 
+                          resizeMode="contain"
+                        />
+                      ) : qrCodeString ? (
+                        <QRCode
+                          value={qrCodeString}
+                          size={150}
+                          backgroundColor="white"
+                          color="black"
+                        />
+                      ) : (
+                        <View style={styles.emptyQrPlaceholder}>
+                          <Text style={styles.emptyQrText}>Fill in customer details to generate QR code</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Button Row */}
+                  <View style={styles.buttonRow}>
+                    {!isNewCustomer && (
+                      <TouchableOpacity
+                        style={[styles.button, styles.deleteButton]}
+                        onPress={handleDelete}
+                        disabled={isDeleting}
+                      >
+                        <Text style={styles.buttonText}>
+                          {isDeleting ? 'Deleting...' : 'Delete'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                      style={[styles.button, styles.saveButton, isNewCustomer ? { flex: 1 } : {}]}
+                      onPress={handleSave}
+                      disabled={isSaving}
+                    >
+                      <Text style={styles.buttonText}>
+                        {isSaving ? 'Saving...' : 'Save'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              )}
+            </>
           )}
         </View>
       </KeyboardAvoidingView>

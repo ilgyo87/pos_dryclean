@@ -33,6 +33,10 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     // Animation for the scanning line
     const scanLineAnimation = useRef(new Animated.Value(0)).current;
 
+    // Get screen dimensions for responsive design
+    const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+    const scanBoxSize = Math.min(screenWidth, screenHeight) * 0.7; // 70% of the smaller dimension
+
     // Monitor orientation changes
     useEffect(() => {
         const updateOrientation = () => {
@@ -146,7 +150,7 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             >
                 <SafeAreaView style={styles.centeredView}>
                     <View style={styles.modalView}>
-                        <ActivityIndicator size="large" />
+                        <ActivityIndicator size="large" color="#4f46e5" />
                         <Text style={styles.text}>Initializing camera...</Text>
                     </View>
                 </SafeAreaView>
@@ -157,13 +161,9 @@ const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     // Calculate the translateY value for the scanning line
     const translateY = scanLineAnimation.interpolate({
         inputRange: [0, 1],
-        outputRange: [0, 490] // Fixed height for scan area
+        outputRange: [0, scanBoxSize - 2] // Account for line height
     });
 
-    // Screen dimensions
-    const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-    const scanBoxSize = 500;
-    
     return (
         <Modal
             visible={visible}

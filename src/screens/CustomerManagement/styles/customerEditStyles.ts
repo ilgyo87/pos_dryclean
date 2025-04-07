@@ -34,7 +34,7 @@ export const styles = StyleSheet.create({
     marginRight: 8,
   },
   scanButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#4f46e5',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 4,
@@ -84,6 +84,7 @@ export const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e9ecef',
+    alignItems: 'center',
   },
   customerInfo: {
     flex: 1,
@@ -100,9 +101,17 @@ export const styles = StyleSheet.create({
   qrCodeContainer: {
     marginLeft: 16,
     justifyContent: 'center',
+    alignItems: 'center',
+    width: 50,
+    height: 50,
+    backgroundColor: 'white',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    overflow: 'hidden',
   },
   newCustomerButton: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#4f46e5',
     margin: 16,
     padding: 16,
     borderRadius: 8,
@@ -200,6 +209,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   emptyListText: {
     fontSize: 18,
@@ -230,9 +240,10 @@ export const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   selectButtonContainer: {
-    backgroundColor: '#007BFF',
+    backgroundColor: '#4f46e5',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 4,
@@ -255,15 +266,17 @@ export const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 4,
+    backgroundColor: '#4f46e5',
   },
   searchTypeButtonActive: {
-    backgroundColor: '#007BFF',
+    backgroundColor: '#4f46e5',
   },
   searchTypeButtonInactive: {
     backgroundColor: '#e0e0e0',
   },
   searchTypeText: {
     fontWeight: '500',
+    color: 'white',
   },
   searchTypeTextActive: {
     color: 'white',
@@ -327,5 +340,44 @@ export const styles = StyleSheet.create({
   customerList: {
     flex: 1,
     width: '100%'
+  },
+  // New styles for QR code display in CustomerEditScreen
+  qrCodeWrapper: {
+    padding: 5,
+    backgroundColor: 'white',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    overflow: 'hidden',
+  },
+  qrCodeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recaptureButton: {
+    backgroundColor: '#4f46e5',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+  },
+  recaptureButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  emptyQrPlaceholder: {
+    width: 50,
+    height: 50,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 5,
+  },
+  emptyQrText: {
+    color: '#666',
+    fontSize: 8,
+    textAlign: 'center',
   },
 });
