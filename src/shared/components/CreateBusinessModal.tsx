@@ -336,10 +336,14 @@ const CreateBusinessModal: React.FC<CreateBusinessModalProps> = ({ isVisible, on
                   <View style={styles.phoneCheckIndicator}>
                     {isCheckingPhone ? <ActivityIndicator size="small" color="#007bff" /> : null}
                     {phoneCheckComplete && !isCheckingPhone && !phoneExists ? (
-                      <Icon name="check-circle" size={20} color="green" />
+                      <Text>
+                        <Icon name="check-circle" size={20} color="green" />
+                      </Text>
                     ) : null}
                     {phoneCheckComplete && !isCheckingPhone && phoneExists ? (
-                      <Icon name="alert-circle" size={20} color="red" />
+                      <Text>
+                        <Icon name="alert-circle" size={20} color="red" />
+                      </Text>
                     ) : null}
                   </View>
                 </View>

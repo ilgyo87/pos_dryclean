@@ -44,7 +44,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
       setProductName(product.name);
       setProductDescription(product.description || '');
       setProductPrice(product.price.toString());
-      setProductUrlPicture(product.urlPicture || '');
+      setProductUrlPicture(product.imageUrl || '');
     } else {
       setProductName('');
       setProductDescription('');

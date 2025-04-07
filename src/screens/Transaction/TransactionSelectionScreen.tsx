@@ -18,7 +18,7 @@ import { generateClient } from 'aws-amplify/data';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { Schema } from '../../../amplify/data/resource';
-import { Product } from '../../shared/types/productTypes';
+import { Product } from './../../shared/types/productTypes';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();

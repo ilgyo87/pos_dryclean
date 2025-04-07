@@ -16,10 +16,11 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../../amplify/data/resource';
+import type { Schema } from '../../../amplify/data/resource';
 import { v4 as uuidv4 } from 'uuid';
-import CreateCustomerModal from '../../../shared/components/CreateCustomerModal';
-import { Customer } from '../../../shared/types/CustomerTypes';
+import CreateCustomerModal from '../../shared/components/CreateCustomerModal';
+import { Customer } from '../../shared/types/CustomerTypes';
+import { styles } from './styles/customerSearchStyles';
 
 // Route params type
 type CustomerSearchScreenRouteParams = {
@@ -136,30 +137,18 @@ const CustomerSearchScreen: React.FC = () => {
     return phone;
   };
 
-  // Search for existing customer profiles globally by cognitoUserId and phone number
+  // Search for existing customer profiles globally by phone number
   const searchGlobalCustomers = async (phone: string) => {
     setSearchingGlobally(true);
     try {
       const formattedPhone = formatPhoneNumber(phone);
+      const result = await client.models.Customer.list({
+        filter: { phone: { eq: formattedPhone } }
+      });
       
-      // First try to find by cognitoUserId if the user is authenticated
-      let result;
-      if (user?.userId) {
-        result = await client.models.Customer.list({
-          filter: { cognitoUserId: { eq: user.userId } }
-        });
-      }
-      
-      // If no results by cognitoUserId or no userId available, search by phone
-      if (!result?.data?.length) {
-        result = await client.models.Customer.list({
-          filter: { phone: { eq: formattedPhone } }
-        });
-      }
-      
-      if (result?.errors) {
+      if (result.errors) {
         console.error('Error searching customers:', result.errors);
-      } else if (result?.data && result.data.length > 0) {
+      } else if (result.data && result.data.length > 0) {
         // Filter out customers from the current business
         const otherBusinessCustomers = result.data.filter(c => c.businessID !== businessId);
         setGlobalSearchResults(otherBusinessCustomers as unknown as Customer[]);
@@ -222,24 +211,18 @@ const CustomerSearchScreen: React.FC = () => {
   // Create a new customer based on an existing one from another business
   const createCustomerFromExisting = async (existingCustomer: Customer) => {
     try {
-      // Use the same cognito user ID if it exists, or create a new one
-      const cognitoId = existingCustomer.cognitoUserId || (user?.userId || null);
+      // Use the same global ID if it exists, or create a new one
+      const globalId = existingCustomer.cognitoUserId || generateGlobalId();
       
-      // Create a new customer with the current date as join date
       const result = await client.models.Customer.create({
         businessID: businessId,
         firstName: existingCustomer.firstName,
         lastName: existingCustomer.lastName,
         phone: existingCustomer.phone,
         email: existingCustomer.email || undefined,
-        address: existingCustomer.address || undefined,
-        city: existingCustomer.city || undefined,
-        state: existingCustomer.state || undefined,
-        zipCode: existingCustomer.zipCode || undefined,
-        notes: existingCustomer.notes || undefined,
-        joinDate: new Date().toISOString(), // Required field in the type but not in schema
         qrCode: existingCustomer.qrCode, // Use the same QR code for recognition
-        cognitoUserId: cognitoId // Link to the same customer across businesses
+        cognitoUserId: existingCustomer.cognitoUserId, // Link to the same customer across businesses
+        joinDate: new Date().toISOString(),
       });
       
       if (result.errors) {
@@ -355,107 +338,5 @@ const CustomerSearchScreen: React.FC = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginRight: 8,
-  },
-  scanButton: {
-    backgroundColor: '#007BFF',
-    padding: 10,
-    borderRadius: 8,
-    justifyContent: 'center',
-  },
-  scanButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  customerItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  customerInfo: {
-    flex: 1,
-  },
-  customerName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  customerPhone: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  customerEmail: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  selectButtonContainer: {
-    backgroundColor: '#007BFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 4,
-  },
-  selectButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  emptyListContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyListText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  addButton: {
-    backgroundColor: '#28a745',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  addButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-});
 
 export default CustomerSearchScreen;

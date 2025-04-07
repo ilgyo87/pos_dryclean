@@ -26,7 +26,7 @@ export interface RouteParams {
     price: number;
     businessID: string;
     categoryID: string;
-    urlPicture?: string;
+    imageUrl?: string;
     createdAt?: string; 
     updatedAt?: string; 
   }

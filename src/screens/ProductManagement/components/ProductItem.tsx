@@ -25,9 +25,9 @@ const ProductItem: React.FC<ProductItemProps> = ({
     onPress={() => onEdit(item)}
   >
     <View style={styles.listImageContainer}>
-      {item.urlPicture ? (
+      {item.imageUrl ? (
         <Image 
-          source={{ uri: item.urlPicture }} 
+          source={{ uri: item.imageUrl }} 
           style={{ width: '100%', height: '100%', borderRadius: 4 }}
           resizeMode="cover"
         />
