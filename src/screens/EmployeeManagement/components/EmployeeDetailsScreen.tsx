@@ -11,13 +11,13 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { generateClient } from 'aws-amplify/data';
-import { Schema } from '../../../amplify/data/resource';
-import { styles } from './styles/employeeDetailsStyles';
+import { Schema } from '../../../../amplify/data/resource';
+import { styles } from '../styles/employeeDetailsStyles';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import EmployeePerformanceTracker from './components/EmployeePerformanceTracker';
-import RolePermissionManager from './components/RolePermissionManager';
-import EmployeeQRCodeGenerator from './components/EmployeeQRCodeGenerator';
-import { Employee, EmployeeRole, EmployeeStatus, EmployeePermissions } from './types/EmployeeTypes';
+import EmployeePerformanceTracker from './EmployeePerformanceTracker';
+import RolePermissionManager from './RolePermissionManager';
+import EmployeeQRCodeGenerator from './EmployeeQRCodeGenerator';
+import { Employee, EmployeeRole, EmployeeStatus, EmployeePermissions } from '../types/EmployeeTypes';
 import Toast from 'react-native-toast-message';
 
 const client = generateClient<Schema>();

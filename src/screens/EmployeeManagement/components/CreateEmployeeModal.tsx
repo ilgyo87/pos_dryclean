@@ -32,6 +32,7 @@ import {
 import QRCode from 'react-native-qrcode-svg';
 
 const client = generateClient<Schema>();
+type EmployeeData = Schema['Employee'];
 
 interface CreateEmployeeModalProps {
   visible: boolean;

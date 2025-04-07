@@ -19,7 +19,7 @@ import ReceiptScreen from './screens/Transaction/components/ReceiptScreen';
 import CustomerSearchScreen from './screens/Transaction/CustomerSearchScreen';
 import OrderManagement from './screens/OrderManagement';
 import EmployeeManagementScreen from './screens/EmployeeManagement';
-import EmployeeDetailsScreen from './screens/EmployeeManagement/EmployeeDetailsScreen';
+import EmployeeDetailsScreen from './screens/EmployeeManagement/components/EmployeeDetailsScreen';
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);

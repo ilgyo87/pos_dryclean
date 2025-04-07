@@ -131,7 +131,7 @@ const schema = a.schema({
       status: a.string(), // 'ACTIVE', 'INACTIVE', 'SUSPENDED'
       permissions: a.string(), // JSON string of permissions
       businessID: a.id().required(),
-      business: a.belongsTo("Business", "businessID"),
+      // business: a.belongsTo("Business", "businessID"),
       transactions: a.hasMany("Transaction", "employeeID"),
       shifts: a.hasMany("EmployeeShift", "employeeID"),
       qrCode: a.string(),
@@ -148,7 +148,7 @@ const schema = a.schema({
       employeeID: a.id().required(),
       employee: a.belongsTo("Employee", "employeeID"),
       businessID: a.id().required(),
-      business: a.belongsTo("Business", "businessID"),
+      // business: a.belongsTo("Business", "businessID"),
       clockIn: a.datetime().required(),
       clockOut: a.datetime(),
       duration: a.float(),
@@ -263,7 +263,7 @@ const schema = a.schema({
       // Define relationships
       customer: a.belongsTo('Customer', 'customerID'), // Keep belongsTo
       // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
-      employee: a.belongsTo('Employee', 'employeeID'),
+      // employee: a.belongsTo('Employee', 'employeeID'),
       orderItems: a.hasMany('OrderItem', 'orderID'), // Items included in the order
       transactions: a.hasMany('Transaction', 'orderID'), // Related payments/transactions
       notifications: a.hasMany('CustomerNotification', 'orderID'), // Notifications related

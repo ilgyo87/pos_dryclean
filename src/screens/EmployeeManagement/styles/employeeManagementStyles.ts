@@ -132,9 +132,12 @@ export const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: 'beige',
     borderRadius: 10,
-    padding: 20,
+    padding: 15, // Reduced padding
+    width: '100%', // Control width
+    maxWidth: 400, // Maximum width
+    alignSelf: 'center', // Center the modal
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
