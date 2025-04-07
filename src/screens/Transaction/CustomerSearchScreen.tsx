@@ -3,11 +3,9 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Modal,
   Alert,
   ActivityIndicator,
   Image,
@@ -20,6 +18,9 @@ import type { Schema } from '../../../amplify/data/resource';
 import { v4 as uuidv4 } from 'uuid';
 import CreateCustomerModal from '../../shared/components/CreateCustomerModal';
 import BarcodeScannerModal from '../../shared/components/BarCodeScannerModal';
+import { styles } from './styles/customerSearchStyles';
+import { getQRCodeURL } from '../../shared/components/qrCodeGenerator';
+import QRCode from 'react-native-qrcode-svg';
 
 // Route params type
 type CustomerSearchScreenRouteParams = {
@@ -34,13 +35,14 @@ const CustomerSearchScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const { businessId } = route.params as CustomerSearchScreenRouteParams;
   const [searchText, setSearchText] = useState('');
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<(Customer & { qrCodeUrl?: string })[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<(Customer & { qrCodeUrl?: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [scanQrModalVisible, setScanQrModalVisible] = useState(false);
   const [searchingGlobally, setSearchingGlobally] = useState(false);
   const [globalSearchResults, setGlobalSearchResults] = useState<Customer[]>([]);
+  const [loadingQrCodes, setLoadingQrCodes] = useState<Record<string, boolean>>({});
   const inputRef = useRef<TextInput>(null);
   const { user } = useAuthenticator();
 
@@ -63,8 +65,31 @@ const CustomerSearchScreen: React.FC = () => {
       } else {
         const customersData = result.data as unknown as Customer[] || [];
         console.log('Fetched customers:', customersData.length);
-        setCustomers(customersData);
-        setFilteredCustomers(customersData);
+        
+        // Process customers and load QR code URLs
+        const customersWithQrCode = await Promise.all(
+          customersData.map(async customer => {
+            const customerWithQrCode = { ...customer } as Customer & { qrCodeUrl?: string };
+            
+            // Load QR code URL if available
+            if (customer.qrCode) {
+              try {
+                setLoadingQrCodes(prev => ({ ...prev, [customer.id]: true }));
+                const qrCodeUrl = await getQRCodeURL(customer.qrCode);
+                customerWithQrCode.qrCodeUrl = qrCodeUrl;
+              } catch (error) {
+                console.error(`Error loading QR code for customer ${customer.id}:`, error);
+              } finally {
+                setLoadingQrCodes(prev => ({ ...prev, [customer.id]: false }));
+              }
+            }
+            
+            return customerWithQrCode;
+          })
+        );
+        
+        setCustomers(customersWithQrCode);
+        setFilteredCustomers(customersWithQrCode);
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -107,22 +132,6 @@ const CustomerSearchScreen: React.FC = () => {
     setFilteredCustomers(filtered);
   };
 
-  // Format phone number to E.164 format for storage
-  const formatPhoneNumber = (phone: string) => {
-    // Remove all non-digit characters
-    const digits = phone.replace(/\D/g, '');
-
-    // For US numbers, format as +1XXXXXXXXXX
-    if (digits.length === 10) {
-      return `+1${digits}`;
-    }
-    // If number already has country code
-    if (digits.length > 10 && digits.startsWith('1')) {
-      return `+${digits}`;
-    }
-    return digits;
-  };
-
   // Format phone number for display (without +1 prefix)
   const formatPhoneNumberForDisplay = (phone: string) => {
     if (!phone) return '';
@@ -142,7 +151,7 @@ const CustomerSearchScreen: React.FC = () => {
   const searchGlobalCustomers = async (phone: string): Promise<Customer[]> => {
     setSearchingGlobally(true);
     try {
-      const formattedPhone = formatPhoneNumber(phone);
+      const formattedPhone = phone; // Assume phone is already formatted correctly
       const result = await client.models.Customer.list({
         filter: { phone: { eq: formattedPhone } }
       });
@@ -239,25 +248,82 @@ const CustomerSearchScreen: React.FC = () => {
   };
 
   // Handle when a new customer is created
-  const handleNewCustomerCreated = (customer: Customer) => {
+  const handleNewCustomerCreated = async (customer: Customer) => {
     console.log('New customer created:', customer);
+    
+    // Add the QR code URL if available
+    const customerWithQrCode = { ...customer } as Customer & { qrCodeUrl?: string };
+    
+    if (customer.qrCode) {
+      try {
+        setLoadingQrCodes(prev => ({ ...prev, [customer.id]: true }));
+        const qrCodeUrl = await getQRCodeURL(customer.qrCode);
+        customerWithQrCode.qrCodeUrl = qrCodeUrl;
+      } catch (error) {
+        console.error(`Error loading QR code for new customer ${customer.id}:`, error);
+      } finally {
+        setLoadingQrCodes(prev => ({ ...prev, [customer.id]: false }));
+      }
+    }
+    
     // Add the new customer to the list
-    setCustomers(prevCustomers => [customer, ...prevCustomers]);
-    setFilteredCustomers(prevFiltered => [customer, ...prevFiltered]);
+    setCustomers(prevCustomers => [customerWithQrCode, ...prevCustomers]);
+    setFilteredCustomers(prevFiltered => [customerWithQrCode, ...prevFiltered]);
     setModalVisible(false);
+    
     // Select the new customer
     handleSelectCustomer(customer);
   };
 
   // Handle customer selection for transaction
   const handleSelectCustomer = (customer: Customer) => {
-    // Navigate to TransactionSelectionScreen instead of NewTransaction
+    // Navigate to TransactionSelectionScreen
     navigation.navigate('TransactionSelection', {
       customer: customer, // Pass the entire customer object
       businessId: businessId,
       customerId: customer.id,
       customerName: `${customer.firstName} ${customer.lastName}`
     });
+  };
+
+  // Render QR code or placeholder
+  const renderQrCode = (customer: Customer & { qrCodeUrl?: string }) => {
+    if (loadingQrCodes[customer.id]) {
+      return (
+        <View style={styles.qrCodePlaceholder}>
+          <ActivityIndicator size="small" color="#0000ff" />
+        </View>
+      );
+    }
+    
+    if (customer.qrCodeUrl) {
+      return (
+        <Image 
+          source={{ uri: customer.qrCodeUrl }} 
+          style={styles.qrCodeImage} 
+          resizeMode="contain"
+        />
+      );
+    } else if (customer.qrCode) {
+      // We have a QR code key but no loaded URL yet
+      return (
+        <View style={styles.qrCodePlaceholder}>
+          <QRCode
+            value={customer.id}
+            size={50}
+            backgroundColor="white"
+            color="black"
+          />
+        </View>
+      );
+    } else {
+      // No QR code available
+      return (
+        <View style={styles.qrCodePlaceholder}>
+          <Text style={styles.qrPlaceholderText}>No QR</Text>
+        </View>
+      );
+    }
   };
 
   return (
@@ -296,6 +362,12 @@ const CustomerSearchScreen: React.FC = () => {
                   <Text style={styles.customerPhone}>{formatPhoneNumberForDisplay(item.phone || '')}</Text>
                   {item.email && <Text style={styles.customerEmail}>{item.email}</Text>}
                 </View>
+                
+                {/* QR Code display */}
+                <View style={styles.qrCodeContainer}>
+                  {renderQrCode(item)}
+                </View>
+                
                 <View style={styles.selectButtonContainer}>
                   <Text style={styles.selectButtonText}>Select</Text>
                 </View>
@@ -336,107 +408,5 @@ const CustomerSearchScreen: React.FC = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#fff',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginRight: 8,
-  },
-  scanButton: {
-    backgroundColor: '#007BFF',
-    padding: 10,
-    borderRadius: 8,
-    justifyContent: 'center',
-  },
-  scanButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  customerItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  customerInfo: {
-    flex: 1,
-  },
-  customerName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  customerPhone: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  customerEmail: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  selectButtonContainer: {
-    backgroundColor: '#007BFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 4,
-  },
-  selectButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  emptyListContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyListText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  addButton: {
-    backgroundColor: '#28a745',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  addButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-});
 
 export default CustomerSearchScreen;
