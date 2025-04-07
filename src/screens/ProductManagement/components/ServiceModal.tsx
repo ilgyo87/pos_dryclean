@@ -8,7 +8,9 @@ import {
   Alert,
 } from 'react-native';
 import { styles } from '../styles/productManagementStyles';
-import { Category } from '../../../shared/types/productTypes';
+import type { Schema } from '../../../../amplify/data/resource';
+
+type Category = Schema['Category']['type'];
 
 interface CategoryModalProps {
   visible: boolean;
@@ -44,7 +46,7 @@ const CategoryModal: React.FC<CategoryModalProps> = ({
     if (category) {
       setCategoryName(category.name);
       setCategoryDescription(category.description || '');
-      setCategoryPrice(category.price.toString());
+      setCategoryPrice(category.price?.toString() || '');
     } else {
       setCategoryName('');
       setCategoryDescription('');

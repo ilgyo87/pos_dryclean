@@ -103,7 +103,6 @@ const CreateCustomerModal = ({
         email: email.trim(),
         address: address.trim() || undefined,
         businessID: businessId,
-        joinDate: new Date().toISOString(),
       });
 
       const customer = result.data;

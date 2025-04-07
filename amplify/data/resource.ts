@@ -100,7 +100,6 @@ const schema = a.schema({
       state: a.string(),
       zipCode: a.string(),
       notes: a.string(),
-      joinDate: a.date().required(),
       lastActiveDate: a.date(),
       preferences: a.string(), // Store as JSON string
       businessID: a.string().required(), // Foreign key for Business

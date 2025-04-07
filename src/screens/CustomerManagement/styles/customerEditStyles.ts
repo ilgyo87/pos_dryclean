@@ -1,280 +1,331 @@
 import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
-  // Main container
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#fff',
   },
-  
-  // Quick search section
-  quickSearchContainer: {
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  header: {
     padding: 16,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f8f9fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
   },
-  quickSearchTitle: {
-    fontSize: 16,
+  title: {
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
   },
-  quickSearchInputContainer: {
+  quickSearchContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
   },
   quickSearchInput: {
     flex: 1,
-    height: 44,
+    height: 40,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    backgroundColor: 'white',
-    fontSize: 16,
+    borderColor: '#ced4da',
+    borderRadius: 4,
+    paddingHorizontal: 10,
     marginRight: 8,
   },
   scanButton: {
-    height: 44,
+    backgroundColor: '#007bff',
     paddingHorizontal: 16,
-    backgroundColor: '#2196F3',
+    paddingVertical: 8,
+    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 5,
-  },
-  scanButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  searchingIndicator: {
-    position: 'absolute',
-    right: 12,
-  },
-  
-  // Quick add customer section
-  quickAddContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  foundProfileText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  foundProfileName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  foundProfileDetails: {
-    fontSize: 14,
-    color: '#333',
-    marginTop: 2,
-  },
-  quickActionButtons: {
-    flexDirection: 'row',
-    marginTop: 12,
-  },
-  actionButton: {
-    flex: 1,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 18,
-  },
-  importButton: {
-    backgroundColor: '#4caf50',
-    marginRight: 8,
-  },
-  editButton: {
-    backgroundColor: '#ff9800',
-  },
-  newCustomerQuickButton: {
-    backgroundColor: '#2196F3',
-    marginTop: 8,
-  },
-  actionButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  noMatchText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: '#ddd',
-  },
-  
-  // Header with search
-  header: {
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    backgroundColor: 'white',
-    marginRight: 8,
-  },
-  searchButton: {
-    height: 44,
-    paddingHorizontal: 16,
-    backgroundColor: '#2196F3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 5,
-  },
-  newCustomerButton: {
-    height: 44,
-    paddingHorizontal: 16,
-    backgroundColor: '#4caf50',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 5,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
   },
-  
-  // Customers list
-  customersContainer: {
-    flex: 1,
+  quickAddContainer: {
     padding: 16,
+    backgroundColor: '#e9f7ef',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
   },
-  customerItem: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 8,
+  quickAddText: {
+    fontSize: 16,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
   },
-  customerItemContent: {
+  quickAddButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
   },
-  customerInfoContainer: {
+  quickAddButton: {
+    backgroundColor: '#28a745',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 4,
+    flex: 1,
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 4,
+    flex: 1,
+    alignItems: 'center',
+  },
+  listContainer: {
+    flex: 1,
+  },
+  customerItem: {
+    flexDirection: 'row',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  customerInfo: {
     flex: 1,
   },
   customerName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  globalBadge: {
+  customerDetail: {
     fontSize: 14,
-    color: '#2196F3',
-  },
-  customerDetails: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  customerAddress: {
-    fontSize: 14,
-    color: '#666',
+    color: '#6c757d',
     marginTop: 2,
   },
-  
-  // QR Code related
   qrCodeContainer: {
-    width: 60,
-    height: 60,
+    marginLeft: 16,
     justifyContent: 'center',
+  },
+  newCustomerButton: {
+    backgroundColor: '#28a745',
+    margin: 16,
+    padding: 16,
+    borderRadius: 8,
     alignItems: 'center',
-    marginLeft: 8,
   },
-  qrCodeImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 4,
-  },
-  qrGeneratingContainer: {
-    width: 60,
-    height: 60,
+  modalContainer: {
+    flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 20,
   },
-  qrPlaceholder: {
-    width: 60,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#e0e0e0',
-    borderRadius: 4,
-    marginLeft: 8,
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 20,
   },
-  qrPlaceholderText: {
-    color: '#999',
+  modalTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    fontSize: 12,
+    marginBottom: 16,
+    textAlign: 'center',
   },
-  
-  // Customer actions
-  customerActionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 10,
+  formGroup: {
+    marginBottom: 16,
   },
-  customerAction: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    backgroundColor: '#4caf50',
+  label: {
+    fontSize: 14,
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ced4da',
     borderRadius: 4,
-    width: '40%',
+    padding: 8,
+    fontSize: 16,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  saveButton: {
+    backgroundColor: '#28a745',
+    padding: 12,
+    borderRadius: 4,
+    flex: 1,
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#dc3545',
+    padding: 12,
+    borderRadius: 4,
+    flex: 1,
     alignItems: 'center',
   },
-  deleteAction: {
-    backgroundColor: '#ffebee',
-  },
-  actionText: {
-    color: 'white',
-    justifyContent: 'center',
+  closeButton: {
+    backgroundColor: '#6c757d',
+    padding: 12,
+    borderRadius: 4,
     alignItems: 'center',
-    fontSize: 14,
-    fontWeight: '500',
+    marginTop: 8,
   },
-  deleteActionText: {
-    color: '#d32f2f',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  
-  // Empty state and loading
-  emptyState: {
+  qrModalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  emptyStateText: {
+  qrModalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  qrModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  qrModalCustomerInfo: {
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  qrModalCloseButton: {
+    backgroundColor: '#6c757d',
+    padding: 12,
+    borderRadius: 4,
+    alignItems: 'center',
+    marginTop: 16,
+    width: '100%',
+  },
+  emptyListContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyListText: {
+    fontSize: 18,
+    color: '#6c757d',
+    textAlign: 'center',
+  },
+  // Additional styles for CustomerSearchScreen
+  searchContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#ced4da',
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    marginRight: 8,
+  },
+  scanButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectButtonContainer: {
+    backgroundColor: '#007BFF',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+  },
+  selectButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  addButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  searchTypeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  searchTypeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  searchTypeButtonActive: {
+    backgroundColor: '#007BFF',
+  },
+  searchTypeButtonInactive: {
+    backgroundColor: '#e0e0e0',
+  },
+  searchTypeText: {
+    fontWeight: '500',
+  },
+  searchTypeTextActive: {
+    color: 'white',
+  },
+  searchTypeTextInactive: {
+    color: '#333',
+  },
+  globalSearchContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  globalSearchTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  noResultsText: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
   },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
+  createCustomerButton: {
+    backgroundColor: '#28a745',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  createCustomerButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  errorText: {
+    color: '#dc3545',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  // Additional styles for EditCustomerModal
+  saveButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  deleteButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  customerList: {
+    flex: 1,
+    width: '100%'
   },
 });

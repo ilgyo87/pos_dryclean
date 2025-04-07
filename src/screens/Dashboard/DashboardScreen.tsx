@@ -115,7 +115,7 @@ export default function DashboardScreen({ route }: { route: any }) {
     { title: 'Employee Management', screen: 'EmployeeManagement', icon: '👥' },
     { title: 'Appointments', screen: 'Appointments', icon: '📅' },
     { title: 'Order Management', screen: 'OrderManagement', icon: '📋' },
-    { title: 'Customers', screen: 'CustomerSearch', icon: '👤' }, // Changed screen to CustomerSearch
+    { title: 'Customers', screen: 'CustomerEdit', icon: '👤' },
     { title: 'Reports', screen: 'Reports', icon: '📊' },
     { title: 'Settings', screen: 'Settings', icon: '⚙️' },
   ];
@@ -136,7 +136,7 @@ export default function DashboardScreen({ route }: { route: any }) {
 
     // Special case for Customer screen to ensure it goes to search/list first
     if (screenName === 'CustomerEdit') {
-      navigation.navigate('CustomerSearch', params); // Redirect CustomerEdit to CustomerSearch
+      navigation.navigate('CustomerEdit', params); 
     } else {
       navigation.navigate(screenName, params);
     }

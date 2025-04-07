@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -18,13 +18,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import EditCustomerModal from '../../shared/components/EditCustomerModal';
 import BarcodeScannerModal from '../../shared/components/BarCodeScannerModal';
 import QRCode from 'react-native-qrcode-svg';
-import { generateQRCodeData } from '../../shared/components/qrCodeGenerator';
+import { generateQRCodeData, EntityType } from '../../shared/components/qrCodeGenerator';
 import { styles } from './styles/customerEditStyles';
-import { Customer } from '../../shared/types/CustomerTypes';
-// Import QRCode directly for dynamic generation
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
+type Customer = Schema['Customer']['type'];
 
 // Define our route parameter types
 type RootStackParamList = {
@@ -39,7 +38,7 @@ const CustomerEditScreen = () => {
   const navigation = useNavigation<CustomerEditScreenNavigationProp>();
   const route = useRoute<CustomerEditScreenRouteProp>();
   const { businessId, customerId } = route.params || {};
-  
+
   const [searchText, setSearchText] = useState('');
   const [quickSearchPhoneOrEmail, setQuickSearchPhoneOrEmail] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -61,7 +60,7 @@ const CustomerEditScreen = () => {
       const result = await client.models.Customer.list({
         filter: { businessID: { eq: businessId } }
       });
-      
+
       if (result.data) {
         const customerData = result.data.map(customer => ({
           id: customer.id,
@@ -74,13 +73,12 @@ const CustomerEditScreen = () => {
           state: customer.state || undefined,
           zipCode: customer.zipCode || undefined,
           notes: customer.notes || undefined,
-          joinDate: customer.joinDate,
           businessID: customer.businessID
         }));
-        
+
         setCustomers(customerData as Customer[]);
         setFilteredCustomers(customerData as Customer[]);
-        
+
         // No need to trigger QR generation anymore as we're generating them dynamically
       }
     } catch (error) {
@@ -94,7 +92,7 @@ const CustomerEditScreen = () => {
   // Fetch all customers for the current business on component mount
   useEffect(() => {
     fetchCustomers();
-    
+
     // If a customerId was passed in the route, open that customer
     if (customerId) {
       openCustomerById(customerId);
@@ -141,7 +139,7 @@ const CustomerEditScreen = () => {
   // Function to check if customer exists
   const checkCustomerExists = async (searchValue: string): Promise<void> => {
     if (!searchValue.trim()) return;
-    
+
     setIsSearchingExternal(true);
     try {
       // First, check if customer exists in this business
@@ -158,28 +156,24 @@ const CustomerEditScreen = () => {
           ]
         }
       });
-      
+
       if (localCustomerResult.data && localCustomerResult.data.length > 0) {
         // Customer already exists in this business - show them in the list
         const existingCustomer = localCustomerResult.data[0];
         setFilteredCustomers([{
-          id: existingCustomer.id,
-          firstName: existingCustomer.firstName,
-          lastName: existingCustomer.lastName,
+          ...existingCustomer,
           phone: existingCustomer.phone || '',
           email: existingCustomer.email || undefined,
           address: existingCustomer.address || undefined,
           city: existingCustomer.city || undefined,
           state: existingCustomer.state || undefined,
           zipCode: existingCustomer.zipCode || undefined,
-          joinDate: existingCustomer.joinDate,
-          notes: existingCustomer.notes || undefined,
-          businessID: existingCustomer.businessID
+          notes: existingCustomer.notes || undefined
         }]);
         setShowQuickAdd(false);
         return;
       }
-      
+
       // Customer not found in this business - check other businesses
       const externalCustomerResult = await client.models.Customer.list({
         filter: {
@@ -194,23 +188,19 @@ const CustomerEditScreen = () => {
           ]
         }
       });
-      
+
       if (externalCustomerResult.data && externalCustomerResult.data.length > 0) {
         // Found in another business - offer to import
         const externalCustomer = externalCustomerResult.data[0];
         setFoundExternalCustomer({
-          id: '', // Will be created with a new ID
-          firstName: externalCustomer.firstName,
-          lastName: externalCustomer.lastName,
+          ...externalCustomer,
           phone: externalCustomer.phone || '',
           email: externalCustomer.email || undefined,
           address: externalCustomer.address || undefined,
           city: externalCustomer.city || undefined,
           state: externalCustomer.state || undefined,
           zipCode: externalCustomer.zipCode || undefined,
-          notes: externalCustomer.notes || undefined,
-          joinDate: externalCustomer.joinDate,
-          businessID: businessId // Will be assigned to the current business
+          notes: externalCustomer.notes || undefined
         });
         setShowQuickAdd(true);
       } else {
@@ -228,19 +218,19 @@ const CustomerEditScreen = () => {
 
   // Handle barcode scan
   const handleBarcodeScan = (scannedValue: string) => {
-    setQuickSearchPhoneOrEmail(scannedValue); 
+    setQuickSearchPhoneOrEmail(scannedValue);
     checkCustomerExists(scannedValue);
   };
-  
+
   // Handle quick search text change
   const handleQuickSearchChange = (text: string): void => {
     setQuickSearchPhoneOrEmail(text);
   };
-  
+
   // Import customer from another business
   const handleImportExternalCustomer = async (): Promise<void> => {
     if (!foundExternalCustomer) return;
-    
+
     setIsLoading(true);
     try {
       // Create a new customer record in the current business linked to the external customer via globalId
@@ -255,26 +245,25 @@ const CustomerEditScreen = () => {
         zipCode: foundExternalCustomer.zipCode,
         notes: foundExternalCustomer.notes,
         businessID: businessId,
-        joinDate: new Date().toISOString()
       });
-      
+
       if (result.errors) {
         throw new Error(result.errors.map(e => e.message).join(', '));
       }
-      
+
       // No need to generate QR code here as we're generating them dynamically in the render function
-      
+
       Alert.alert(
-        'Success', 
+        'Success',
         `Customer ${foundExternalCustomer.firstName} ${foundExternalCustomer.lastName} imported successfully!`
       );
-      
+
       // Reset states and refresh list
       setQuickSearchPhoneOrEmail('');
       setFoundExternalCustomer(null);
       setShowQuickAdd(false);
       fetchCustomers();
-      
+
     } catch (error) {
       console.error('Error importing external customer:', error);
       Alert.alert('Error', 'Failed to import customer. Please try again.');
@@ -282,34 +271,34 @@ const CustomerEditScreen = () => {
       setIsLoading(false);
     }
   };
-  
+
   // Handle standard search for customers in the list
   const handleSearchTextChange = (text: string): void => {
     setSearchText(text);
-    
+
     if (!text.trim()) {
       // If search is empty, show all customers
       setFilteredCustomers(customers);
       return;
     }
-    
+
     // Filter customers based on search text
     const searchTerm = text.trim().toLowerCase();
-    const filtered = customers.filter(customer => 
+    const filtered = customers.filter(customer =>
       customer.firstName?.toLowerCase().includes(searchTerm) ||
       customer.lastName?.toLowerCase().includes(searchTerm) ||
       customer.phone?.includes(searchTerm) ||
       (customer.email && customer.email.toLowerCase().includes(searchTerm))
     );
-    
+
     setFilteredCustomers(filtered);
   };
-  
+
   // Handle new customer button - reset form fields and open the modal
   const handleNewCustomer = (fromQuickSearch = false): void => {
     setSelectedCustomer(null);
     setIsNewCustomer(true);
-    
+
     // If coming from quick search, pre-fill the phone or email
     if (fromQuickSearch && quickSearchPhoneOrEmail) {
       // Pre-fill form fields if we have a found external customer
@@ -325,11 +314,14 @@ const CustomerEditScreen = () => {
           phone: isEmail ? '' : quickSearchPhoneOrEmail,
           email: isEmail ? quickSearchPhoneOrEmail : '',
           businessID: businessId,
-          joinDate: new Date().toISOString()
-        });
+          joinDate: new Date().toISOString(),
+          credits: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        } as unknown as Customer);
       }
     }
-    
+
     setModalVisible(true);
     setShowQuickAdd(false);
   };
@@ -341,12 +333,12 @@ const CustomerEditScreen = () => {
       fetchCustomers();
       return;
     }
-    
+
     setIsLoading(true);
     try {
       // Search by name, phone, or email
       const searchTerm = searchText.trim().toLowerCase();
-      
+
       // Create the filter conditions based on search and business
       const searchConditions = [
         { firstName: { contains: searchTerm } },
@@ -354,7 +346,7 @@ const CustomerEditScreen = () => {
         { phoneNumber: { contains: searchTerm } },
         { email: { contains: searchTerm } }
       ];
-      
+
       // Add business filter since we always have a business ID
       const filter = {
         and: [
@@ -362,10 +354,10 @@ const CustomerEditScreen = () => {
           { businessID: { eq: businessId } }
         ]
       };
-      
+
       // Query the database for matching customers
       const result = await client.models.Customer.list({ filter });
-      
+
       if (result.data) {
         const customerData = result.data.map(customer => ({
           id: customer.id,
@@ -380,7 +372,7 @@ const CustomerEditScreen = () => {
           notes: customer.notes || undefined,
           businessID: customer.businessID
         }));
-        
+
         setCustomers(customerData as Customer[]);
         setFilteredCustomers(customerData as Customer[]);
       }
@@ -391,8 +383,6 @@ const CustomerEditScreen = () => {
       setIsLoading(false);
     }
   };
-
-  // We don't need the QR code generation method anymore since we're generating QR codes dynamically
 
   // View full QR code
   const viewFullQRCode = (customer: Customer) => {
@@ -407,7 +397,7 @@ const CustomerEditScreen = () => {
       { cancelable: true }
     );
   };
-  
+
   // Handle customer selection for editing
   const handleSelectCustomer = (customer: Customer): void => {
     setSelectedCustomer(customer);
@@ -418,242 +408,258 @@ const CustomerEditScreen = () => {
   // Handle customer deletion
   const handleDeleteCustomer = async () => {
     if (!selectedCustomer?.id) return;
-    
+
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete ${selectedCustomer.firstName} ${selectedCustomer.lastName}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsLoading(true);
+            try {
+              await client.models.Customer.delete({
+                id: selectedCustomer.id
+              });
+
+              Alert.alert('Success', 'Customer deleted successfully');
+              setModalVisible(false);
+              fetchCustomers();
+            } catch (error) {
+              console.error('Error deleting customer:', error);
+              Alert.alert('Error', 'Failed to delete customer. Please try again.');
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // Handle customer save from modal
+  const handleSaveCustomer = async (customer: Customer): Promise<void> => {
     setIsLoading(true);
     try {
-      const result = await client.models.Customer.delete({
-        id: selectedCustomer.id
-      });
-      
-      if (result.errors) {
-        throw new Error(result.errors.map(e => e.message).join(', '));
+      if (isNewCustomer) {
+        // Create new customer
+        const result = await client.models.Customer.create({
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          phone: customer.phone,
+          email: customer.email,
+          address: customer.address,
+          city: customer.city,
+          state: customer.state,
+          zipCode: customer.zipCode,
+          notes: customer.notes,
+          businessID: businessId,
+        });
+
+        if (result.errors) {
+          throw new Error(result.errors.map(e => e.message).join(', '));
+        }
+
+        Alert.alert('Success', 'Customer created successfully!');
+      } else {
+        // Update existing customer
+        if (!customer.id) {
+          throw new Error('Customer ID is required for updates');
+        }
+
+        const result = await client.models.Customer.update({
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          phone: customer.phone,
+          email: customer.email,
+          address: customer.address,
+          city: customer.city,
+          state: customer.state,
+          zipCode: customer.zipCode,
+          notes: customer.notes
+        });
+
+        if (result.errors) {
+          throw new Error(result.errors.map(e => e.message).join(', '));
+        }
+
+        Alert.alert('Success', 'Customer updated successfully!');
       }
-      
+
+      // Reset states and refresh list
       setModalVisible(false);
-      Alert.alert('Success', 'Customer deleted successfully');
+      setSelectedCustomer(null);
       fetchCustomers();
-      
     } catch (error) {
-      console.error('Error deleting customer:', error);
-      Alert.alert('Error', 'Failed to delete customer. Please try again.');
+      console.error('Error saving customer:', error);
+      Alert.alert('Error', 'Failed to save customer. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
-  
-  // Render QR code directly using the library instead of loading from S3
-  const renderQRCode = (customer: Customer) => {
-    // Use the utility to generate consistent QR code data
-    const qrData = generateQRCodeData('Customer', customer);
-    
+
+  // Render customer item
+  const renderCustomerItem = ({ item }: { item: Customer }) => {
+    const fullName = `${item.firstName} ${item.lastName}`;
+    // Create a BaseEntityData-compatible object from the Customer item
+    const entityData = {
+      id: item.id,
+      name: fullName,
+      phone: item.phone || undefined
+    };
+    const qrData = generateQRCodeData('Customer', entityData);
+
     return (
-      <TouchableOpacity onPress={() => viewFullQRCode(customer)}>
-        <View style={styles.qrCodeContainer}>
+      <TouchableOpacity
+        style={styles.customerItem}
+        onPress={() => handleSelectCustomer(item)}
+      >
+        <View style={styles.customerInfo}>
+          <Text style={styles.customerName}>{fullName}</Text>
+          <Text style={styles.customerDetail}>{item.phone}</Text>
+          {item.email && <Text style={styles.customerDetail}>{item.email}</Text>}
+        </View>
+        <TouchableOpacity
+          style={styles.qrCodeContainer}
+          onPress={() => viewFullQRCode(item)}
+        >
           <QRCode
             value={qrData}
-            size={60}
-            backgroundColor="white"
-            color="black"
+            size={50}
+            backgroundColor='white'
+            color='black'
           />
-        </View>
+        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
 
-  // Render each customer item in the list
-  const renderItem = ({ item }: { item: Customer }) => (
-    <View style={styles.customerItem}>
-      <TouchableOpacity
-        style={styles.customerItemContent}
-        onPress={() => handleSelectCustomer(item)}
-      >
-        <View style={styles.customerInfoContainer}>
-          <Text style={styles.customerName}>
-            {item.firstName} {item.lastName}
-          </Text>
-          <Text style={styles.customerDetails}>
-            {item.phone} {item.email ? `• ${item.email}` : ''}
-          </Text>
-          {item.address ? (
-            <Text style={styles.customerAddress}>
-              {item.address}
-            </Text>
-          ) : null}
-        </View>
-        
-        <View style={styles.qrCodeContainer}>
-          {renderQRCode(item)}
-        </View>
-      </TouchableOpacity>
-      
-      <View style={styles.customerActionsContainer}>
-        <TouchableOpacity 
-          style={[styles.customerAction, { flex: 1 }]}
-          onPress={() => handleSelectCustomer(item)}
-        >
-          <Text style={styles.actionText}>Edit</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Quick Search Section */}
-      <View style={styles.quickSearchContainer}>
-        <Text style={styles.quickSearchTitle}>Quick Customer Lookup</Text>
-        <View style={styles.quickSearchInputContainer}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Customer Management</Text>
+        </View>
+
+        {/* Quick Search Section */}
+        <View style={styles.quickSearchContainer}>
           <TextInput
+            ref={inputRef}
             style={styles.quickSearchInput}
+            placeholder="Scan or enter phone/email"
             value={quickSearchPhoneOrEmail}
             onChangeText={handleQuickSearchChange}
-            placeholder="Enter phone number or email"
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.scanButton}
             onPress={() => setBarcodeModalVisible(true)}
           >
-            <Text style={styles.scanButtonText}>Scan</Text>
+            <Text style={styles.buttonText}>Scan</Text>
           </TouchableOpacity>
-          {isSearchingExternal && (
-            <ActivityIndicator size="small" color="#2196F3" style={styles.searchingIndicator} />
-          )}
         </View>
-        
-        {/* Quick Add Customer UI */}
+
+        {/* Quick Add Section */}
         {showQuickAdd && (
           <View style={styles.quickAddContainer}>
-            {foundExternalCustomer ? (
-              <>
-                <Text style={styles.foundProfileText}>
-                  Found customer in another business:
-                </Text>
-                <Text style={styles.foundProfileName}>
-                  {foundExternalCustomer.firstName} {foundExternalCustomer.lastName}
-                </Text>
-                <Text style={styles.foundProfileDetails}>
-                  {foundExternalCustomer.phone} • {foundExternalCustomer.email || 'No email'}
-                </Text>
-                <View style={styles.quickActionButtons}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.importButton]}
-                    onPress={handleImportExternalCustomer}
-                    disabled={isLoading}
-                  >
-                    <Text style={styles.actionButtonText}>
-                      {isLoading ? 'Importing...' : 'Import Customer'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.editButton]}
-                    onPress={() => handleNewCustomer(true)}
-                  >
-                    <Text style={styles.actionButtonText}>
-                      Edit & Create
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </>
+            {isSearchingExternal ? (
+              <ActivityIndicator size="small" color="#0000ff" />
             ) : (
               <>
-                <Text style={styles.noMatchText}>
-                  No existing customer found with this {quickSearchPhoneOrEmail.includes('@') ? 'email' : 'phone number'}.
-                </Text>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.newCustomerQuickButton]}
-                  onPress={() => handleNewCustomer(true)}
-                >
-                  <Text style={styles.actionButtonText}>
-                    Create New Customer
-                  </Text>
-                </TouchableOpacity>
+                {foundExternalCustomer ? (
+                  <>
+                    <Text style={styles.quickAddText}>
+                      Found in another business: {foundExternalCustomer.firstName} {foundExternalCustomer.lastName}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.quickAddButton}
+                      onPress={handleImportExternalCustomer}
+                    >
+                      <Text style={styles.buttonText}>Import</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.quickAddText}>
+                      No existing customer found with this contact info.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.quickAddButton}
+                      onPress={() => handleNewCustomer(true)}
+                    >
+                      <Text style={styles.buttonText}>Create New</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </>
             )}
           </View>
         )}
-      </View>
-      
-      {/* Divider */}
-      <View style={styles.divider} />
-      
-      {/* Header section with search and buttons */}
-      <View style={styles.header}>
+
+        {/* Main Search Section */}
         <View style={styles.searchContainer}>
           <TextInput
-            ref={inputRef}
             style={styles.searchInput}
+            placeholder="Search by name, phone, or email"
             value={searchText}
             onChangeText={handleSearchTextChange}
-            placeholder="Name, Phone Number, or Email"
-            returnKeyType="search"
             onSubmitEditing={handleSearch}
-            autoCapitalize="none"
           />
-          <TouchableOpacity 
-            style={styles.searchButton} 
+          <TouchableOpacity
+            style={styles.searchTypeButton}
             onPress={handleSearch}
-            disabled={isLoading}
           >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'Searching...' : 'Search'}
-            </Text>
+            <Text style={styles.searchTypeText}>Search</Text>
           </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity 
+
+        {/* Customer List */}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0000ff" />
+          </View>
+        ) : (
+          <FlatList
+            data={filteredCustomers}
+            renderItem={renderCustomerItem}
+            keyExtractor={(item) => item.id}
+            style={styles.customerList}
+            ListEmptyComponent={
+              <View style={styles.emptyListContainer}>
+                <Text style={styles.emptyListText}>No customers found</Text>
+              </View>
+            }
+          />
+        )}
+
+        {/* New Customer Button */}
+        <TouchableOpacity
           style={styles.newCustomerButton}
-          onPress={() => handleNewCustomer(false)}
+          onPress={() => handleNewCustomer()}
         >
           <Text style={styles.buttonText}>New Customer</Text>
         </TouchableOpacity>
-      </View>
-      
-      {/* Customer list section */}
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.customersContainer}
-      >
-        {isLoading ? (
-          <View style={styles.emptyState}>
-            <ActivityIndicator size="large" color="#2196F3" />
-            <Text style={styles.loadingText}>Loading customers...</Text>
-          </View>
-        ) : filteredCustomers.length > 0 ? (
-          <FlatList
-            data={filteredCustomers}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 20 }}
-          />
-        ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>
-              No customers to display. Search for a customer or create a new one.
-            </Text>
-          </View>
-        )}
-        
-        {/* Edit Customer Modal */}
+
+        {/* Customer Edit Modal */}
         <EditCustomerModal
           visible={modalVisible}
           customerId={selectedCustomer?.id}
+          businessId={businessId}
           isNewCustomer={isNewCustomer}
-          businessId={businessId || ''}
-          onSave={(customerName) => {
-            setModalVisible(false);
-            Alert.alert('Success', `Customer ${customerName} ${isNewCustomer ? 'created' : 'updated'} successfully`);
-            fetchCustomers();
-          }}
+          onClose={() => setModalVisible(false)}
+          onSave={handleSaveCustomer}
           onDelete={handleDeleteCustomer}
-          onClose={() => {
-            setModalVisible(false);
-            setSelectedCustomer(null);
-            fetchCustomers(); // Re-fetch customers after modal closes
-          }}
-          initialCustomerData={selectedCustomer}
         />
 
         {/* Barcode Scanner Modal */}
@@ -663,8 +669,6 @@ const CustomerEditScreen = () => {
           onCodeScanned={handleBarcodeScan}
         />
       </KeyboardAvoidingView>
-      
-      {/* No need for hidden ViewShot component anymore */}
     </SafeAreaView>
   );
 };

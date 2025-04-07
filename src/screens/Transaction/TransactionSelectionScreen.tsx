@@ -165,7 +165,10 @@ const TransactionSelectionScreen = () => {
         
         categoriesWithProducts.push({
           category,
-          products: sortedProducts
+          products: sortedProducts.map(product => ({
+            ...product,
+            imageUrl: product.imageUrl || undefined // Convert null to undefined
+          }))
         });
       }
       
@@ -212,7 +215,7 @@ const TransactionSelectionScreen = () => {
           quantity: 1,
           type,
           categoryId: type === 'product' ? categoryId : undefined,
-          imageUrl: type === 'product' ? (item as Product).urlPicture : null
+          imageUrl: type === 'product' ? (item as Product).imageUrl : null
         }
       ]);
     }
@@ -337,9 +340,9 @@ const TransactionSelectionScreen = () => {
                 style={styles.productItem}
                 onPress={() => addToCart(item, 'product', categoryData.id)}
               >
-                {item.urlPicture && (
+                {item.imageUrl && (
                   <Image 
-                    source={{ uri: item.urlPicture }} 
+                    source={{ uri: item.imageUrl }} 
                     style={styles.productImage} 
                     resizeMode="cover"
                   />

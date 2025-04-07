@@ -20,20 +20,22 @@ import type { Schema } from '../../../amplify/data/resource';
 import { styles } from '../styles/editCustomerModalStyles';
 import QRCode from 'react-native-qrcode-svg';
 import { generateQRCodeData } from './qrCodeGenerator';
-import { Customer } from '../types/CustomerTypes';
+import { LazyLoader } from '@aws-amplify/data-schema/dist/esm/runtime/client';
+
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
+type Customer = Schema['Customer']['type'];
 
 interface EditCustomerModalProps {
   visible: boolean;
   customerId?: string;
   businessId: string;
   isNewCustomer: boolean;
-  onSave: (customerName: string) => void;
-  onDelete: () => void;
+  onSave: (customer: Customer) => Promise<void>;
+  onDelete?: (customerId: string) => void;
   onClose: () => void;
-  initialCustomerData?: Customer | null;
+  initialCustomerData?: Customer;
 }
 
 const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
@@ -46,23 +48,22 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
   onClose,
   initialCustomerData,
 }) => {
+  // Initialize customer state with default values for required fields
   const [customer, setCustomer] = useState<Customer>({
+    ...initialCustomerData,
     id: initialCustomerData?.id || '',
     firstName: initialCustomerData?.firstName || '',
     lastName: initialCustomerData?.lastName || '',
-    phone: initialCustomerData?.phone || '',
-    email: initialCustomerData?.email || '',
-    address: initialCustomerData?.address || '',
-    city: initialCustomerData?.city || '',
-    state: initialCustomerData?.state || '',
-    zipCode: initialCustomerData?.zipCode || '',
-    notes: initialCustomerData?.notes || '',
-    businessID: businessId,
-    joinDate: initialCustomerData?.joinDate || new Date().toISOString(),
-    qrCode: initialCustomerData?.qrCode || '',
-    lastActiveDate: initialCustomerData?.lastActiveDate || new Date().toISOString(),
-    preferences: initialCustomerData?.preferences || '',
-  });
+    businessID: initialCustomerData?.businessID || businessId,
+    // Handle required fields that might be missing
+    orders: null,
+    garments: null,
+    transactions: null,
+    notifications: null,
+    credits: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  } as unknown as Customer);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -74,11 +75,21 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
     if (visible) {
       if (isNewCustomer) {
         if (initialCustomerData) {
+          // Use the simpler approach for initializing from initialCustomerData
           setCustomer({
             ...initialCustomerData,
             businessID: businessId,
-          });
+            // Handle required fields that might be missing
+            orders: null,
+            garments: null,
+            transactions: null,
+            notifications: null,
+            credits: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          } as unknown as Customer);
         } else {
+          // Simplified new customer initialization
           setCustomer({
             id: uuidv4(),
             firstName: '',
@@ -95,7 +106,16 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
             qrCode: '',
             lastActiveDate: new Date().toISOString(),
             preferences: '',
-          });
+            // Required fields
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            orders: null,
+            garments: null,
+            transactions: null,
+            notifications: null,
+            credits: null,
+            cognitoUserId: ''
+          } as unknown as Customer);
         }
       } else if (customerId) {
         fetchCustomerData();
@@ -111,10 +131,10 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
       const response = await client.models.Customer.get({ id: customerId });
 
       if (response.data) {
+        // Simplified customer initialization from response data
         setCustomer({
-          id: response.data.id,
-          firstName: response.data.firstName,
-          lastName: response.data.lastName,
+          ...response.data,
+          // Ensure optional fields have defaults
           phone: response.data.phone || '',
           email: response.data.email || '',
           address: response.data.address || '',
@@ -122,12 +142,20 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
           state: response.data.state || '',
           zipCode: response.data.zipCode || '',
           notes: response.data.notes || '',
-          businessID: response.data.businessID,
-          joinDate: response.data.joinDate,
-          qrCode: response.data.qrCode,
-          lastActiveDate: response.data.lastActiveDate,
-          preferences: response.data.preferences,
-        });
+          qrCode: response.data.qrCode || '',
+          lastActiveDate: response.data.lastActiveDate || new Date().toISOString(),
+          preferences: response.data.preferences || '',
+          cognitoUserId: response.data.cognitoUserId || '',
+          // Ensure required fields are present
+          createdAt: response.data.createdAt || new Date().toISOString(),
+          updatedAt: response.data.updatedAt || new Date().toISOString(),
+          // Ensure relationship fields exist
+          orders: response.data.orders || null,
+          garments: response.data.garments || null,
+          transactions: response.data.transactions || null,
+          notifications: response.data.notifications || null,
+          credits: response.data.credits || null
+        } as unknown as Customer);
       }
     } catch (error) {
       console.error('Error fetching customer data:', error);
@@ -139,29 +167,29 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
 
   useEffect(() => {
     if (customer && customer.id) {
-      const qrDataInput = {
-        id: customer.id,
-        firstName: customer.firstName,
-        lastName: customer.lastName,
-        phone: customer.phone,
-        businessID: customer.businessID,
-      };
-
+      // Check if all required fields are present and not empty
       if (
-        qrDataInput.id &&
-        qrDataInput.firstName &&
-        qrDataInput.lastName &&
-        qrDataInput.phone &&
-        qrDataInput.businessID
+        customer.id &&
+        customer.firstName &&
+        customer.lastName &&
+        customer.phone &&
+        customer.businessID
       ) {
+        const qrDataInput = {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          phone: customer.phone,
+          businessID: customer.businessID,
+        };
+
         const qrString = generateQRCodeData('Customer', qrDataInput);
         setQrCodeString(qrString);
       } else {
+        // Set QR code string to null if required data is missing
         setQrCodeString(null);
-        console.warn('[EditCustomerModal] Missing data required for QR code generation.');
+        console.log('Missing data required for QR code generation');
       }
-    } else {
-      setQrCodeString(null);
     }
   }, [customer]);
 
@@ -173,7 +201,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.phone.trim()) {
+    if (!customer.firstName.trim() || !customer.lastName.trim() || !customer.phone?.trim()) {
       Alert.alert('Required Fields', 'First name, last name, and phone number are required.');
       return;
     }
@@ -190,71 +218,52 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(customer.email)) {
+    if (!emailRegex.test(customer.email.trim())) {
       Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
     setIsSaving(true);
     try {
+      // Format the joinDate properly - ensure it's a valid ISO string
+      const formattedCustomer = {
+        ...customer,
+        updatedAt: new Date().toISOString()
+      };
+
       if (isNewCustomer) {
-        const createInput: any = {
-          firstName: customer.firstName,
-          lastName: customer.lastName,
-          phone: customer.phone,
-          email: customer.email,
-          businessID: businessId,
+        // Create new customer
+        const createInput = {
+          firstName: formattedCustomer.firstName.trim(),
+          lastName: formattedCustomer.lastName.trim(),
+          phone: formattedCustomer.phone?.replace(/\D/g, '') || '',
+          email: formattedCustomer.email?.trim().toLowerCase() || '',
+          businessID: formattedCustomer.businessID,
         };
-
-        if (customer.address && customer.address.trim() !== '') createInput.address = customer.address;
-        if (customer.city && customer.city.trim() !== '') createInput.city = customer.city;
-        if (customer.state && customer.state.trim() !== '') createInput.state = customer.state;
-        if (customer.zipCode && customer.zipCode.trim() !== '') createInput.zipCode = customer.zipCode;
-        if (customer.notes && customer.notes.trim() !== '') createInput.notes = customer.notes;
-        if (customer.joinDate && customer.joinDate.trim() !== '') createInput.joinDate = customer.joinDate;
-        if (customer.qrCode && customer.qrCode.trim() !== '') createInput.qrCode = customer.qrCode;
-        if (customer.lastActiveDate && customer.lastActiveDate.trim() !== '') createInput.lastActiveDate = customer.lastActiveDate;
-        if (customer.preferences && customer.preferences.trim() !== '') createInput.preferences = customer.preferences;
-
         const result = await client.models.Customer.create(createInput);
 
         if (result.errors) {
           throw new Error(result.errors.map((e) => e.message).join(', '));
         }
 
-        if (result.data && result.data.id) {
-          const fullName = `${customer.firstName} ${customer.lastName}`;
-          onSave(fullName);
-        } else {
-          throw new Error('Failed to get created customer ID');
-        }
-      } else if (customer.id) {
-        const updateInput: any = {
-          id: customer.id,
-          firstName: customer.firstName,
-          lastName: customer.lastName,
-          phone: customer.phone,
-          email: customer.email,
+        onSave(formattedCustomer);
+      } else {
+        // Update existing customer
+        const updateInput = {
+          id: formattedCustomer.id,
+          firstName: formattedCustomer.firstName.trim(),
+          lastName: formattedCustomer.lastName.trim(),
+          phone: formattedCustomer.phone?.replace(/\D/g, '') || '',
+          email: formattedCustomer.email?.trim().toLowerCase() || '',
+          updatedAt: formattedCustomer.updatedAt,
         };
-
-        if (customer.address && customer.address.trim() !== '') updateInput.address = customer.address;
-        if (customer.city && customer.city.trim() !== '') updateInput.city = customer.city;
-        if (customer.state && customer.state.trim() !== '') updateInput.state = customer.state;
-        if (customer.zipCode && customer.zipCode.trim() !== '') updateInput.zipCode = customer.zipCode;
-        if (customer.notes && customer.notes.trim() !== '') updateInput.notes = customer.notes;
-        if (customer.joinDate && customer.joinDate.trim() !== '') updateInput.joinDate = customer.joinDate;
-        if (customer.qrCode && customer.qrCode.trim() !== '') updateInput.qrCode = customer.qrCode;
-        if (customer.lastActiveDate && customer.lastActiveDate.trim() !== '') updateInput.lastActiveDate = customer.lastActiveDate;
-        if (customer.preferences && customer.preferences.trim() !== '') updateInput.preferences = customer.preferences;
-
         const result = await client.models.Customer.update(updateInput);
 
         if (result.errors) {
           throw new Error(result.errors.map((e) => e.message).join(', '));
         }
 
-        const fullName = `${customer.firstName} ${customer.lastName}`;
-        onSave(fullName);
+        onSave(formattedCustomer);
       }
     } catch (error) {
       console.error('Error saving customer:', error);
@@ -289,7 +298,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                 throw new Error(result.errors.map((e) => e.message).join(', '));
               }
 
-              onDelete();
+              onDelete?.(customer.id);
             } catch (error) {
               console.error('Error deleting customer:', error);
               Alert.alert('Error', 'Failed to delete customer. Please try again.');
@@ -356,7 +365,7 @@ const EditCustomerModal: React.FC<EditCustomerModalProps> = ({
                 <Text style={styles.inputLabel}>Phone Number *</Text>
                 <TextInput
                   style={styles.textInput}
-                  value={customer.phone}
+                  value={customer.phone || ''}
                   onChangeText={(text) => handleInputChange('phone', text)}
                   placeholder="Enter phone number"
                   keyboardType="phone-pad"

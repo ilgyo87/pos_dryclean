@@ -5,12 +5,10 @@ import {
   TextInput,
   Button,
   FlatList,
-  StyleSheet,
   TouchableOpacity,
   Modal,
   Alert,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NavigationProp, ParamListBase } from '@react-navigation/native';
@@ -19,7 +17,6 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { v4 as uuidv4 } from 'uuid';
 import CreateCustomerModal from '../../shared/components/CreateCustomerModal';
-import { Customer } from '../../shared/types/CustomerTypes';
 import { styles } from './styles/customerSearchStyles';
 
 // Route params type
@@ -27,7 +24,9 @@ type CustomerSearchScreenRouteParams = {
   businessId: string;
 };
 
+// Customer type
 const client = generateClient<Schema>();
+type Customer = Schema['Customer']['type'];
 
 const CustomerSearchScreen: React.FC = () => {
   const route = useRoute();
@@ -43,12 +42,12 @@ const CustomerSearchScreen: React.FC = () => {
   const [globalSearchResults, setGlobalSearchResults] = useState<Customer[]>([]);
   const inputRef = useRef<TextInput>(null);
   const { user } = useAuthenticator();
-  
+
   // Fetch all customers for the current business on component mount
   useEffect(() => {
     fetchCustomers();
   }, [businessId]);
-  
+
   // Function to fetch all customers for current business
   const fetchCustomers = async (): Promise<void> => {
     setIsLoading(true);
@@ -56,7 +55,7 @@ const CustomerSearchScreen: React.FC = () => {
       const result = await client.models.Customer.list({
         filter: { businessID: { eq: businessId } }
       });
-      
+
       if (result.errors) {
         console.error('Errors fetching customers:', result.errors);
         Alert.alert('Error', 'Failed to fetch customers');
@@ -86,23 +85,23 @@ const CustomerSearchScreen: React.FC = () => {
   // Search customers based on input text
   const handleSearch = (text: string) => {
     setSearchText(text);
-    
+
     if (!text.trim()) {
       setFilteredCustomers(customers);
       return;
     }
-    
+
     const lowerCaseQuery = text.toLowerCase();
     const filtered = customers.filter(customer => {
       const fullName = `${customer.firstName} ${customer.lastName}`.toLowerCase();
       const phone = customer.phone || '';
       const email = customer.email?.toLowerCase() || '';
-      
-      return fullName.includes(lowerCaseQuery) || 
-             phone.includes(lowerCaseQuery) || 
-             email.includes(lowerCaseQuery);
+
+      return fullName.includes(lowerCaseQuery) ||
+        phone.includes(lowerCaseQuery) ||
+        email.includes(lowerCaseQuery);
     });
-    
+
     setFilteredCustomers(filtered);
   };
 
@@ -110,7 +109,7 @@ const CustomerSearchScreen: React.FC = () => {
   const formatPhoneNumber = (phone: string) => {
     // Remove all non-digit characters
     const digits = phone.replace(/\D/g, '');
-    
+
     // For US numbers, format as +1XXXXXXXXXX
     if (digits.length === 10) {
       return `+1${digits}`;
@@ -121,11 +120,11 @@ const CustomerSearchScreen: React.FC = () => {
     }
     return digits;
   };
-  
+
   // Format phone number for display (without +1 prefix)
   const formatPhoneNumberForDisplay = (phone: string) => {
     if (!phone) return '';
-    
+
     // Remove the +1 prefix if it exists
     if (phone.startsWith('+1')) {
       return phone.substring(2);
@@ -145,7 +144,7 @@ const CustomerSearchScreen: React.FC = () => {
       const result = await client.models.Customer.list({
         filter: { phone: { eq: formattedPhone } }
       });
-      
+
       if (result.errors) {
         console.error('Error searching customers:', result.errors);
       } else if (result.data && result.data.length > 0) {
@@ -170,19 +169,19 @@ const CustomerSearchScreen: React.FC = () => {
   const handleQrCodeScanned = async (qrCode: string) => {
     setScanQrModalVisible(false);
     setIsLoading(true);
-    
+
     try {
       // Search for customer by QR code
       const result = await client.models.Customer.list({
         filter: { qrCode: { eq: qrCode } }
       });
-      
+
       if (result.errors) {
         console.error('Error searching by QR code:', result.errors);
         Alert.alert('Error', 'Failed to search by QR code');
       } else if (result.data && result.data.length > 0) {
         const existingCustomer = result.data[0] as Customer;
-        
+
         // Check if this customer already belongs to this business
         if (existingCustomer.businessID === businessId) {
           // Customer already belongs to this business
@@ -213,7 +212,7 @@ const CustomerSearchScreen: React.FC = () => {
     try {
       // Use the same global ID if it exists, or create a new one
       const globalId = existingCustomer.cognitoUserId || generateGlobalId();
-      
+
       const result = await client.models.Customer.create({
         businessID: businessId,
         firstName: existingCustomer.firstName,
@@ -222,14 +221,13 @@ const CustomerSearchScreen: React.FC = () => {
         email: existingCustomer.email || undefined,
         qrCode: existingCustomer.qrCode, // Use the same QR code for recognition
         cognitoUserId: existingCustomer.cognitoUserId, // Link to the same customer across businesses
-        joinDate: new Date().toISOString(),
       });
-      
+
       if (result.errors) {
         console.error('Error creating customer:', result.errors);
         return null;
       }
-      
+
       return result.data as Customer;
     } catch (error) {
       console.error('Error creating customer from existing:', error);
@@ -270,8 +268,14 @@ const CustomerSearchScreen: React.FC = () => {
         <TouchableOpacity style={styles.scanButton} onPress={() => setScanQrModalVisible(true)}>
           <Text style={styles.scanButtonText}>Scan QR</Text>
         </TouchableOpacity>
-      </View>
 
+      </View>
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={styles.addButtonText}>Add New Customer</Text>
+      </TouchableOpacity>
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0000ff" />
@@ -289,7 +293,7 @@ const CustomerSearchScreen: React.FC = () => {
               >
                 <View style={styles.customerInfo}>
                   <Text style={styles.customerName}>{item.firstName} {item.lastName}</Text>
-                  <Text style={styles.customerPhone}>{formatPhoneNumberForDisplay(item.phone)}</Text>
+                  <Text style={styles.customerPhone}>{formatPhoneNumberForDisplay(item.phone || '')}</Text>
                   {item.email && <Text style={styles.customerEmail}>{item.email}</Text>}
                 </View>
                 <View style={styles.selectButtonContainer}>
@@ -303,13 +307,6 @@ const CustomerSearchScreen: React.FC = () => {
               </View>
             }
           />
-
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setModalVisible(true)}
-          >
-            <Text style={styles.addButtonText}>Add New Customer</Text>
-          </TouchableOpacity>
         </>
       )}
 
@@ -318,7 +315,7 @@ const CustomerSearchScreen: React.FC = () => {
         visible={modalVisible}
         businessId={businessId}
         onClose={() => setModalVisible(false)}
-        onCustomerCreated={handleNewCustomerCreated}
+        onCustomerCreated={(customer: unknown) => handleNewCustomerCreated(customer as Customer)}
         initialData={{ phone: searchText.length > 5 ? searchText : undefined }}
       />
 

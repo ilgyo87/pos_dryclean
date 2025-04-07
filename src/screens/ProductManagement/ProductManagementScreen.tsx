@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  FlatList,
   Image,
 } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
@@ -19,13 +18,14 @@ import DeleteConfirmationModal from '../../shared/components/DeleteConfirmationM
 import ProductItem from './components/ProductItem';
 
 // Import types
-import { Category, Product, RouteParams } from '../../shared/types/productTypes';
+import { Product, RouteParams } from '../../shared/types/productTypes';
 import { Alert } from 'react-native';
 import CategoryTabs from './components/ServiceTabs';
 import Pagination from '../../shared/components/Pagination';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
+type Category = Schema['Category']['type'];
 
 const ProductManagementScreen: React.FC = () => {
   const route = useRoute();
@@ -36,7 +36,6 @@ const ProductManagementScreen: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Client-side mapping of products to categories
   const [productCategoryMap, setProductCategoryMap] = useState<Record<string, string>>({});
@@ -78,15 +77,12 @@ const ProductManagementScreen: React.FC = () => {
 
       // Convert category data to Category type
       const allCategories: Category[] = categoriesResult.data ? categoriesResult.data.map(category => ({
-        id: category.id,
-        name: category.name,
+        ...category,
         description: category.description || '',
         price: 0,
         imageUrl: category.imageUrl || undefined,
-        businessID: category.businessID,
-        products: [],
-        createdAt: category.createdAt,
         estimatedTime: 0,
+        updatedAt: category.updatedAt || category.createdAt,
       })) : [];
 
       // Convert item data to Product type
@@ -122,10 +118,10 @@ const ProductManagementScreen: React.FC = () => {
     }
   }, [businessId]);
 
-  // Fetch data on component mount and when refreshKey changes
+  // Fetch data on component mount
   useEffect(() => {
     fetchCategoriesAndProducts();
-  }, [fetchCategoriesAndProducts, refreshKey]);
+  }, [fetchCategoriesAndProducts]);
 
   // Handle category selection
   const handleCategorySelect = (categoryId: string) => {
@@ -476,13 +472,21 @@ const ProductManagementScreen: React.FC = () => {
               <View style={{ paddingVertical: 4, paddingHorizontal: 8, backgroundColor: 'beige', borderRadius: 4, borderWidth: 1, borderColor: '#eee', marginVertical: 4 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    {categories.find(s => s.id === selectedCategoryId)?.imageUrl ? (
-                      <Image
-                        source={{ uri: categories.find(s => s.id === selectedCategoryId)?.imageUrl }}
-                        style={{ width: 24, height: 24, borderRadius: 12, marginRight: 8 }}
-                        resizeMode="cover"
-                      />
-                    ) : null}
+                    {(() => {
+                      const imageUrl = categories.find(s => s.id === selectedCategoryId)?.imageUrl;
+                      return imageUrl ? (
+                        <Image
+                          source={{ uri: imageUrl }}
+                          style={{ width: 24, height: 24, borderRadius: 12, marginRight: 8 }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={{ width: 24, height: 24, backgroundColor: '#f0f0f0', borderRadius: 12, marginRight: 8, justifyContent: 'center', alignItems: 'center' }}>
+                          <Text style={{ fontSize: 10, color: '#aaa' }}>No</Text>
+                        </View>
+                      );
+                    })()}
+
                     <Text style={{ fontWeight: 'bold', fontSize: 14 }}>
                       {categories.find(s => s.id === selectedCategoryId)?.name}
                     </Text>
@@ -492,7 +496,6 @@ const ProductManagementScreen: React.FC = () => {
                       const category = categories.find(s => s.id === selectedCategoryId);
                       if (category) handleEditCategory(category);
                     }}
-                    style={{ padding: 4 }}
                   >
                     <Text style={{ color: '#007aff', fontSize: 12 }}>Edit</Text>
                   </TouchableOpacity>

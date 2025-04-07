@@ -7,14 +7,12 @@ import {
 } from 'react-native';
 import { styles } from '../styles/productManagementStyles';
 import { Schema } from '../../../../amplify/data/resource';
-import { Category as AppCategory } from '../../../shared/types/productTypes';
-
 
 // Use the Category type from the schema instead of Service
 type Category = Schema['Category']['type'];
 
 interface CategoryTabsProps {
-  categories: AppCategory[];
+  categories: Category[];
   selectedCategoryId: string | null;
   onSelect: (categoryId: string) => void;
 }
