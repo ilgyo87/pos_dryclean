@@ -49,6 +49,10 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#f9fafb',
   },
+  inputError: {
+    borderColor: '#ef4444', // Red border for errors
+    backgroundColor: '#fee2e2', // Light red background
+  },
   multilineInput: {
     minHeight: 80,
     textAlignVertical: 'top',
@@ -75,6 +79,7 @@ export const styles = StyleSheet.create({
   },
   disabledButton: {
     backgroundColor: '#9ca3af',
+    opacity: 0.7,
   },
   cancelButtonText: {
     fontSize: 16,
@@ -140,9 +145,20 @@ export const styles = StyleSheet.create({
     position: 'absolute',
     right: 12,
     top: 14,
+    zIndex: 10,
   },
   errorMessage: {
     color: '#ef4444',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  successMessage: {
+    color: '#10b981', // Green for success
+    fontSize: 14,
+    marginTop: 4,
+  },
+  warningMessage: {
+    color: '#f59e0b', // Amber/Yellow for warnings
     fontSize: 14,
     marginTop: 4,
   },

@@ -24,7 +24,7 @@ const schema = a.schema({
       establishedDate: a.date(),
       taxId: a.string(),
       isActive: a.boolean().default(true),
-      userId: a.string(), 
+      userId: a.string(),
       qrCode: a.string(), // Store the S3 key for the QR code image
 
       // --- Relationships (Commented out to reduce type complexity) ---
@@ -121,17 +121,39 @@ const schema = a.schema({
   Employee: a
     .model({
       id: a.id().required(),
-      cognitoUserId: a.string().required(), // Link to Cognito User
       firstName: a.string().required(),
       lastName: a.string().required(),
-      role: a.string().required(), // e.g., 'manager', 'staff'
-      hireDate: a.date().required(),
-      permissions: a.string(), // Store as JSON string or list of strings
-      businessID: a.string().required(), // Foreign key for Business
-      // Define relationships
-      // business: a.belongsTo('Business', 'businessID'), // Keep belongsTo
-      transactions: a.hasMany('Transaction', 'employeeID'),
-      orders: a.hasMany('Order', 'employeeID')
+      email: a.email().required(),
+      phoneNumber: a.phone().required(),
+      role: a.string().required(), // e.g., 'ADMIN', 'MANAGER', 'STAFF'
+      hourlyRate: a.float(),
+      hireDate: a.datetime(),
+      status: a.string(), // 'ACTIVE', 'INACTIVE', 'SUSPENDED'
+      permissions: a.string(), // JSON string of permissions
+      businessID: a.id().required(),
+      business: a.belongsTo("Business", "businessID"),
+      transactions: a.hasMany("Transaction", "employeeID"),
+      shifts: a.hasMany("EmployeeShift", "employeeID"),
+      qrCode: a.string(),
+      lastLogin: a.datetime(),
+      cognitoUserId: a.string(),
+    })
+    .authorization((allow) => [
+      allow.owner(), // Business owner can manage employee
+    ]),
+
+  EmployeeShift: a
+    .model({
+      id: a.id().required(),
+      employeeID: a.id().required(),
+      employee: a.belongsTo("Employee", "employeeID"),
+      businessID: a.id().required(),
+      business: a.belongsTo("Business", "businessID"),
+      clockIn: a.datetime().required(),
+      clockOut: a.datetime(),
+      duration: a.float(),
+      status: a.string(), // 'ACTIVE', 'COMPLETED'
+      notes: a.string()
     })
     .authorization((allow) => [
       allow.owner(), // Business owner can manage employee

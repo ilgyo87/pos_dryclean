@@ -17,6 +17,9 @@ import ProductManagementScreen from './screens/ProductManagement/ProductManageme
 import CheckoutScreen from './screens/Transaction/components/CheckoutScreen';
 import ReceiptScreen from './screens/Transaction/components/ReceiptScreen';
 import CustomerSearchScreen from './screens/Transaction/CustomerSearchScreen';
+import OrderManagement from './screens/OrderManagement';
+import EmployeeManagementScreen from './screens/EmployeeManagement';
+import EmployeeDetailsScreen from './screens/EmployeeManagement/EmployeeDetailsScreen';
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);
@@ -37,9 +40,9 @@ function AppContent() {
   const [businessName, setBusinessName] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const { authStatus, user, signOut } = useAuthenticator((context) => [ // Destructure signOut
-      context.authStatus,
-      context.user,
-      context.signOut,
+    context.authStatus,
+    context.user,
+    context.signOut,
   ]);
   const [dashboardKey, setDashboardKey] = useState(0);
 
@@ -72,12 +75,12 @@ function AppContent() {
       console.log(`Checking for businesses for user ID: ${user.userId}`);
       // Filter by userId (assuming your schema uses userId or owner mapped to it)
       const result = await client.models.Business.list({
-         filter: {
-           // Adjust this filter based on your actual schema field for ownership
-           // It might be owner, userId, etc. Make sure it matches amplify/data/resource.ts
-           userId: { eq: user.userId } // Use userId
-         }
-       });
+        filter: {
+          // Adjust this filter based on your actual schema field for ownership
+          // It might be owner, userId, etc. Make sure it matches amplify/data/resource.ts
+          userId: { eq: user.userId } // Use userId
+        }
+      });
 
       console.log("Business check result:", JSON.stringify(result, null, 2)); // Pretty print result
       const businesses = result.data || [];
@@ -95,7 +98,7 @@ function AppContent() {
       console.error("Error checking for businesses:", error);
       setHasBusinesses(false); // Set to false on error
     } finally {
-       setLoading(false); // Ensure loading is set to false
+      setLoading(false); // Ensure loading is set to false
     }
   };
 
@@ -206,10 +209,39 @@ function AppContent() {
                 headerShown: false // Typically no header needed here
               }}
             />
+            <Stack.Screen
+              name="OrderManagement"
+              component={OrderManagement}
+              initialParams={{ businessId }}
+              options={{
+                headerShown: true,
+                title: "Order Management",
+                headerRight: () => <SignOutButton />
+              }}
+            />
+            <Stack.Screen
+              name="EmployeeManagement"
+              component={EmployeeManagementScreen}
+              initialParams={{ businessId }}
+              options={{
+                headerShown: true,
+                title: "Employee Management",
+                headerRight: () => <SignOutButton />
+              }}
+            />
+            <Stack.Screen
+              name="EmployeeDetails"
+              component={EmployeeDetailsScreen}
+              options={{
+                headerShown: true,
+                title: "Employee Details",
+                headerRight: () => <SignOutButton />
+              }}
+            />
           </>
         ) : (
           // Show Welcome screen if authenticated but no businesses, or during initial load before check completes
-           // Or if loading is false, authenticated, but hasBusinesses is explicitly false
+          // Or if loading is false, authenticated, but hasBusinesses is explicitly false
           <Stack.Screen
             name="Welcome"
             component={WelcomeScreen}
@@ -224,12 +256,12 @@ function AppContent() {
 
       {/* Business modal - only visible when authenticated and no businesses exist */}
       {authStatus === 'authenticated' && ( // Ensure modal only renders if authenticated
-         <CreateBusinessModal
-           isVisible={modalVisible}
-           onBusinessCreated={handleBusinessCreated}
-           onCancel={signOut} // Pass signOut from useAuthenticator
-         />
-       )}
+        <CreateBusinessModal
+          isVisible={modalVisible}
+          onBusinessCreated={handleBusinessCreated}
+          onCancel={signOut} // Pass signOut from useAuthenticator
+        />
+      )}
     </NavigationContainer>
   );
 }

@@ -19,7 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import EditCustomerModal from '../../shared/components/EditCustomerModal';
 import BarcodeScannerModal from '../../shared/components/BarCodeScannerModal';
 import QRCode from 'react-native-qrcode-svg';
-import { generateQRCodeData, EntityType, getQRCodeURL } from '../../shared/components/qrCodeGenerator';
+import { generateQRCodeData, getQRCodeURL } from '../../shared/components/qrCodeGenerator';
 import { styles } from './styles/customerEditStyles';
 
 // Initialize Amplify client

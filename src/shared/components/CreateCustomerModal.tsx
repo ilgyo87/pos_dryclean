@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Modal,
   View,
@@ -20,6 +20,7 @@ import {
   generateQRCodeData,
 } from './qrCodeGenerator';
 import QRCodeCapture from './QRCodeCapture';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // Initialize Amplify client
 const client = generateClient<Schema>();
@@ -55,6 +56,12 @@ const CreateCustomerModal = ({
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Phone number checking states
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+  const [phoneExists, setPhoneExists] = useState(false);
+  const [phoneCheckComplete, setPhoneCheckComplete] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  
   // QR code states
   const [qrCodeString, setQrCodeString] = useState<string | null>(null);
   const [tempCustomer, setTempCustomer] = useState<Customer | null>(null);
@@ -75,8 +82,23 @@ const CreateCustomerModal = ({
       setNewCustomerId(null);
       setQrCaptureVisible(false);
       setCreatedCustomer(null);
+      setIsCheckingPhone(false);
+      setPhoneExists(false);
+      setPhoneCheckComplete(false);
     }
   }, [visible, initialData]);
+
+  // Validate form fields on change
+  useEffect(() => {
+    setIsFormValid(
+      !!firstName.trim() &&
+      !!lastName.trim() &&
+      !!phoneNumber.trim() &&
+      !phoneExists && // Must not exist
+      phoneCheckComplete && // Phone check must be done
+      (email.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) // Email is valid if provided
+    );
+  }, [firstName, lastName, phoneNumber, email, phoneExists, phoneCheckComplete]);
 
   // Generate QR code data for preview when customer info is ready
   useEffect(() => {
@@ -102,8 +124,69 @@ const CreateCustomerModal = ({
     }
   }, [firstName, lastName, phoneNumber, email, businessId]);
 
+  // Debounce function
+  const debounce = (func: (...args: any[]) => void, delay: number) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    return (...args: any[]) => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = setTimeout(() => {
+        func(...args);
+      }, delay);
+    };
+  };
+
+  // Phone number existence check (debounced)
+  const checkPhoneNumberExists = useCallback(
+    debounce(async (phone: string) => {
+      if (!phone || phone.length < 10) { // Basic check
+        setIsCheckingPhone(false);
+        setPhoneExists(false);
+        setPhoneCheckComplete(false);
+        return;
+      }
+      
+      // Clean the phone number for checking (remove formatting)
+      const cleanedPhone = phone.replace(/\D/g, '');
+      if (cleanedPhone.length < 10) {
+        setIsCheckingPhone(false);
+        setPhoneExists(false);
+        setPhoneCheckComplete(false);
+        return;
+      }
+      
+      setIsCheckingPhone(true);
+      setPhoneCheckComplete(false);
+      setPhoneExists(false); // Reset on new check
+      
+      try {
+        // Check if phone number exists in the current business
+        const { data: customers } = await client.models.Customer.list({
+          filter: {
+            and: [
+              { phone: { eq: cleanedPhone } },
+              { businessID: { eq: businessId } }
+            ]
+          }
+        });
+        
+        const exists = customers.length > 0;
+        setPhoneExists(exists);
+      } catch (error) {
+        console.error('Error checking phone number:', error);
+        // Decide how to handle API errors - maybe allow proceeding?
+        setPhoneExists(false);
+      } finally {
+        setIsCheckingPhone(false);
+        setPhoneCheckComplete(true);
+      }
+    }, 1000), // 1 second debounce delay
+    [businessId]
+  );
+
   // Format phone number as user types (e.g., (123) 456-7890)
-  const formatPhoneNumber = (text: string) => {
+  const handlePhoneChange = (text: string) => {
     // Remove all non-digit characters
     const cleaned = text.replace(/\D/g, '');
     
@@ -118,6 +201,9 @@ const CreateCustomerModal = ({
     }
     
     setPhoneNumber(formatted);
+    setPhoneExists(false); // Reset validation state on change
+    setPhoneCheckComplete(false);
+    checkPhoneNumberExists(cleaned); // Trigger debounced check with cleaned number
   };
 
   const validateForm = () => {
@@ -133,6 +219,16 @@ const CreateCustomerModal = ({
     
     if (!phoneNumber.trim()) {
       Alert.alert('Error', 'Phone number is required');
+      return false;
+    }
+    
+    if (phoneExists) {
+      Alert.alert('Error', 'This phone number is already registered with a customer');
+      return false;
+    }
+    
+    if (!phoneCheckComplete) {
+      Alert.alert('Error', 'Please wait for phone number verification to complete');
       return false;
     }
     
@@ -196,11 +292,14 @@ const CreateCustomerModal = ({
   
     setIsSubmitting(true);
     try {
+      // Clean the phone number for storage (remove formatting)
+      const cleanedPhone = phoneNumber.replace(/\D/g, '');
+      
       // First create the customer in database
       const result = await client.models.Customer.create({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phone: phoneNumber.trim(),
+        phone: cleanedPhone,
         email: email.trim() || undefined, // Make email optional
         businessID: businessId,
         // Don't set qrCode yet - we'll update it after generating the QR code
@@ -294,13 +393,29 @@ const CreateCustomerModal = ({
                 
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Phone Number *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={phoneNumber}
-                    onChangeText={formatPhoneNumber}
-                    placeholder="(XXX) XXX-XXXX"
-                    keyboardType="phone-pad"
-                  />
+                  <View>
+                    <TextInput
+                      style={[styles.input, phoneExists ? styles.inputError : null]}
+                      value={phoneNumber}
+                      onChangeText={handlePhoneChange}
+                      placeholder="(XXX) XXX-XXXX"
+                      keyboardType="phone-pad"
+                      editable={!isCheckingPhone}
+                    />
+                    {/* Phone check indicator */}
+                    <View style={styles.phoneCheckIndicator}>
+                      {isCheckingPhone ? <ActivityIndicator size="small" color="#4f46e5" /> : null}
+                      {phoneCheckComplete && !isCheckingPhone && !phoneExists ? (
+                        <Icon name="check-circle" size={20} color="green" />
+                      ) : null}
+                      {phoneCheckComplete && !isCheckingPhone && phoneExists ? (
+                        <Icon name="alert-circle" size={20} color="red" />
+                      ) : null}
+                    </View>
+                  </View>
+                  {phoneCheckComplete && phoneExists && 
+                    <Text style={styles.errorMessage}>This phone number is already registered with a customer.</Text>
+                  }
                 </View>
                 
                 <View style={styles.formGroup}>
@@ -346,9 +461,13 @@ const CreateCustomerModal = ({
                 </TouchableOpacity>
                 
                 <TouchableOpacity
-                  style={[styles.button, styles.createButton, isSubmitting && styles.disabledButton]}
+                  style={[
+                    styles.button, 
+                    styles.createButton, 
+                    (!isFormValid || isSubmitting || isCheckingPhone || phoneExists) ? styles.disabledButton : null
+                  ]}
                   onPress={handleCreateCustomer}
-                  disabled={isSubmitting}
+                  disabled={!isFormValid || isSubmitting || isCheckingPhone || phoneExists}
                 >
                   <Text style={styles.createButtonText}>
                     {isSubmitting ? 'Creating...' : 'Create Customer'}
