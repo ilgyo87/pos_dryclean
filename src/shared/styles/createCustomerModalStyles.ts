@@ -97,5 +97,10 @@ export const styles = StyleSheet.create({
     padding: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  }
+  },
+  qrCodeWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 15,
+  },
 });

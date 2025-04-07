@@ -5,10 +5,12 @@ import {
   TextInput,
   Button,
   FlatList,
+  StyleSheet,
   TouchableOpacity,
   Modal,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NavigationProp, ParamListBase } from '@react-navigation/native';
@@ -17,14 +19,13 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { v4 as uuidv4 } from 'uuid';
 import CreateCustomerModal from '../../shared/components/CreateCustomerModal';
-import { styles } from './styles/customerSearchStyles';
+import BarcodeScannerModal from '../../shared/components/BarCodeScannerModal';
 
 // Route params type
 type CustomerSearchScreenRouteParams = {
   businessId: string;
 };
 
-// Customer type
 const client = generateClient<Schema>();
 type Customer = Schema['Customer']['type'];
 
@@ -61,6 +62,7 @@ const CustomerSearchScreen: React.FC = () => {
         Alert.alert('Error', 'Failed to fetch customers');
       } else {
         const customersData = result.data as unknown as Customer[] || [];
+        console.log('Fetched customers:', customersData.length);
         setCustomers(customersData);
         setFilteredCustomers(customersData);
       }
@@ -137,7 +139,7 @@ const CustomerSearchScreen: React.FC = () => {
   };
 
   // Search for existing customer profiles globally by phone number
-  const searchGlobalCustomers = async (phone: string) => {
+  const searchGlobalCustomers = async (phone: string): Promise<Customer[]> => {
     setSearchingGlobally(true);
     try {
       const formattedPhone = formatPhoneNumber(phone);
@@ -147,6 +149,7 @@ const CustomerSearchScreen: React.FC = () => {
 
       if (result.errors) {
         console.error('Error searching customers:', result.errors);
+        return []; // Return empty array instead of undefined
       } else if (result.data && result.data.length > 0) {
         // Filter out customers from the current business
         const otherBusinessCustomers = result.data.filter(c => c.businessID !== businessId);
@@ -220,7 +223,7 @@ const CustomerSearchScreen: React.FC = () => {
         phone: existingCustomer.phone,
         email: existingCustomer.email || undefined,
         qrCode: existingCustomer.qrCode, // Use the same QR code for recognition
-        cognitoUserId: existingCustomer.cognitoUserId, // Link to the same customer across businesses
+        cognitoUserId: globalId, // Link to the same customer across businesses
       });
 
       if (result.errors) {
@@ -237,6 +240,7 @@ const CustomerSearchScreen: React.FC = () => {
 
   // Handle when a new customer is created
   const handleNewCustomerCreated = (customer: Customer) => {
+    console.log('New customer created:', customer);
     // Add the new customer to the list
     setCustomers(prevCustomers => [customer, ...prevCustomers]);
     setFilteredCustomers(prevFiltered => [customer, ...prevFiltered]);
@@ -250,7 +254,9 @@ const CustomerSearchScreen: React.FC = () => {
     // Navigate to TransactionSelectionScreen instead of NewTransaction
     navigation.navigate('TransactionSelection', {
       customer: customer, // Pass the entire customer object
-      businessId: businessId
+      businessId: businessId,
+      customerId: customer.id,
+      customerName: `${customer.firstName} ${customer.lastName}`
     });
   };
 
@@ -268,14 +274,8 @@ const CustomerSearchScreen: React.FC = () => {
         <TouchableOpacity style={styles.scanButton} onPress={() => setScanQrModalVisible(true)}>
           <Text style={styles.scanButtonText}>Scan QR</Text>
         </TouchableOpacity>
-
       </View>
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Text style={styles.addButtonText}>Add New Customer</Text>
-      </TouchableOpacity>
+
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0000ff" />
@@ -307,6 +307,13 @@ const CustomerSearchScreen: React.FC = () => {
               </View>
             }
           />
+
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setModalVisible(true)}
+          >
+            <Text style={styles.addButtonText}>Add New Customer</Text>
+          </TouchableOpacity>
         </>
       )}
 
@@ -315,25 +322,121 @@ const CustomerSearchScreen: React.FC = () => {
         visible={modalVisible}
         businessId={businessId}
         onClose={() => setModalVisible(false)}
-        onCustomerCreated={(customer: unknown) => handleNewCustomerCreated(customer as Customer)}
-        initialData={{ phone: searchText.length > 5 ? searchText : undefined }}
+        onCustomerCreated={handleNewCustomerCreated}
+        searchGlobalCustomers={searchGlobalCustomers}
+        initialData={{ phoneNumber: searchText.length > 5 ? searchText : undefined }}
       />
 
-      {/* QR Code Scanner Modal would go here */}
-      <Modal
+      {/* BarCode Scanner Modal */}
+      <BarcodeScannerModal
         visible={scanQrModalVisible}
-        transparent={false}
-        animationType="slide"
-        onRequestClose={() => setScanQrModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Scan Customer QR Code</Text>
-          {/* QR Code Scanner component would go here */}
-          <Button title="Cancel" onPress={() => setScanQrModalVisible(false)} />
-        </View>
-      </Modal>
+        onClose={() => setScanQrModalVisible(false)}
+        onCodeScanned={handleQrCodeScanned}
+      />
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginRight: 8,
+  },
+  scanButton: {
+    backgroundColor: '#007BFF',
+    padding: 10,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  scanButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  customerItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  customerInfo: {
+    flex: 1,
+  },
+  customerName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  customerPhone: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  customerEmail: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  selectButtonContainer: {
+    backgroundColor: '#007BFF',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+  },
+  selectButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  emptyListContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyListText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  addButton: {
+    backgroundColor: '#28a745',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  addButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+});
 
 export default CustomerSearchScreen;
