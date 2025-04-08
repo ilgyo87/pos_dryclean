@@ -1,6 +1,5 @@
-// src/App.tsx
-import React, { useState, useEffect } from 'react';
-import { Button, View, Text, ActivityIndicator } from 'react-native'; // Added ActivityIndicator import
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
 import { Amplify } from "aws-amplify";
@@ -9,96 +8,314 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import CreateBusinessModal from './shared/components/CreateBusinessModal';
-import DashboardScreen from './screens/Dashboard/DashboardScreen';
 import outputs from "../amplify_outputs.json";
+import Toast from 'react-native-toast-message';
+
+// Screens
+import DashboardScreen from './screens/Dashboard/DashboardScreen';
 import CustomerEditScreen from './screens/CustomerManagement/CustomerEditScreen';
 import TransactionSelectionScreen from './screens/Transaction/TransactionSelectionScreen';
 import ProductManagementScreen from './screens/ProductManagement/ProductManagementScreen';
 import CheckoutScreen from './screens/Transaction/components/CheckoutScreen';
 import ReceiptScreen from './screens/Transaction/components/ReceiptScreen';
 import CustomerSearchScreen from './screens/Transaction/CustomerSearchScreen';
-import OrderManagement from './screens/OrderManagement';
-import EmployeeManagementScreen from './screens/EmployeeManagement';
-import EmployeeDetailsScreen from './screens/EmployeeManagement/components/EmployeeDetailsScreen';
+import OrderManagementScreen from './screens/OrderManagement/index';
+import EmployeeManagementScreen from './screens/EmployeeManagement/index';
+
+// Define Types for Context
+type BusinessContextType = {
+  businessId: string;
+  businessName: string;
+  setBusinessId: (id: string) => void;
+  setBusinessName: (name: string) => void;
+  refreshBusiness: () => Promise<void>;
+};
+
+type EmployeeContextType = {
+  employeeId: string | null;
+  role: string | null;
+  isOwner: boolean;
+  canManageProducts: boolean;
+  canManageEmployees: boolean;
+  canViewReports: boolean;
+};
+
+// Create Contexts
+export const BusinessContext = createContext<BusinessContextType>({
+  businessId: '',
+  businessName: '',
+  setBusinessId: () => {},
+  setBusinessName: () => {},
+  refreshBusiness: async () => {},
+});
+
+export const EmployeeContext = createContext<EmployeeContextType>({
+  employeeId: null,
+  role: null,
+  isOwner: false,
+  canManageProducts: false,
+  canManageEmployees: false,
+  canViewReports: false,
+});
+
+// Add Route Type Definitions for type safety
+export type RootStackParamList = {
+  // Auth Screens
+  Welcome: undefined;
+  
+  // Main Screens
+  Dashboard: { 
+    businessId?: string;
+    businessName?: string;
+    showSeededMessage?: boolean;
+  };
+  
+  // Customer Management
+  CustomerSearch: { 
+    businessId: string;
+    businessName: string;
+  };
+  CustomerEdit: { 
+    businessId: string;
+    customerId?: string;
+  };
+  
+  // Product Management
+  ProductManagement: { 
+    businessId: string;
+    businessName: string;
+  };
+  
+  // Transaction Flow
+  TransactionSelection: {
+    businessId: string;
+    customerId: string;
+    customerName: string;
+    customer: any; // Consider replacing with specific Customer type
+  };
+  Checkout: {
+    businessId: string;
+    customerId: string;
+    customerName: string;
+    items: any[]; // Consider replacing with specific CartItem type
+    total: number;
+    pickupDate: string;
+    customerPreferences: string;
+  };
+  Receipt: {
+    receiptHtml: string;
+    transactionId: string;
+  };
+  
+  // Employee Management
+  EmployeeManagement: {
+    businessId: string;
+  };
+  
+  // Reports
+  Reports: {
+    businessId: string;
+  };
+  
+  // Settings
+  Settings: {
+    businessId: string;
+  };
+};
 
 // Configure Amplify with your project settings
 Amplify.configure(outputs);
 
 const client = generateClient<Schema>();
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // Sign out button component with explicit handling
 function SignOutButton() {
   const { signOut } = useAuthenticator();
-  return <Button title="Sign Out" onPress={signOut} />;
+  return <Text onPress={signOut} style={{ color: '#007AFF', padding: 10 }}>Sign Out</Text>;
+}
+
+// Welcome Screen
+function WelcomeScreen() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 12 }}>Welcome to Dry Cleaning POS</Text>
+      <Text style={{ fontSize: 16, color: '#666', textAlign: 'center', marginHorizontal: 40 }}>
+        Please create a business to continue using the application.
+      </Text>
+    </View>
+  );
+}
+
+// Business Context Provider Component
+function BusinessContextProvider({ children }: { children: React.ReactNode }) {
+  const [businessId, setBusinessId] = useState<string>('');
+  const [businessName, setBusinessName] = useState<string>('');
+  const { user } = useAuthenticator();
+
+  // Function to refresh business data
+  const refreshBusiness = async () => {
+    if (!user?.username) return;
+    
+    try {
+      const result = await client.models.Business.list({
+        filter: { owner: { eq: user.username } }
+      });
+      
+      if (result.data && result.data.length > 0) {
+        setBusinessId(result.data[0].id);
+        setBusinessName(result.data[0].name);
+      }
+    } catch (error) {
+      console.error("Error refreshing business data:", error);
+    }
+  };
+
+  useEffect(() => {
+    refreshBusiness();
+  }, [user?.username]);
+
+  return (
+    <BusinessContext.Provider 
+      value={{ 
+        businessId, 
+        businessName, 
+        setBusinessId, 
+        setBusinessName,
+        refreshBusiness
+      }}
+    >
+      {children}
+    </BusinessContext.Provider>
+  );
+}
+
+// Employee Context Provider Component
+function EmployeeContextProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthenticator();
+  const { businessId } = useContext(BusinessContext);
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [permissions, setPermissions] = useState({
+    canManageProducts: false,
+    canManageEmployees: false,
+    canViewReports: false
+  });
+
+  useEffect(() => {
+    const fetchEmployeeData = async () => {
+      if (!user?.username || !businessId) return;
+      
+      try {
+        // First check if user is the business owner
+        const businessResult = await client.models.Business.get({ id: businessId });
+        
+        if (businessResult.data && businessResult.data.owner === user.username) {
+          // User is the business owner - has all permissions
+          setIsOwner(true);
+          setRole('OWNER');
+          setPermissions({
+            canManageProducts: true,
+            canManageEmployees: true,
+            canViewReports: true
+          });
+          return;
+        }
+        
+        // Otherwise, check if user is an employee
+        const employeesResult = await client.models.Employee.list({
+          filter: {
+            and: [
+              { businessID: { eq: businessId } },
+              { phoneNumber: { eq: user.username } } // Assuming phone number is used as username
+            ]
+          }
+        });
+        
+        if (employeesResult.data && employeesResult.data.length > 0) {
+          const employee = employeesResult.data[0];
+          setEmployeeId(employee.id);
+          setRole(employee.role);
+          
+          // Set permissions based on role
+          // This is simplified - you might want to have a more complex permission system
+          const isManager = employee.role === 'MANAGER';
+          setPermissions({
+            canManageProducts: isManager,
+            canManageEmployees: isManager,
+            canViewReports: isManager || employee.role === 'SUPERVISOR'
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching employee data:", error);
+      }
+    };
+    
+    fetchEmployeeData();
+  }, [user?.username, businessId]);
+
+  return (
+    <EmployeeContext.Provider
+      value={{
+        employeeId,
+        role,
+        isOwner,
+        canManageProducts: permissions.canManageProducts,
+        canManageEmployees: permissions.canManageEmployees,
+        canViewReports: permissions.canViewReports
+      }}
+    >
+      {children}
+    </EmployeeContext.Provider>
+  );
 }
 
 // Main application content
 function AppContent() {
   const [hasBusinesses, setHasBusinesses] = useState<boolean | null>(null);
-  const [businessId, setBusinessId] = useState<string>('');
-  const [businessName, setBusinessName] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const { authStatus, user, signOut } = useAuthenticator((context) => [ // Destructure signOut
-    context.authStatus,
-    context.user,
-    context.signOut,
-  ]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const { authStatus, user } = useAuthenticator();
   const [dashboardKey, setDashboardKey] = useState(0);
+  const { businessId, businessName, setBusinessId, setBusinessName } = useContext(BusinessContext);
+  const { role, isOwner } = useContext(EmployeeContext);
 
   useEffect(() => {
-    console.log("Auth status changed:", authStatus);
     if (authStatus === 'authenticated') {
-      console.log("User authenticated, checking for businesses");
       checkForBusinesses();
-    } else if (authStatus === 'unauthenticated') {
-      // Reset state when user signs out
-      setHasBusinesses(null);
-      setBusinessId('');
-      setBusinessName('');
-      setLoading(true); // Go back to loading state until authenticated again
     }
-  }, [authStatus, user]); // Add user to dependency array
+  }, [authStatus]);
 
   // Check if user has businesses
   const checkForBusinesses = async () => {
-    // Use user directly from useAuthenticator hook
-    if (!user?.userId) { // Use userId which is more reliable than username
-      console.log("User ID not available yet");
-      setLoading(false); // Stop loading if no user ID
-      setHasBusinesses(false); // Assume no businesses without user ID
+    if (!user?.username) {
+      console.log("User not loaded yet");
       return;
     }
 
     setLoading(true);
     try {
-      console.log(`Checking for businesses for user ID: ${user.userId}`);
-      // Filter by userId (assuming your schema uses userId or owner mapped to it)
       const result = await client.models.Business.list({
         filter: {
-          // Adjust this filter based on your actual schema field for ownership
-          // It might be owner, userId, etc. Make sure it matches amplify/data/resource.ts
-          userId: { eq: user.userId } // Use userId
+          owner: { eq: user.username }
         }
       });
 
-      console.log("Business check result:", JSON.stringify(result, null, 2)); // Pretty print result
-      const businesses = result.data || [];
-      const hasBusiness = businesses.length > 0;
-      console.log("Has businesses:", hasBusiness);
+      const hasBusiness = result.data && result.data.length > 0;
 
-      if (hasBusiness) {
-        // Store the first business ID and name found
-        setBusinessId(businesses[0].id);
-        setBusinessName(businesses[0].name);
+      if (hasBusiness && result.data && result.data.length > 0) {
+        // Store the business ID and name
+        setBusinessId(result.data[0].id);
+        setBusinessName(result.data[0].name);
       }
 
       setHasBusinesses(hasBusiness);
+      setLoading(false);
     } catch (error) {
       console.error("Error checking for businesses:", error);
-      setHasBusinesses(false); // Set to false on error
-    } finally {
-      setLoading(false); // Ensure loading is set to false
+      setHasBusinesses(false);
+      setLoading(false);
     }
   };
 
@@ -111,157 +328,152 @@ function AppContent() {
     console.log(`Business created: ${newBusinessName} (${newBusinessId})`);
   };
 
-  function WelcomeScreen() {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-        <Text style={{ fontSize: 18, textAlign: 'center', marginBottom: 10 }}>Welcome to the Dry Cleaning POS</Text>
-        <Text style={{ textAlign: 'center' }}>It looks like you don't have a business set up yet.</Text>
-        <Text style={{ textAlign: 'center' }}>Please create one to continue.</Text>
-        {/* The modal will appear over this screen */}
-      </View>
-    );
-  }
-
-  // Determine modal visibility: show when not loading and user is authenticated but has no businesses
-  const modalVisible = !loading && authStatus === 'authenticated' && hasBusinesses === false;
-  console.log("Modal visibility state:", { loading, authStatus, hasBusinesses, modalVisible });
-
-  if (loading && authStatus === 'authenticated') {
-    // Show loading indicator only after authentication while checking for businesses
+  if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-        <Text>Loading business data...</Text>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={{ marginTop: 20 }}>Loading...</Text>
       </View>
     );
   }
 
+  // Modal visibility state for debugging
+  const modalVisibility = !loading && hasBusinesses === false;
 
   return (
     <NavigationContainer>
       {/* Main application navigation */}
-      <Stack.Navigator>
-        {authStatus === 'authenticated' && hasBusinesses === true ? (
-          // Render business screens ONLY if authenticated AND hasBusinesses is true
+      <Stack.Navigator screenOptions={{ headerRight: () => <SignOutButton /> }}>
+        {hasBusinesses ? (
           <>
-            <Stack.Screen
-              key={dashboardKey} // Force remount when business is created
-              name="Dashboard"
-              component={DashboardScreen}
-              initialParams={{ businessId, businessName }}
-              options={{
-                headerShown: true,
-                title: `Dashboard: ${businessName}`, // Show business name in title
-                headerRight: () => <SignOutButton />
-              }}
-            />
-            <Stack.Screen
-              name="CustomerSearch"
-              component={CustomerSearchScreen}
-              initialParams={{ businessId, businessName }}
-              options={{
-                headerShown: true,
-                title: "Customers",
-                headerRight: () => <SignOutButton />
-              }}
-            />
-            <Stack.Screen
-              name="CustomerEdit"
-              component={CustomerEditScreen}
-              initialParams={{ businessId }}
-              options={{
-                headerShown: true,
-                title: "Edit Customer",
-                headerRight: () => <SignOutButton />
-              }}
-            />
-            <Stack.Screen
-              name="ProductManagement"
-              component={ProductManagementScreen}
-              initialParams={{ businessId, businessName }}
-              options={{
-                headerShown: true,
-                title: "Products & Services",
-                headerRight: () => <SignOutButton />
-              }}
-            />
-            <Stack.Screen
-              name="TransactionSelection"
-              component={TransactionSelectionScreen}
-              initialParams={{ businessId }}
-              options={{
-                headerShown: true,
-                title: "New Transaction",
-                headerRight: () => <SignOutButton />
-              }}
-            />
-            <Stack.Screen
-              name="Checkout"
-              component={CheckoutScreen}
-              options={{
-                headerShown: false // Typically no header needed here
-              }}
-            />
-            <Stack.Screen
-              name="Receipt"
-              component={ReceiptScreen}
-              options={{
-                headerShown: false // Typically no header needed here
-              }}
-            />
-            <Stack.Screen
-              name="OrderManagement"
-              component={OrderManagement}
-              initialParams={{ businessId }}
-              options={{
-                headerShown: true,
-                title: "Order Management",
-                headerRight: () => <SignOutButton />
-              }}
-            />
-            <Stack.Screen
-              name="EmployeeManagement"
-              component={EmployeeManagementScreen}
-              initialParams={{ businessId }}
-              options={{
-                headerShown: true,
-                title: "Employee Management",
-                headerRight: () => <SignOutButton />
-              }}
-            />
-            <Stack.Screen
-              name="EmployeeDetails"
-              component={EmployeeDetailsScreen}
-              options={{
-                headerShown: true,
-                title: "Employee Details",
-                headerRight: () => <SignOutButton />
-              }}
-            />
+            {/* Main Screens */}
+            <Stack.Group>
+              <Stack.Screen
+                key={dashboardKey}
+                name="Dashboard"
+                component={DashboardScreen}
+                initialParams={{ businessId, businessName }}
+                options={{
+                  headerShown: true,
+                  title: "DASHBOARD"
+                }}
+              />
+            </Stack.Group>
+
+            {/* Customer Management */}
+            <Stack.Group>
+              <Stack.Screen
+                name="CustomerSearch"
+                component={CustomerSearchScreen}
+                initialParams={{ businessId, businessName }}
+                options={{
+                  headerShown: true,
+                  title: "CUSTOMERS"
+                }}
+              />
+              <Stack.Screen
+                name="CustomerEdit"
+                component={CustomerEditScreen}
+                initialParams={{ businessId }}
+                options={{
+                  headerShown: true,
+                  title: "CUSTOMER MANAGEMENT"
+                }}
+              />
+            </Stack.Group>
+
+            {/* Product Management */}
+            <Stack.Group>
+              <Stack.Screen
+                name="ProductManagement"
+                component={ProductManagementScreen}
+                initialParams={{ businessId, businessName }}
+                options={{
+                  headerShown: true,
+                  title: "PRODUCT MANAGEMENT"
+                }}
+              />
+            </Stack.Group>
+
+            {/* Transaction Flow */}
+            <Stack.Group>
+              <Stack.Screen
+                name="TransactionSelection"
+                component={TransactionSelectionScreen}
+                initialParams={{ businessId }}
+                options={{
+                  headerShown: true,
+                  title: "TRANSACTION"
+                }}
+              />
+              <Stack.Screen
+                name="Checkout"
+                component={CheckoutScreen}
+                options={{
+                  headerShown: false,
+                  presentation: 'modal'
+                }}
+              />
+              <Stack.Screen
+                name="Receipt"
+                component={ReceiptScreen}
+                options={{
+                  headerShown: false,
+                  presentation: 'modal'
+                }}
+              />
+            </Stack.Group>
+
+            {/* Employee Management */}
+            <Stack.Group>
+              <Stack.Screen
+                name="EmployeeManagement"
+                component={EmployeeManagementScreen}
+                initialParams={{ businessId }}
+                options={{
+                  headerShown: true,
+                  title: "EMPLOYEE MANAGEMENT"
+                }}
+              />
+            </Stack.Group>
+
+            {/* Order Management */}
+            {/* <Stack.Group>
+              <Stack.Screen
+                name="OrderManagement"
+                component={OrderManagementScreen}
+                initialParams={{ businessId }}
+                options={{
+                  headerShown: true,
+                  title: "ORDER MANAGEMENT"
+                }}
+              />
+            </Stack.Group> */}
+
+            {/* Future screens can be added here in their respective groups */}
           </>
         ) : (
-          // Show Welcome screen if authenticated but no businesses, or during initial load before check completes
-          // Or if loading is false, authenticated, but hasBusinesses is explicitly false
+          // Welcome screen when no businesses
           <Stack.Screen
             name="Welcome"
             component={WelcomeScreen}
             options={{
               headerShown: true,
-              title: "Welcome",
-              headerRight: () => (authStatus === 'authenticated' ? <SignOutButton /> : null) // Show sign out only if authenticated
+              title: "WELCOME"
             }}
           />
         )}
       </Stack.Navigator>
 
-      {/* Business modal - only visible when authenticated and no businesses exist */}
-      {authStatus === 'authenticated' && ( // Ensure modal only renders if authenticated
-        <CreateBusinessModal
-          isVisible={modalVisible}
-          onBusinessCreated={handleBusinessCreated}
-          onCancel={signOut} // Pass signOut from useAuthenticator
-        />
-      )}
+      {/* Business modal - only visible when no businesses exist */}
+      <CreateBusinessModal
+        isVisible={modalVisibility} 
+        onCancel={() => setModalVisible(false)} 
+        onBusinessCreated={handleBusinessCreated}
+      />
+      
+      {/* Toast messages */}
+      <Toast />
     </NavigationContainer>
   );
 }
@@ -272,7 +484,11 @@ export default function App() {
     <SafeAreaProvider>
       <Authenticator.Provider>
         <Authenticator>
-          <AppContent />
+          <BusinessContextProvider>
+            <EmployeeContextProvider>
+              <AppContent />
+            </EmployeeContextProvider>
+          </BusinessContextProvider>
         </Authenticator>
       </Authenticator.Provider>
     </SafeAreaProvider>
