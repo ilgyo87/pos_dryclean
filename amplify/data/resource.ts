@@ -26,15 +26,15 @@ const schema = a.schema({
       userId: a.string(),
       qrCode: a.string(),
       // Relationships
-      categories: a.hasMany('Category', 'businessId'),
-      customers: a.hasMany('Customer', 'businessId'),
-      employees: a.hasMany('Employee', 'businessId'),
-      orders: a.hasMany('Order', 'businessId'),
-      garments: a.hasMany('Garment', 'businessId'),
-      transactions: a.hasMany('Transaction', 'businessId'),
-      loyaltyProgram: a.hasOne('LoyaltyProgram', 'businessId'),
-      businessMetrics: a.hasMany('BusinessMetric', 'businessId'),
-      inventoryItems: a.hasMany('InventoryItem', 'businessId')
+      // categories: a.hasMany('Category', 'businessId'),
+      // customers: a.hasMany('Customer', 'businessId'),
+      // employees: a.hasMany('Employee', 'businessId'),
+      // orders: a.hasMany('Order', 'businessId'),
+      // garments: a.hasMany('Garment', 'businessId'),
+      // transactions: a.hasMany('Transaction', 'businessId'),
+      // loyaltyProgram: a.hasOne('LoyaltyProgram', 'businessId'),
+      // businessMetrics: a.hasMany('BusinessMetric', 'businessId'),
+      // inventoryItems: a.hasMany('InventoryItem', 'businessId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -48,8 +48,6 @@ const schema = a.schema({
       price: a.float(),
       imageUrl: a.string(),
       // Relationships
-      businessId: a.id().required(),
-      business: a.belongsTo('Business', 'businessId'),
       items: a.hasMany('Item', 'categoryId')
     })
     .authorization((allow) => [
@@ -91,8 +89,6 @@ const schema = a.schema({
       preferences: a.string().array(),
       qrCode: a.string(),
       // Relationships
-      businessId: a.id().required(),
-      business: a.belongsTo('Business', 'businessId'),
       orders: a.hasMany('Order', 'customerId'),
       garments: a.hasMany('Garment', 'customerId'),
       notifications: a.hasMany('CustomerNotification', 'customerId'),
@@ -144,8 +140,6 @@ const schema = a.schema({
       qrCode: a.string(),
       lastLogin: a.datetime(),
       // Relationships
-      businessId: a.id().required(),
-      business: a.belongsTo('Business', 'businessId'),
       orders: a.hasMany('Order', 'employeeId'),
       transactions: a.hasMany('Transaction', 'employeeId'),
       employeeShifts: a.hasMany('EmployeeShift', 'employeeId'),
@@ -169,7 +163,6 @@ const schema = a.schema({
       // Relationships
       employeeId: a.id().required(),
       employee: a.belongsTo('Employee', 'employeeId'),
-      businessId: a.id().required()
     })
     .authorization((allow) => [
       allow.owner(),
@@ -205,8 +198,6 @@ const schema = a.schema({
       // Relationships
       customerId: a.id().required(),
       customer: a.belongsTo('Customer', 'customerId'),
-      businessId: a.id().required(),
-      business: a.belongsTo('Business', 'businessId'),
       orderItemId: a.id(),
       orderItem: a.belongsTo('OrderItem', 'orderItemId'),
       orderId: a.id(),
@@ -282,8 +273,6 @@ const schema = a.schema({
       // Relationships
       customerId: a.id().required(),
       customer: a.belongsTo('Customer', 'customerId'),
-      businessId: a.id().required(),
-      business: a.belongsTo('Business', 'businessId'),
       employeeId: a.id(),
       employee: a.belongsTo('Employee', 'employeeId'),
       deliveryAddressId: a.id(),
@@ -355,8 +344,6 @@ const schema = a.schema({
       // Relationships
       customerId: a.id().required(),
       customer: a.belongsTo('Customer', 'customerId'),
-      businessId: a.id().required(),
-      business: a.belongsTo('Business', 'businessId'),
       employeeId: a.id(),
       employee: a.belongsTo('Employee', 'employeeId'),
       order: a.hasOne('Order', 'transactionId'),
@@ -400,7 +387,6 @@ const schema = a.schema({
       // Relationships
       customerId: a.id().required(),
       customer: a.belongsTo('Customer', 'customerId'),
-      businessId: a.id().required(),
       orderId: a.id(),
       order: a.belongsTo('Order', 'orderId'),
       transactionId: a.id(),
@@ -428,7 +414,6 @@ const schema = a.schema({
       // Relationships
       customerId: a.id().required(),
       customer: a.belongsTo('Customer', 'customerId'),
-      businessId: a.id().required(),
       orderId: a.id(),
       order: a.belongsTo('Order', 'orderId'),
       transactionId: a.id(),
@@ -449,8 +434,6 @@ const schema = a.schema({
       pointValueInCents: a.float().required().default(1),
       isActive: a.boolean().default(true),
       // Relationships
-      businessId: a.id().required(),
-      business: a.belongsTo('Business', 'businessId'),
       loyaltyTiers: a.hasMany('LoyaltyTier', 'loyaltyProgramId'),
       customerLoyaltyMemberships: a.hasMany('CustomerLoyaltyMembership', 'loyaltyProgramId')
     })
@@ -469,7 +452,6 @@ const schema = a.schema({
       // Relationships
       loyaltyProgramId: a.id().required(),
       loyaltyProgram: a.belongsTo('LoyaltyProgram', 'loyaltyProgramId'),
-      businessId: a.id().required(),
       nextTierId: a.id(),
       nextTier: a.belongsTo('LoyaltyTier', 'nextTierId'),
       memberships: a.hasMany('CustomerLoyaltyMembership', 'currentTierId'),
@@ -494,7 +476,6 @@ const schema = a.schema({
       loyaltyProgram: a.belongsTo('LoyaltyProgram', 'loyaltyProgramId'),
       currentTierId: a.id(),
       loyaltyTier: a.belongsTo('LoyaltyTier', 'currentTierId'),
-      businessId: a.id().required(),
       loyaltyTransactions: a.hasMany('LoyaltyTransaction', 'customerLoyaltyMembershipId')
     })
     .authorization((allow) => [
@@ -520,8 +501,7 @@ const schema = a.schema({
       transactionId: a.id(),
       transaction: a.belongsTo('Transaction', 'transactionId'),
       orderId: a.id(),
-      order: a.belongsTo('Order', 'orderId'),
-      businessID: a.id().required()
+      order: a.belongsTo('Order', 'orderId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -544,8 +524,6 @@ const schema = a.schema({
       value: a.float().required(),
       notes: a.string(),
       // Relationships
-      businessId: a.id().required(),
-      business: a.belongsTo('Business', 'businessId'),
       employeeId: a.id(),
       employee: a.belongsTo('Employee', 'employeeId')
     })
@@ -573,8 +551,6 @@ const schema = a.schema({
       lastOrderDate: a.date(),
       lastCountDate: a.date(),
       // Relationships
-      businessId: a.id().required(),
-      business: a.belongsTo('Business', 'businessId'),
       inventoryTransactions: a.hasMany('InventoryTransaction', 'inventoryItemId')
     })
     .authorization((allow) => [
@@ -600,8 +576,7 @@ const schema = a.schema({
       inventoryItemId: a.id().required(),
       inventoryItem: a.belongsTo('InventoryItem', 'inventoryItemId'),
       employeeId: a.id(),
-      employee: a.belongsTo('Employee', 'employeeId'),
-      businessId: a.id().required()
+      employee: a.belongsTo('Employee', 'employeeId')
     })
     .authorization((allow) => [
       allow.owner(),
