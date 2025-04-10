@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useEffect, useState } from "react";
 import { Button, View, StyleSheet } from "react-native";
 import { Amplify } from "aws-amplify";
@@ -5,8 +6,9 @@ import { Authenticator, useAuthenticator } from "@aws-amplify/ui-react-native";
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { AuthUser } from 'aws-amplify/auth';
 import outputs from "../amplify_outputs.json";
-import Dashboard from "../src/screens/Dashboard";
+import Dashboard from "./screens/Dashboard";
 import BusinessCreate from "./components/BusinessCreate";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "../amplify/data/resource";
@@ -17,6 +19,7 @@ const Stack = createNativeStackNavigator();
 
 const client = generateClient<Schema>();
 
+// SignOutButton Component (Correctly uses useAuthenticator)
 const SignOutButton = () => {
   const { signOut } = useAuthenticator();
   return (
@@ -26,12 +29,13 @@ const SignOutButton = () => {
   );
 };
 
-const RootStack = () => {
+const RootStack = ({ user }: { user: AuthUser | null }) => {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="DASHBOARD">
-        <Stack.Screen name="DASHBOARD" component={Dashboard} />
-
+        <Stack.Screen name="DASHBOARD">
+          {(props) => <Dashboard {...props} user={user} />}
+        </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -39,13 +43,16 @@ const RootStack = () => {
 
 const AppContent = () => {
   const { user } = useAuthenticator((context) => [context.user]);
-  const [isBusinessCreateVisible, setIsBusinessCreateVisible] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isBusinessCreateVisible, setIsBusinessCreateVisible] = useState(false);
+  const [isLoadingBusinessCheck, setIsLoadingBusinessCheck] = useState(true);
 
   const checkBusiness = async () => {
-    if (!user) return;
+    if (!user) {
+      setIsLoadingBusinessCheck(false);
+      setIsBusinessCreateVisible(false);
+      return;
+    }
     try {
-      setIsLoading(true);
       const result = await client.models.Business.list({
         filter: { userId: { eq: user.userId } },
       });
@@ -53,26 +60,35 @@ const AppContent = () => {
       setIsBusinessCreateVisible(result.data?.length === 0);
     } catch (error) {
       console.error("Error checking business:", error);
+      setIsBusinessCreateVisible(false);
     } finally {
-      setIsLoading(false);
+      setIsLoadingBusinessCheck(false);
     }
   };
 
   useEffect(() => {
+    setIsLoadingBusinessCheck(true);
     checkBusiness();
   }, [user]);
 
   return (
-    <View>
+    <View style={{ flex: 1 }}>
       <SignOutButton />
-      <RootStack />
-      {user && <BusinessCreate isVisible={isBusinessCreateVisible} user={user} onCloseModal={() => setIsBusinessCreateVisible(false)} />}
+      <RootStack user={user} />
+      {!isLoadingBusinessCheck && user && (
+        <BusinessCreate
+          isVisible={isBusinessCreateVisible}
+          user={user}
+          onCloseModal={() => {
+            setIsBusinessCreateVisible(false);
+          }}
+        />
+      )}
     </View>
   );
 };
 
 export default function App() {
-
   return (
     <Authenticator.Provider>
       <Authenticator>
@@ -82,14 +98,16 @@ export default function App() {
       </Authenticator>
     </Authenticator.Provider>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 8,
   },
   signOutButton: {
-    alignSelf: "flex-end",
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 10,
   },
 });
