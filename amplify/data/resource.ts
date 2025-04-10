@@ -1,4 +1,6 @@
 import { a, defineData, type ClientSchema } from "@aws-amplify/backend";
+import { fetchBusiness } from "../functions/fetch-business/resource";
+import { fetchCustomers } from "../functions/fetch-customers/resource";
 
 const schema = a.schema({
 
@@ -26,17 +28,10 @@ const schema = a.schema({
       userId: a.string(),
       qrCode: a.string(),
       // Relationships
-      // categories: a.hasMany('Category', 'businessId'),
-      // customers: a.hasMany('Customer', 'businessId'),
-      // employees: a.hasMany('Employee', 'businessId'),
-      // orders: a.hasMany('Order', 'businessId'),
-      // garments: a.hasMany('Garment', 'businessId'),
-      // transactions: a.hasMany('Transaction', 'businessId'),
-      // loyaltyProgram: a.hasOne('LoyaltyProgram', 'businessId'),
-      // businessMetrics: a.hasMany('BusinessMetric', 'businessId'),
-      // inventoryItems: a.hasMany('InventoryItem', 'businessId')
+      businessMetrics: a.hasMany('BusinessMetric', 'businessId')
     })
     .authorization((allow) => [
+      allow.authenticated().to(['read']),
       allow.owner(),
     ]),
 
@@ -47,6 +42,7 @@ const schema = a.schema({
       description: a.string(),
       price: a.float(),
       imageUrl: a.string(),
+      userId: a.id().required(),
       // Relationships
       items: a.hasMany('Item', 'categoryId')
     })
@@ -66,7 +62,6 @@ const schema = a.schema({
       // Relationships
       categoryId: a.id().required(),
       category: a.belongsTo('Category', 'categoryId'),
-      orderItems: a.hasMany('OrderItem', 'itemId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -88,14 +83,15 @@ const schema = a.schema({
       lastActiveDate: a.date(),
       preferences: a.string().array(),
       qrCode: a.string(),
+      userId: a.id().required(),
       // Relationships
-      orders: a.hasMany('Order', 'customerId'),
+      // orders: a.hasMany('Order', 'customerId'),
       garments: a.hasMany('Garment', 'customerId'),
-      notifications: a.hasMany('CustomerNotification', 'customerId'),
-      credits: a.hasMany('CustomerCredit', 'customerId'),
-      deliveryAddresses: a.hasMany('DeliveryAddress', 'customerId'),
-      transactions: a.hasMany('Transaction', 'customerId'),
-      loyaltyMembership: a.hasOne('CustomerLoyaltyMembership', 'customerId')
+      // notifications: a.hasMany('CustomerNotification', 'customerId'),
+      // credits: a.hasMany('CustomerCredit', 'customerId'),
+      // deliveryAddresses: a.hasMany('DeliveryAddress', 'customerId'),
+      // transactions: a.hasMany('Transaction', 'customerId'),
+      // loyaltyMembership: a.hasOne('CustomerLoyaltyMembership', 'customerId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -113,9 +109,9 @@ const schema = a.schema({
       isDefault: a.boolean().default(false),
       coordinates: a.ref('Location'),
       // Relationships
-      customerId: a.id().required(),
-      customer: a.belongsTo('Customer', 'customerId'),
-      orders: a.hasMany('Order', 'deliveryAddressId')
+      // customerId: a.id().required(),
+      // customer: a.belongsTo('Customer', 'customerId'),
+      // orders: a.hasMany('Order', 'deliveryAddressId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -140,13 +136,13 @@ const schema = a.schema({
       qrCode: a.string(),
       lastLogin: a.datetime(),
       // Relationships
-      orders: a.hasMany('Order', 'employeeId'),
-      transactions: a.hasMany('Transaction', 'employeeId'),
+      // orders: a.hasMany('Order', 'employeeId'),
+      // transactions: a.hasMany('Transaction', 'employeeId'),
       employeeShifts: a.hasMany('EmployeeShift', 'employeeId'),
-      garmentProcessingEvents: a.hasMany('GarmentProcessingEvent', 'employeeId'),
-      garments: a.hasMany('Garment', 'employeeId'),
-      businessMetrics: a.hasMany('BusinessMetric', 'employeeId'),
-      inventoryTransactions: a.hasMany('InventoryTransaction', 'employeeId')
+      // garmentProcessingEvents: a.hasMany('GarmentProcessingEvent', 'employeeId'),
+      // garments: a.hasMany('Garment', 'employeeId'),
+      // businessMetrics: a.hasMany('BusinessMetric', 'employeeId'),
+      // inventoryTransactions: a.hasMany('InventoryTransaction', 'employeeId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -198,13 +194,13 @@ const schema = a.schema({
       // Relationships
       customerId: a.id().required(),
       customer: a.belongsTo('Customer', 'customerId'),
-      orderItemId: a.id(),
-      orderItem: a.belongsTo('OrderItem', 'orderItemId'),
-      orderId: a.id(),
-      order: a.belongsTo('Order', 'orderId'),
-      employeeId: a.id(),
-      employee: a.belongsTo('Employee', 'employeeId'),
-      garmentProcessingEvents: a.hasMany('GarmentProcessingEvent', 'garmentId')
+      // orderItemId: a.id(),
+      // orderItem: a.belongsTo('OrderItem', 'orderItemId'),
+      // orderId: a.id(),
+      // order: a.belongsTo('Order', 'orderId'),
+      // employeeId: a.id(),
+      // employee: a.belongsTo('Employee', 'employeeId'),
+      // garmentProcessingEvents: a.hasMany('GarmentProcessingEvent', 'garmentId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -228,10 +224,10 @@ const schema = a.schema({
       notes: a.string().array(),
       imageUrl: a.url(),
       // Relationships
-      garmentId: a.id().required(),
-      garment: a.belongsTo('Garment', 'garmentId'),
-      employeeId: a.id(),
-      employee: a.belongsTo('Employee', 'employeeId'),
+      // garmentId: a.id().required(),
+      // garment: a.belongsTo('Garment', 'garmentId'),
+      // employeeId: a.id(),
+      // employee: a.belongsTo('Employee', 'employeeId'),
     })
     .authorization((allow) => [
       allow.owner(),
@@ -271,19 +267,19 @@ const schema = a.schema({
       ]),
       deliveryNotes: a.string().array(),
       // Relationships
-      customerId: a.id().required(),
-      customer: a.belongsTo('Customer', 'customerId'),
-      employeeId: a.id(),
-      employee: a.belongsTo('Employee', 'employeeId'),
-      deliveryAddressId: a.id(),
-      deliveryAddress: a.belongsTo('DeliveryAddress', 'deliveryAddressId'),
-      orderItems: a.hasMany('OrderItem', 'orderId'),
-      garments: a.hasMany('Garment', 'orderId'),
-      transactionId: a.id(),
-      transaction: a.belongsTo('Transaction', 'transactionId'),
-      customerNotifications: a.hasMany('CustomerNotification', 'orderId'),
-      credits: a.hasMany('CustomerCredit', 'orderId'),
-      loyaltyTransactions: a.hasMany('LoyaltyTransaction', 'orderId')
+      // customerId: a.id().required(),
+      // customer: a.belongsTo('Customer', 'customerId'),
+      // employeeId: a.id(),
+      // employee: a.belongsTo('Employee', 'employeeId'),
+      // deliveryAddressId: a.id(),
+      // deliveryAddress: a.belongsTo('DeliveryAddress', 'deliveryAddressId'),
+      // orderItems: a.hasMany('OrderItem', 'orderId'),
+      // garments: a.hasMany('Garment', 'orderId'),
+      // transactionId: a.id(),
+      // transaction: a.belongsTo('Transaction', 'transactionId'),
+      // customerNotifications: a.hasMany('CustomerNotification', 'orderId'),
+      // credits: a.hasMany('CustomerCredit', 'orderId'),
+      // loyaltyTransactions: a.hasMany('LoyaltyTransaction', 'orderId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -297,11 +293,11 @@ const schema = a.schema({
       notes: a.string().array(),
       specialInstructions: a.string().array(),
       // Relationships
-      orderId: a.id().required(),
-      order: a.belongsTo('Order', 'orderId'),
-      itemId: a.id().required(),
-      item: a.belongsTo('Item', 'itemId'),
-      garment: a.hasOne('Garment', 'orderItemId')
+      // orderId: a.id().required(),
+      // order: a.belongsTo('Order', 'orderId'),
+      // itemId: a.id().required(),
+      // item: a.belongsTo('Item', 'itemId'),
+      // garment: a.hasOne('Garment', 'orderItemId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -342,14 +338,14 @@ const schema = a.schema({
       receiptUrl: a.url(),
       externalTransactionId: a.string(),
       // Relationships
-      customerId: a.id().required(),
-      customer: a.belongsTo('Customer', 'customerId'),
-      employeeId: a.id(),
-      employee: a.belongsTo('Employee', 'employeeId'),
-      order: a.hasOne('Order', 'transactionId'),
-      notifications: a.hasMany('CustomerNotification', 'transactionId'),
-      credits: a.hasMany('CustomerCredit', 'transactionId'),
-      loyaltyTransactions: a.hasMany('LoyaltyTransaction', 'transactionId')
+      // customerId: a.id().required(),
+      // customer: a.belongsTo('Customer', 'customerId'),
+      // employeeId: a.id(),
+      // employee: a.belongsTo('Employee', 'employeeId'),
+      // order: a.hasOne('Order', 'transactionId'),
+      // notifications: a.hasMany('CustomerNotification', 'transactionId'),
+      // credits: a.hasMany('CustomerCredit', 'transactionId'),
+      // loyaltyTransactions: a.hasMany('LoyaltyTransaction', 'transactionId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -385,12 +381,12 @@ const schema = a.schema({
       deliveredAt: a.datetime(),
       readAt: a.datetime(),
       // Relationships
-      customerId: a.id().required(),
-      customer: a.belongsTo('Customer', 'customerId'),
-      orderId: a.id(),
-      order: a.belongsTo('Order', 'orderId'),
-      transactionId: a.id(),
-      transaction: a.belongsTo('Transaction', 'transactionId')
+      // customerId: a.id().required(),
+      // customer: a.belongsTo('Customer', 'customerId'),
+      // orderId: a.id(),
+      // order: a.belongsTo('Order', 'orderId'),
+      // transactionId: a.id(),
+      // transaction: a.belongsTo('Transaction', 'transactionId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -412,12 +408,12 @@ const schema = a.schema({
       expirationDate: a.date(),
       createdAt: a.datetime().required(),
       // Relationships
-      customerId: a.id().required(),
-      customer: a.belongsTo('Customer', 'customerId'),
-      orderId: a.id(),
-      order: a.belongsTo('Order', 'orderId'),
-      transactionId: a.id(),
-      transaction: a.belongsTo('Transaction', 'transactionId')
+      // customerId: a.id().required(),
+      // customer: a.belongsTo('Customer', 'customerId'),
+      // orderId: a.id(),
+      // order: a.belongsTo('Order', 'orderId'),
+      // transactionId: a.id(),
+      // transaction: a.belongsTo('Transaction', 'transactionId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -434,8 +430,8 @@ const schema = a.schema({
       pointValueInCents: a.float().required().default(1),
       isActive: a.boolean().default(true),
       // Relationships
-      loyaltyTiers: a.hasMany('LoyaltyTier', 'loyaltyProgramId'),
-      customerLoyaltyMemberships: a.hasMany('CustomerLoyaltyMembership', 'loyaltyProgramId')
+      // loyaltyTiers: a.hasMany('LoyaltyTier', 'loyaltyProgramId'),
+      // customerLoyaltyMemberships: a.hasMany('CustomerLoyaltyMembership', 'loyaltyProgramId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -450,12 +446,10 @@ const schema = a.schema({
       multiplier: a.float().required().default(1),
       benefits: a.string(),
       // Relationships
-      loyaltyProgramId: a.id().required(),
-      loyaltyProgram: a.belongsTo('LoyaltyProgram', 'loyaltyProgramId'),
-      nextTierId: a.id(),
-      nextTier: a.belongsTo('LoyaltyTier', 'nextTierId'),
-      memberships: a.hasMany('CustomerLoyaltyMembership', 'currentTierId'),
-      previousTier: a.hasOne('LoyaltyTier', 'nextTierId')
+      // nextTierId: a.id(),
+      // nextTier: a.belongsTo('LoyaltyTier', 'nextTierId'),
+      // memberships: a.hasMany('CustomerLoyaltyMembership', 'currentTierId'),
+      // previousTier: a.hasOne('LoyaltyTier', 'nextTierId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -470,13 +464,9 @@ const schema = a.schema({
       enrollmentDate: a.datetime().required(),
       lastActivityDate: a.datetime(),
       // Relationships
-      customerId: a.id().required(),
-      customer: a.belongsTo('Customer', 'customerId'),
-      loyaltyProgramId: a.id().required(),
-      loyaltyProgram: a.belongsTo('LoyaltyProgram', 'loyaltyProgramId'),
-      currentTierId: a.id(),
-      loyaltyTier: a.belongsTo('LoyaltyTier', 'currentTierId'),
-      loyaltyTransactions: a.hasMany('LoyaltyTransaction', 'customerLoyaltyMembershipId')
+      // currentTierId: a.id(),
+      // loyaltyTier: a.belongsTo('LoyaltyTier', 'currentTierId'),
+      // loyaltyTransactions: a.hasMany('LoyaltyTransaction', 'customerLoyaltyMembershipId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -496,12 +486,8 @@ const schema = a.schema({
       description: a.string().required(),
       timestamp: a.datetime().required(),
       // Relationships
-      customerLoyaltyMembershipId: a.id().required(),
-      customerLoyaltyMembership: a.belongsTo('CustomerLoyaltyMembership', 'customerLoyaltyMembershipId'),
-      transactionId: a.id(),
-      transaction: a.belongsTo('Transaction', 'transactionId'),
-      orderId: a.id(),
-      order: a.belongsTo('Order', 'orderId')
+      // customerLoyaltyMembershipId: a.id().required(),
+      // customerLoyaltyMembership: a.belongsTo('CustomerLoyaltyMembership', 'customerLoyaltyMembershipId'),
     })
     .authorization((allow) => [
       allow.owner(),
@@ -524,8 +510,8 @@ const schema = a.schema({
       value: a.float().required(),
       notes: a.string(),
       // Relationships
-      employeeId: a.id(),
-      employee: a.belongsTo('Employee', 'employeeId')
+      businessId: a.id(),
+      business: a.belongsTo('Business', 'businessId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -575,12 +561,29 @@ const schema = a.schema({
       // Relationships
       inventoryItemId: a.id().required(),
       inventoryItem: a.belongsTo('InventoryItem', 'inventoryItemId'),
-      employeeId: a.id(),
-      employee: a.belongsTo('Employee', 'employeeId')
     })
     .authorization((allow) => [
       allow.owner(),
     ]),
+
+  // QUERIES
+  fetchBusiness: a
+    .query()
+    .arguments({
+      userId: a.id().required()
+    })
+    .returns(a.ref('Business'))
+    .authorization(allow => [allow.authenticated()])
+    .handler(a.handler.function(fetchBusiness)),
+
+  fetchCustomers: a
+    .query()
+    .arguments({
+      userId: a.id().required()
+    })
+    .returns(a.ref('Customer').array())
+    .authorization(allow => [allow.authenticated()])
+    .handler(a.handler.function(fetchCustomers)),
 });
 
 export type Schema = ClientSchema<typeof schema>;
