@@ -1,20 +1,43 @@
-import { useState } from "react";
-import { StyleSheet, View, Text, TextInput, Platform } from "react-native";
+import { useEffect, useState } from "react";
+import { StyleSheet, View, Text, TextInput, Platform, Alert } from "react-native";
 import BusinessButtons from "./BusinessButtons";
+import type { Schema } from "../../amplify/data/resource";
+import { generateClient } from "aws-amplify/data";
+
+const client = generateClient<Schema>();
 
 export default function BusinessForm({ userId, onCloseModal }: { userId: string, onCloseModal: () => void }) {
     const [businessName, setBusinessName] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
-    const [qrCode, setQrCode] = useState('');
+    const [phoneNumberAvailable, setPhoneNumberAvailable] = useState<boolean | null>(null);
+
+    const businessPhoneNumbers = client.queries.fetchAllBusinesses();
+
+    useEffect(() => {
+        const checkPhoneNumberAvailability = async () => {
+            if (phoneNumber?.length === 10) {
+                try {
+                    const response = await businessPhoneNumbers;
+                    const isAvailable = !response.data?.includes(phoneNumber);
+                    setPhoneNumberAvailable(isAvailable);
+                } catch (error) {
+                    console.error('Error checking phone number availability:', error);
+                    setPhoneNumberAvailable(null);
+                }
+            } else {
+                setPhoneNumberAvailable(null);
+            }
+        };
+        checkPhoneNumberAvailability();
+    }, [phoneNumber]);
 
     const resetForm = () => {
         setBusinessName('');
         setFirstName('');
         setLastName('');
         setPhoneNumber('');
-        setQrCode('');
     };
 
     return (
@@ -37,7 +60,7 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
                     style={styles.input}
                     placeholderTextColor="#A0A0A0"
                 />
-                
+
                 <Text style={styles.label}>Last Name</Text>
                 <TextInput
                     placeholder="Enter last name"
@@ -46,7 +69,7 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
                     style={styles.input}
                     placeholderTextColor="#A0A0A0"
                 />
-                
+
                 <Text style={styles.label}>Phone Number</Text>
                 <TextInput
                     placeholder="Enter phone number (e.g., 5551234567)"
@@ -55,7 +78,11 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
                     keyboardType="phone-pad"
                     autoComplete={Platform.OS === 'ios' ? 'tel' : 'tel-national'}
                     maxLength={15}
-                    style={styles.input}
+                    style={[
+                        styles.input,
+                        phoneNumberAvailable === true && styles.validInput,
+                        phoneNumberAvailable === false && styles.invalidInput
+                    ]}
                     placeholderTextColor="#A0A0A0"
                 />
             </View>
@@ -89,15 +116,20 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     input: {
-        height: 50,
-        borderColor: '#E0E0E0',
         borderWidth: 1,
-        borderRadius: 8,
-        marginBottom: 16,
-        width: '100%',
-        paddingHorizontal: 12,
+        borderColor: '#ddd',
+        borderRadius: 5,
+        padding: 10,
+        marginBottom: 15,
         fontSize: 16,
-        backgroundColor: '#F9F9F9',
+    },
+    validInput: {
+        borderColor: '#4CAF50',  // Green for valid
+        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+    },
+    invalidInput: {
+        borderColor: '#F44336',  // Red for invalid
+        backgroundColor: 'rgba(244, 67, 54, 0.1)',
     },
     inputError: {
         borderColor: '#FF5252',

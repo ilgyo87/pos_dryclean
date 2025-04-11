@@ -1,6 +1,7 @@
 import { a, defineData, type ClientSchema } from "@aws-amplify/backend";
 import { fetchBusiness } from "../functions/fetch-business/resource";
 import { fetchCustomers } from "../functions/fetch-customers/resource";
+import { fetchAllBusinesses } from "../functions/fetch-all-businesses/resource";
 
 const schema = a.schema({
 
@@ -584,6 +585,12 @@ const schema = a.schema({
     .returns(a.ref('Customer').array())
     .authorization(allow => [allow.authenticated()])
     .handler(a.handler.function(fetchCustomers)),
+
+  fetchAllBusinesses: a
+    .query()
+    .returns(a.string().array())
+    .authorization(allow => [allow.authenticated()])
+    .handler(a.handler.function(fetchAllBusinesses)),
 });
 
 export type Schema = ClientSchema<typeof schema>;

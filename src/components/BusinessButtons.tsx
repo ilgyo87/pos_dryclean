@@ -1,7 +1,13 @@
 import { Alert, StyleSheet, TouchableOpacity, Text, View } from "react-native";
-import createBusiness from "../hooks/businessHooks";
 import { useState } from "react";
 import type { BusinessButtonsProps } from "../types";
+import { generateClient } from "aws-amplify/data";
+import { uploadData } from 'aws-amplify/storage';
+import type { Schema } from "../../amplify/data/resource";
+import { QRCodeDisplay } from "./QRCodeDisplay";
+import { generateQRCodeData } from "../utils/QRCodeGenerator";
+
+const client = generateClient<Schema>();
 
 export default function BusinessButtons({
     onCloseModal,
@@ -12,26 +18,147 @@ export default function BusinessButtons({
     phoneNumber,
     onResetForm
 }: BusinessButtonsProps) {
-    const [qrCode, setQrCode] = useState('');
+    const [showQRCode, setShowQRCode] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isFormValid, setIsFormValid] = useState(true);
 
-    const handleCreateBusiness = async () => {
-        const business = await createBusiness(userId, businessName, firstName, lastName, phoneNumber, qrCode);
-        if (business == null) {
-            Alert.alert("Error", "Failed to create business");
-            return;
-        }
-        Alert.alert("Success", "Business created successfully");
-        onCloseModal();
-        setIsSubmitting(false);
+    // Generate QR code data
+    const generateQRCode = () => {
+        const businessData = {
+            id: '', // Will be filled after creation
+            name: businessName,
+            firstName: firstName,
+            lastName: lastName,
+            phoneNumber: phoneNumber,
+            userId: userId
+        };
+
+        return generateQRCodeData('Business', businessData);
     };
 
+    // Handle QR code capture
+    const handleQRCapture = async (uri: string) => {
+        try {
+            // Convert data URI to blob
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            
+            // Create unique filename for S3
+            const filename = `qrcodes/Business/${Date.now()}.png`;
+            
+            // Upload to S3
+            const result = await uploadData({
+                key: filename,
+                data: blob,
+                options: {
+                    contentType: 'image/png'
+                }
+            });
+            
+            console.log('Successfully uploaded QR code:', result);
+            
+            // Create business with QR code reference
+            await createBusiness(filename);
+            
+        } catch (error) {
+            console.error('Error capturing or uploading QR code:', error);
+            Alert.alert('Error', 'Failed to save QR code');
+            setShowQRCode(false);
+            setIsSubmitting(false);
+        }
+    };
+
+    // Create business in database
+    const createBusiness = async (qrCodeUrl: string) => {
+        try {
+            const result = await client.models.Business.create({
+                name: businessName.trim(),
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                phoneNumber: phoneNumber.trim(),
+                userId: userId,
+                qrCode: qrCodeUrl
+            });
+
+            if (result.errors) {
+                throw new Error(result.errors.map(e => e.message).join(', '));
+            }
+
+            console.log('Business created successfully:', result.data);
+            
+            // Close QR code display and reset submission state
+            setShowQRCode(false);
+            setIsSubmitting(false);
+            
+            // Close modal
+            onCloseModal();
+            
+        } catch (error) {
+            console.error('Error creating business:', error);
+            Alert.alert('Error', 'Failed to create business. Please try again.');
+            setIsSubmitting(false);
+            setShowQRCode(false);
+        }
+    };
+
+    const handleCreateBusiness = async () => {
+        // Basic form validation
+        if (!businessName || !firstName || !lastName || !phoneNumber) {
+            Alert.alert('Error', 'Please fill out all required fields');
+            return;
+        }
+
+        setIsSubmitting(true);
+        
+        try {
+            // Generate QR code data and show QR component for capture
+            const qrValue = generateQRCode();
+            setShowQRCode(true);
+        } catch (error) {
+            console.error("Error starting business creation:", error);
+            Alert.alert("Error", "An unexpected error occurred");
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCancel = () => {
+        Alert.alert(
+            'Confirm Cancellation',
+            'Are you sure you want to cancel? Any unsaved changes will be lost.',
+            [
+                {
+                    text: 'No, Continue',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Yes, Cancel',
+                    onPress: onCloseModal,
+                    style: 'destructive',
+                },
+            ]
+        );
+    };
+
+    // Render QR Code Display if needed
+    if (showQRCode) {
+        return (
+            <QRCodeDisplay
+                qrValue={generateQRCode()}
+                businessName={businessName}
+                onCapture={handleQRCapture}
+                onClose={() => {
+                    setShowQRCode(false);
+                    setIsSubmitting(false);
+                }}
+            />
+        );
+    }
 
     return (
         <View style={styles.container}>
             <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
-                onPress={onCloseModal}
+                onPress={handleCancel}
                 disabled={isSubmitting}
             >
                 <Text style={styles.buttonText}>Cancel</Text>
@@ -46,9 +173,13 @@ export default function BusinessButtons({
             </TouchableOpacity>
 
             <TouchableOpacity
-                style={[styles.button, styles.createButton, isSubmitting && styles.disabledButton]}
+                style={[
+                    styles.button,
+                    styles.createButton,
+                    (isSubmitting || !isFormValid) && styles.disabledButton
+                ]}
                 onPress={handleCreateBusiness}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isFormValid}
             >
                 <Text style={styles.buttonText}>
                     {isSubmitting ? "Creating..." : "Create"}
