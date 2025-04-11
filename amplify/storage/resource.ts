@@ -4,10 +4,6 @@ import { defineStorage } from '@aws-amplify/backend';
 export const storage = defineStorage({
   name: 'posdrycleaningstorage', // Custom bucket name
   access: (allow) => ({
-    // QR codes organized by business ID
-    'qrcodes/*': [
-      allow.authenticated.to(['read', 'write', 'delete']), // All authenticated users can manage QR codes
-    ],
     // Public business images (logos, banners)
     'public/*': [
       allow.guest.to(['read']), // Anyone can view public images
