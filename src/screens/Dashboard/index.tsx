@@ -34,7 +34,7 @@ export default function Dashboard({ user }: { user: AuthUser | null }) {
 
   useEffect(() => {
     fetchBusiness();
-  }, [user]);
+  }, [user?.userId]); 
 
   return (
     <View style={styles.container}>

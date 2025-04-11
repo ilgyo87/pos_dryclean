@@ -13,15 +13,18 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
     const [phoneNumber, setPhoneNumber] = useState('');
     const [phoneNumberAvailable, setPhoneNumberAvailable] = useState<boolean | null>(null);
 
-    const businessPhoneNumbers = client.queries.fetchAllBusinesses();
-
     useEffect(() => {
         const checkPhoneNumberAvailability = async () => {
             if (phoneNumber?.length === 10) {
                 try {
-                    const response = await businessPhoneNumbers;
-                    const isAvailable = !response.data?.includes(phoneNumber);
-                    setPhoneNumberAvailable(isAvailable);
+                    const { data, errors } = await client.models.Business.list();
+                    if (data && !errors) {
+                        const isAvailable = !data.map(b => b.phoneNumber).includes(phoneNumber);
+                        setPhoneNumberAvailable(isAvailable);
+                    } else {
+                        console.error('Error checking phone number availability:', errors);
+                        setPhoneNumberAvailable(null);
+                    }
                 } catch (error) {
                     console.error('Error checking phone number availability:', error);
                     setPhoneNumberAvailable(null);

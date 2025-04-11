@@ -1,5 +1,18 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
+import { Amplify } from 'aws-amplify';
+
+// This is critical - configure Amplify before using the client
+Amplify.configure({
+    API: {
+      GraphQL: {
+        endpoint: process.env.API_ENDPOINT || '',
+        region: process.env.REGION,
+        defaultAuthMode: 'apiKey',
+        apiKey: process.env.API_KEY
+      }
+    }
+  });
 
 const client = generateClient<Schema>();
 

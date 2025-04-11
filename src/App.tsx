@@ -26,13 +26,14 @@ function AuthenticatedApp() {
       try {
         setIsLoading(true);
         
-        const { data, errors } = await client.queries.fetchBusiness({
-          userId: userId
+        const { data, errors } = await client.models.Business.list({
+          filter: { userId: { eq: userId } }
         });
-        
         if (data && !errors) {
+          console.log("Business found:", data);
           setIsBusinessAvailable(true);
         } else {
+          console.error("Error checking business:", errors);
           setIsBusinessAvailable(false);
         }
       } catch (error) {
