@@ -85,6 +85,11 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
                     ]}
                     placeholderTextColor="#A0A0A0"
                 />
+                {phoneNumber && phoneNumber.length === 10 && phoneNumberAvailable !== null && (
+                    <Text style={phoneNumberAvailable ? styles.availabilityTextAvailable : styles.availabilityTextNotAvailable}>
+                        {phoneNumberAvailable ? 'Available' : 'Not Available'}
+                    </Text>
+                )}
             </View>
             <View style={styles.buttonContainer}>
                 <BusinessButtons
@@ -138,5 +143,23 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: 16,
         marginTop: 10,
-    }
+    },
+    availabilityText: {
+        marginTop: 4,
+        fontSize: 12,
+        marginRight: 5,
+        textAlign: 'right'
+    },
+    availabilityTextAvailable: {
+        color: '#4CAF50', // Green
+        fontSize: 12,
+        marginRight: 5,
+        textAlign: 'right'
+    },
+    availabilityTextNotAvailable: {
+        color: '#E53935', // Red
+        fontSize: 12,
+        marginRight: 5,
+        textAlign: 'right'
+    },
 });

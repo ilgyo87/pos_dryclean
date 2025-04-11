@@ -2,46 +2,55 @@ import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import ViewShot, { captureRef } from 'react-native-view-shot';
+import type { EntityType } from './../utils/QRCodeGenerator';
+import { uploadQRCapture } from './../utils/QRCodeGenerator';
 
 interface QRCodeDisplayProps {
   qrValue: string;
-  businessName?: string;
-  onCapture?: (uri: string) => void;
+  entityType?: EntityType;
+  title?: string;
   onClose?: () => void;
 }
 
-export function QRCodeDisplay({ qrValue, businessName, onCapture, onClose }: QRCodeDisplayProps) {
+export function QRCodeDisplay({ 
+  qrValue, 
+  entityType = 'Unknown', 
+  title,
+  onClose 
+}: QRCodeDisplayProps) {
   const viewShotRef = useRef<ViewShot>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   
   useEffect(() => {
-    if (viewShotRef.current && onCapture) {
-      // Give time for QR code to render completely
+    if (viewShotRef.current) {
+      setIsCapturing(true);
+      
+      // Use requestAnimationFrame to ensure the view is rendered before capturing
       const timerId = setTimeout(() => {
-        setIsCapturing(true);
-        
-        // Use captureRef utility function instead of calling .capture() directly
-        captureRef(viewShotRef)
-          .then(uri => {
-            console.log("QR code captured successfully");
-            onCapture(uri);
-            setIsCapturing(false);
-          })
-          .catch(error => {
-            console.error("Error capturing QR code:", error);
-            setIsCapturing(false);
-          });
-      }, 500);
+        requestAnimationFrame(() => {
+          captureRef(viewShotRef)
+            .then(uri => {
+              console.log("QR code captured successfully");
+              uploadQRCapture(uri, entityType, title || 'Unknown');
+              setIsCapturing(false);
+            })
+            .catch(error => {
+              console.error("Error capturing QR code:", error);
+              setIsCapturing(false);
+            });
+        });
+      }, 300); // Short delay to ensure view is fully rendered
       
       return () => clearTimeout(timerId);
     }
-  }, [onCapture]);
+  }, [qrValue]);
+
+  // Determine display title based on props
+  const displayTitle = title || `${entityType} QR Code`;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Business QR Code</Text>
-      
-      {businessName && <Text style={styles.businessName}>{businessName}</Text>}
+      <Text style={styles.title}>{displayTitle}</Text>
       
       <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 0.9 }}>
         <View style={styles.qrContainer}>
@@ -57,14 +66,18 @@ export function QRCodeDisplay({ qrValue, businessName, onCapture, onClose }: QRC
       {isCapturing ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2196F3" />
-          <Text style={styles.loadingText}>Creating your business...</Text>
+          <Text style={styles.loadingText}>
+            {entityType ? `Creating your ${entityType.toLowerCase()}...` : 'Processing...'}
+          </Text>
         </View>
       ) : (
-        onClose && (
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        )
+        <View style={styles.buttonContainer}>
+          {onClose && (
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Text style={styles.closeButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
     </View>
   );
@@ -77,16 +90,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9F9F9',
     borderRadius: 10,
     width: '100%',
+    maxWidth: 350,
+    alignSelf: 'center',
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
-  },
-  businessName: {
-    fontSize: 18,
-    fontWeight: '500',
-    marginBottom: 20,
+    textAlign: 'center',
   },
   qrContainer: {
     padding: 15,
@@ -98,6 +109,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     marginBottom: 20,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   closeButton: {
     backgroundColor: '#E53935',

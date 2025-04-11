@@ -27,7 +27,6 @@ const schema = a.schema({
       hours: a.string().array(),
       logoUrl: a.url(),
       userId: a.string(),
-      qrCode: a.string(),
       // Relationships
       businessMetrics: a.hasMany('BusinessMetric', 'businessId')
     })
@@ -83,7 +82,6 @@ const schema = a.schema({
       notes: a.string().array(),
       lastActiveDate: a.date(),
       preferences: a.string().array(),
-      qrCode: a.string(),
       userId: a.id().required(),
       // Relationships
       // orders: a.hasMany('Order', 'customerId'),
@@ -134,7 +132,6 @@ const schema = a.schema({
       hireDate: a.datetime(),
       status: a.enum(['ACTIVE', 'INACTIVE', 'ON_LEAVE']),
       permissions: a.string(),
-      qrCode: a.string(),
       lastLogin: a.datetime(),
       // Relationships
       // orders: a.hasMany('Order', 'employeeId'),
@@ -177,7 +174,6 @@ const schema = a.schema({
       material: a.string(),
       notes: a.string().array(),
       imageUrl: a.url() || a.string(),
-      qrCode: a.string().required(),
       status: a.enum([
         'CHECKED_IN',
         'IN_PROCESS',
@@ -254,7 +250,6 @@ const schema = a.schema({
       estimatedTotal: a.float(),
       actualTotal: a.float(),
       priority: a.integer().default(0),
-      qrCode: a.string(),
       // Delivery specific fields
       isDelivery: a.boolean().default(false),
       deliveryDate: a.datetime(),

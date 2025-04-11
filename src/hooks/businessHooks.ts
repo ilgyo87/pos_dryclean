@@ -20,7 +20,3 @@ export async function createBusiness(userId: string, businessName: string, first
 
     return business;
 }
-
-export async function generateQRCode(userId: string, businessName: string, firstName: string, lastName: string, phoneNumber: string) {
-    return `business: ${userId}:${businessName}:${firstName}:${lastName}:${phoneNumber}:${Date.now()}`;
-}

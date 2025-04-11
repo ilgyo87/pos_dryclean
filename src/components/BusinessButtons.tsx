@@ -1,15 +1,13 @@
 import { Alert, StyleSheet, TouchableOpacity, Text, View } from "react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { BusinessButtonsProps } from "../types";
 import { generateClient } from "aws-amplify/data";
-import { uploadData } from 'aws-amplify/storage';
 import type { Schema } from "../../amplify/data/resource";
-import { QRCodeDisplay } from "./QRCodeDisplay";
-import { generateQRCodeData } from "../utils/QRCodeGenerator";
+import Toast from 'react-native-toast-message';
 
 const client = generateClient<Schema>();
 
-export default function BusinessButtons({
+export default function CancelResetCreateButtons({
     onCloseModal,
     userId,
     businessName,
@@ -18,108 +16,16 @@ export default function BusinessButtons({
     phoneNumber,
     onResetForm
 }: BusinessButtonsProps) {
-    const [showQRCode, setShowQRCode] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [isFormValid, setIsFormValid] = useState(true);
 
-    // Generate QR code data
-    const generateQRCode = () => {
-        const businessData = {
-            id: '', // Will be filled after creation
-            name: businessName,
-            firstName: firstName,
-            lastName: lastName,
-            phoneNumber: phoneNumber,
-            userId: userId
-        };
-
-        return generateQRCodeData('Business', businessData);
-    };
-
-    // Handle QR code capture
-    const handleQRCapture = async (uri: string) => {
-        try {
-            // Convert data URI to blob
-            const response = await fetch(uri);
-            const blob = await response.blob();
-            
-            // Create unique filename for S3
-            const filename = `qrcodes/Business/${Date.now()}.png`;
-            
-            // Upload to S3
-            const result = await uploadData({
-                key: filename,
-                data: blob,
-                options: {
-                    contentType: 'image/png'
-                }
-            });
-            
-            console.log('Successfully uploaded QR code:', result);
-            
-            // Create business with QR code reference
-            await createBusiness(filename);
-            
-        } catch (error) {
-            console.error('Error capturing or uploading QR code:', error);
-            Alert.alert('Error', 'Failed to save QR code');
-            setShowQRCode(false);
-            setIsSubmitting(false);
-        }
-    };
-
-    // Create business in database
-    const createBusiness = async (qrCodeUrl: string) => {
-        try {
-            const result = await client.models.Business.create({
-                name: businessName.trim(),
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                phoneNumber: phoneNumber.trim(),
-                userId: userId,
-                qrCode: qrCodeUrl
-            });
-
-            if (result.errors) {
-                throw new Error(result.errors.map(e => e.message).join(', '));
-            }
-
-            console.log('Business created successfully:', result.data);
-            
-            // Close QR code display and reset submission state
-            setShowQRCode(false);
-            setIsSubmitting(false);
-            
-            // Close modal
-            onCloseModal();
-            
-        } catch (error) {
-            console.error('Error creating business:', error);
-            Alert.alert('Error', 'Failed to create business. Please try again.');
-            setIsSubmitting(false);
-            setShowQRCode(false);
-        }
-    };
-
-    const handleCreateBusiness = async () => {
-        // Basic form validation
-        if (!businessName || !firstName || !lastName || !phoneNumber) {
-            Alert.alert('Error', 'Please fill out all required fields');
-            return;
-        }
-
-        setIsSubmitting(true);
-        
-        try {
-            // Generate QR code data and show QR component for capture
-            const qrValue = generateQRCode();
-            setShowQRCode(true);
-        } catch (error) {
-            console.error("Error starting business creation:", error);
-            Alert.alert("Error", "An unexpected error occurred");
-            setIsSubmitting(false);
-        }
-    };
+    useEffect(() => {
+        setIsFormValid(
+            businessName.trim().length > 0 &&
+            firstName.trim().length > 0 &&
+            lastName.trim().length > 0 &&
+            phoneNumber.trim().length === 10
+        );
+    }, [businessName, firstName, lastName, phoneNumber]);
 
     const handleCancel = () => {
         Alert.alert(
@@ -139,19 +45,28 @@ export default function BusinessButtons({
         );
     };
 
-    // Render QR Code Display if needed
-    if (showQRCode) {
-        return (
-            <QRCodeDisplay
-                qrValue={generateQRCode()}
-                businessName={businessName}
-                onCapture={handleQRCapture}
-                onClose={() => {
-                    setShowQRCode(false);
-                    setIsSubmitting(false);
-                }}
-            />
-        );
+    const handleCreateBusiness = async () => {
+        try {
+            await client.models.Business.create({
+                name: businessName.trim(),
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                phoneNumber: phoneNumber.trim(),
+                userId: userId
+            });
+        } catch (error) {
+            console.error("Error creating business:", error);
+            Alert.alert("Error", "Failed to create business.");
+            return;
+        }
+        Toast.show({
+            type: 'success',
+            text1: 'Business Created',
+            text2: `${businessName} has been created successfully!`,
+            position: 'bottom',
+            visibilityTime: 3000
+        });
+        onCloseModal();
     }
 
     return (
@@ -159,7 +74,6 @@ export default function BusinessButtons({
             <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={handleCancel}
-                disabled={isSubmitting}
             >
                 <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
@@ -167,7 +81,6 @@ export default function BusinessButtons({
             <TouchableOpacity
                 style={[styles.button, styles.resetButton]}
                 onPress={onResetForm}
-                disabled={isSubmitting}
             >
                 <Text style={styles.buttonText}>Reset</Text>
             </TouchableOpacity>
@@ -176,13 +89,13 @@ export default function BusinessButtons({
                 style={[
                     styles.button,
                     styles.createButton,
-                    (isSubmitting || !isFormValid) && styles.disabledButton
+                    (!isFormValid) && styles.disabledButton
                 ]}
                 onPress={handleCreateBusiness}
-                disabled={isSubmitting || !isFormValid}
+                disabled={!isFormValid}
             >
                 <Text style={styles.buttonText}>
-                    {isSubmitting ? "Creating..." : "Create"}
+                    Create
                 </Text>
             </TouchableOpacity>
         </View>
