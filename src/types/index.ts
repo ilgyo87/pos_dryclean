@@ -4,6 +4,7 @@ export interface BusinessButtonsProps {
     firstName: string;
     lastName: string;
     phoneNumber: string;
+    phoneNumberAvailable: boolean | null;
     onCloseModal: () => void;
     onResetForm?: () => void;
 }

@@ -14,6 +14,7 @@ export default function CancelResetCreateButtons({
     firstName,
     lastName,
     phoneNumber,
+    phoneNumberAvailable,
     onResetForm
 }: BusinessButtonsProps) {
     const [isFormValid, setIsFormValid] = useState(true);
@@ -23,9 +24,10 @@ export default function CancelResetCreateButtons({
             businessName.trim().length > 0 &&
             firstName.trim().length > 0 &&
             lastName.trim().length > 0 &&
-            phoneNumber.trim().length === 10
+            phoneNumber.trim().length === 10 &&
+            phoneNumberAvailable === true
         );
-    }, [businessName, firstName, lastName, phoneNumber]);
+    }, [businessName, firstName, lastName, phoneNumber, phoneNumberAvailable]);
 
     const handleCancel = () => {
         Alert.alert(
@@ -59,13 +61,8 @@ export default function CancelResetCreateButtons({
             Alert.alert("Error", "Failed to create business.");
             return;
         }
-        Toast.show({
-            type: 'success',
-            text1: 'Business Created',
-            text2: `${businessName} has been created successfully!`,
-            position: 'bottom',
-            visibilityTime: 3000
-        });
+        console.log("Business created successfully");
+        Alert.alert("Success", "Business created successfully.");
         onCloseModal();
     }
 

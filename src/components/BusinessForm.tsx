@@ -99,6 +99,7 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
                     firstName={firstName}
                     lastName={lastName}
                     phoneNumber={phoneNumber}
+                    phoneNumberAvailable={phoneNumberAvailable}
                     onResetForm={resetForm}
                 />
             </View>
