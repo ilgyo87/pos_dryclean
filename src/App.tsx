@@ -5,7 +5,7 @@ import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import Toast from 'react-native-toast-message';
 import Navigation from './components/Navigation';
-import BusinessCreateModal from './components/BusinessCreateModal';
+import CreateFormModal from './components/CreateFormModal';
 import SignOutButton from './components/SignOutButton';
 import outputs from '../amplify_outputs.json';
 import type { Schema } from '../amplify/data/resource';
@@ -53,11 +53,11 @@ function AuthenticatedApp() {
       <View style={{ flex: 1 }}>
         <Navigation user={user} />
         {!isBusinessAvailable && !isLoading && (
-          <BusinessCreateModal
-            userId={userId}
-            onCloseModal={() => {
-              setIsBusinessAvailable(true);
-            }}
+          <CreateFormModal
+            visible={true}
+            onClose={() => setIsBusinessAvailable(true)}
+            params={{ userId }}
+            type="business"
           />
         )}
       </View>
