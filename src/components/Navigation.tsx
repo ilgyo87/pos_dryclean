@@ -23,21 +23,6 @@ export default function Navigation({ user }: { user: AuthUser }) {
         <Stack.Screen name="Customers">
           {(props) => <CustomersScreen {...props} user={user} />}
         </Stack.Screen>
-        {/* <Stack.Screen name="Employees">
-          {(props) => <EmployeesScreen {...props} user={user} />}
-        </Stack.Screen>
-        <Stack.Screen name="Orders">
-          {(props) => <OrdersScreen {...props} user={user} />}
-        </Stack.Screen>
-        <Stack.Screen name="Reports">
-          {(props) => <ReportsScreen {...props} user={user} />}
-        </Stack.Screen>
-        <Stack.Screen name="Products">
-          {(props) => <ProductsScreen {...props} user={user} />}
-        </Stack.Screen>
-        <Stack.Screen name="Settings">
-          {(props) => <SettingsScreen {...props} user={user} />}
-        </Stack.Screen> */}
       </Stack.Navigator>
     </NavigationContainer>
   );

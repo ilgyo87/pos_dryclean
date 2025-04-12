@@ -1,13 +1,8 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, View, Text, StyleSheet } from 'react-native';
 import BusinessForm from './BusinessForm';
-
-type CreateFormModalProps = {
-  visible: boolean;
-  onClose: () => void;
-  params: Record<string, any>;
-  type: string;
-};
+import CustomerForm from '../screens/Customers/components/CustomerForm';
+import { CreateFormModalProps } from '../types';
 
 const CreateFormModal: React.FC<CreateFormModalProps> = ({
   visible,
@@ -25,12 +20,12 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
       <View style={styles.container}>
         <View style={styles.modalContent}>
           <Text style={styles.title}>{type}</Text>
-          
-          <BusinessForm userId={params.userId} onCloseModal={onClose} />
-          
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text>Close</Text>
-          </TouchableOpacity>
+          {type === 'Business' && (
+            <BusinessForm userId={params.userId} onCloseModal={onClose} />
+          )}
+          {type === 'Customer' && (
+            <CustomerForm userId={params.userId} onCloseModal={onClose} />
+          )}
         </View>
       </View>
     </Modal>
@@ -54,13 +49,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 15,
-  },
-  closeButton: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    borderRadius: 5,
   },
 });
 

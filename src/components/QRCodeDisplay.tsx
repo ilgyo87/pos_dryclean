@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import ViewShot, { captureRef } from 'react-native-view-shot';
-import type { EntityType } from './../utils/QRCodeGenerator';
+import { EntityType } from './../types';
 import { uploadQRCapture } from './../utils/QRCodeGenerator';
 
 interface QRCodeDisplayProps {

@@ -1,8 +1,6 @@
 import { uploadData } from 'aws-amplify/storage';
 import { Alert } from 'react-native';
-
-// src/utils/QRCodeGenerator.ts
-export type EntityType = 'Business' | 'Employee' | 'Customer' | 'Garment' | 'Rack' | 'Unknown';
+import { EntityType } from '../types';
 
 export interface BaseEntityData {
     id: string;

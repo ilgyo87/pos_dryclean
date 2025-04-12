@@ -1,26 +1,30 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View, Text, TextInput, Platform, Alert } from "react-native";
-import BusinessButtons from "./CancelResetCreateButtons";
-import type { Schema } from "../../amplify/data/resource";
+import BusinessButtons from "../../../components/CancelResetCreateButtons";
+import type { Schema } from "../../../../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
 
 const client = generateClient<Schema>();
 
-export default function BusinessForm({ userId, onCloseModal }: { userId: string, onCloseModal: () => void }) {
-    const [businessName, setBusinessName] = useState('');
+export default function CustomerForm({ userId, onCloseModal }: { userId: string, onCloseModal: () => void }) {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [email, setEmail] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
-    const [isFormValid, setIsFormValid] = useState(false);
+    const [address, setAddress] = useState('');
+    const [city, setCity] = useState('');
+    const [state, setState] = useState('');
+    const [zipCode, setZipCode] = useState('');
     const [phoneNumberAvailable, setPhoneNumberAvailable] = useState<boolean | null>(null);
+    const [isFormValid, setIsFormValid] = useState(false);
 
     useEffect(() => {
         const checkPhoneNumberAvailability = async () => {
             if (phoneNumber?.length === 10) {
                 try {
-                    const { data, errors } = await client.models.Business.list();
+                    const { data, errors } = await client.models.Customer.list();
                     if (data && !errors) {
-                        const isAvailable = !data.map(b => b.phoneNumber).includes(phoneNumber);
+                        const isAvailable = !data.map(c => c.phoneNumber).includes(phoneNumber);
                         setPhoneNumberAvailable(isAvailable);
                     } else {
                         console.error('Error checking phone number availability:', errors);
@@ -39,34 +43,30 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
 
     useEffect(() => {
         const isValid = 
-          businessName.trim().length > 0 && 
           firstName.trim().length > 0 && 
           lastName.trim().length > 0 && 
           phoneNumber.length === 10 && 
           phoneNumberAvailable === true;
         
         setIsFormValid(isValid);
-      }, [businessName, firstName, lastName, phoneNumber, phoneNumberAvailable]);
-
+      }, [firstName, lastName, phoneNumber, phoneNumberAvailable]);
     const resetForm = () => {
-        setBusinessName('');
         setFirstName('');
         setLastName('');
+        setEmail('');
         setPhoneNumber('');
+        setAddress('');
+    };
+
+    const formatPhoneNumber = (text: string) => {
+        // Remove all non-numeric characters
+        const cleaned = text.replace(/\D/g, '');
+        setPhoneNumber(cleaned);
     };
 
     return (
         <View style={styles.container}>
             <View style={styles.formContainer}>
-                <Text style={styles.label}>Business Name</Text>
-                <TextInput
-                    placeholder="Enter business name"
-                    value={businessName}
-                    onChangeText={setBusinessName}
-                    style={styles.input}
-                    placeholderTextColor="#A0A0A0"
-                />
-
                 <Text style={styles.label}>First Name</Text>
                 <TextInput
                     placeholder="Enter first name"
@@ -87,37 +87,99 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
 
                 <Text style={styles.label}>Phone Number</Text>
                 <TextInput
-                    placeholder="Enter phone number (e.g., 5551234567)"
+                    placeholder="Enter phone number"
                     value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    keyboardType="phone-pad"
-                    autoComplete={Platform.OS === 'ios' ? 'tel' : 'tel-national'}
-                    maxLength={15}
+                    onChangeText={formatPhoneNumber}
                     style={[
                         styles.input,
                         phoneNumberAvailable === true && styles.validInput,
                         phoneNumberAvailable === false && styles.invalidInput
                     ]}
+                    keyboardType="phone-pad"
+                    maxLength={10}
                     placeholderTextColor="#A0A0A0"
                 />
-                {phoneNumber && phoneNumber.length === 10 && phoneNumberAvailable !== null && (
-                    <Text style={phoneNumberAvailable ? styles.availabilityTextAvailable : styles.availabilityTextNotAvailable}>
-                        {phoneNumberAvailable ? 'Available' : 'Not Available'}
+                {phoneNumberAvailable !== null && (
+                    <Text
+                        style={
+                            phoneNumberAvailable
+                                ? styles.availabilityTextAvailable
+                                : styles.availabilityTextNotAvailable
+                        }
+                    >
+                        {phoneNumberAvailable
+                            ? "Phone number is available"
+                            : "Phone number is already in use"}
                     </Text>
                 )}
+
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                    placeholder="Enter email address"
+                    value={email}
+                    onChangeText={setEmail}
+                    style={styles.input}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor="#A0A0A0"
+                />
+                <Text style={styles.label}>Address</Text>
+
+                <Text style={styles.label}>Address</Text>
+                <TextInput
+                    placeholder="Enter address"
+                    value={address}
+                    onChangeText={setAddress}
+                    style={styles.input}
+                    multiline={true}
+                    numberOfLines={3}
+                    placeholderTextColor="#A0A0A0"
+                />
+
+                <Text style={styles.label}>City</Text>
+                <TextInput
+                    placeholder="Enter city"
+                    value={city}
+                    onChangeText={setCity}
+                    style={styles.input}
+                    placeholderTextColor="#A0A0A0"
+                />
+
+                <Text style={styles.label}>State</Text>
+                <TextInput
+                    placeholder="Enter state"
+                    value={state}
+                    onChangeText={setState}
+                    style={styles.input}
+                    placeholderTextColor="#A0A0A0"
+                />
+
+                <Text style={styles.label}>Zip Code</Text>
+                <TextInput
+                    placeholder="Enter zip code"
+                    value={zipCode}
+                    onChangeText={setZipCode}
+                    style={styles.input}
+                    placeholderTextColor="#A0A0A0"
+                />
             </View>
+
+            
             <View style={styles.buttonContainer}>
                 <BusinessButtons
                     onCloseModal={onCloseModal}
                     userId={userId}
-                    entityName="Business"
+                    entityName="Customer"
                     params={{
-                        businessName,
                         firstName,
                         lastName,
-                        phoneNumber
+                        phoneNumber,
+                        address,
+                        city,
+                        state,
+                        zipCode,
+                        email
                     }}
-                    phoneNumberAvailable={phoneNumberAvailable}
                     onResetForm={resetForm}
                     isFormValid={isFormValid}
                 />
@@ -153,8 +215,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(76, 175, 80, 0.1)',
     },
     invalidInput: {
-        borderColor: '#F44336',  // Red for invalid
-        backgroundColor: 'rgba(244, 67, 54, 0.1)',
+        borderColor: '#E53935',  // Red for invalid
+        backgroundColor: 'rgba(229, 57, 53, 0.1)',
     },
     inputError: {
         borderColor: '#FF5252',

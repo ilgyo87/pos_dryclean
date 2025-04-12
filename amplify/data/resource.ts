@@ -74,7 +74,7 @@ const schema = a.schema({
       firstName: a.string().required(),
       lastName: a.string().required(),
       email: a.email(),
-      phone: a.phone().required(),
+      phoneNumber: a.phone().required(),
       address: a.string(),
       city: a.string(),
       state: a.string(),

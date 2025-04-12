@@ -1,14 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
 
-export interface BusinessButtonsProps {
+export type EntityType = 'Business' | 'Employee' | 'Customer' | 'Garment' | 'Rack' | 'Product' | 'Category' | 'Unknown';
+
+export interface CreateFormModalProps {
+  visible: boolean;
+  onClose: () => void;
+  params: Record<string, any>;
+  type: EntityType;
+}
+
+export interface CancelResetCreateButtonsProps {
     userId: string;
-    businessName: string;
-    firstName: string;
-    lastName: string;
-    phoneNumber: string;
-    phoneNumberAvailable: boolean | null;
+    entityName: string;
+    params: Record<string, any>;
+    phoneNumberAvailable?: boolean | null;
     onCloseModal: () => void;
     onResetForm?: () => void;
+    isFormValid: boolean;
 }
 
 export type DashboardCategory = {

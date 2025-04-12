@@ -9,12 +9,14 @@ import CustomerToolbar from "./components/CustomerToolbar";
 import { useCustomersData } from "./hooks/useCustomerData";
 import styles from "./styles/CustomerStyles";
 import { Schema } from "../../../amplify/data/resource";
+import CreateFormModal from "../../components/CreateFormModal";
 
 export default function Customers({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [modalType, setModalType] = useState<'create' | 'edit'>('create');
+  const [editingCustomer, setEditingCustomer] = useState<Schema["Customer"]["type"] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const { customers, isLoading, fetchCustomers, refreshing, setRefreshing } = useCustomersData(user);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  
+
   // Refetch when screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -22,23 +24,30 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
     }, [user?.userId])
   );
 
+  const { customers, isLoading, fetchCustomers, refreshing, setRefreshing } = useCustomersData(user);
+
   const handleCreateCustomer = () => {
-    navigation.navigate('CustomerForm', { mode: 'create' });
+    if (!user) return;
+    setModalType('create');
+    setEditingCustomer(null);
+    setIsModalVisible(true);
   };
 
   const handleEditCustomer = (customer: Schema["Customer"]["type"]) => {
-    navigation.navigate('CustomerForm', { mode: 'edit', customer });
+    setModalType('edit');
+    setEditingCustomer(customer);
+    setIsModalVisible(true);
   };
 
   const filteredCustomers = customers?.filter(customer => {
     if (!searchQuery) return true;
-    
+
     const searchLower = searchQuery.toLowerCase();
     return (
       customer.firstName?.toLowerCase().includes(searchLower) ||
       customer.lastName?.toLowerCase().includes(searchLower) ||
       customer.email?.toLowerCase().includes(searchLower) ||
-      customer.phone?.includes(searchQuery)
+      customer.phoneNumber?.includes(searchQuery)
     );
   });
 
@@ -50,22 +59,25 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
     );
   }
 
+  const closeModal = () => {
+    setIsModalVisible(false);
+  };
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Customers</Text>
         </View>
-        
-        <SearchBar 
+
+        <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search by name, email or phone..."
         />
 
         <CustomerToolbar onCreatePress={handleCreateCustomer} />
-        
-        <CustomerList 
+
+        <CustomerList
           customers={filteredCustomers || []}
           onCustomerPress={handleEditCustomer}
           refreshing={refreshing}
@@ -74,6 +86,17 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
             fetchCustomers().finally(() => setRefreshing(false));
           }}
         />
+        {isModalVisible && (
+          <CreateFormModal
+            visible={isModalVisible}
+            onClose={closeModal}
+            params={{
+              userId: user?.userId,
+              ...(editingCustomer ? { customer: editingCustomer } : {})
+            }}
+            type="Customer"
+          />
+        )}
       </View>
     </SafeAreaView>
   );

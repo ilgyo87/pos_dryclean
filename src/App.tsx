@@ -57,7 +57,7 @@ function AuthenticatedApp() {
             visible={true}
             onClose={() => setIsBusinessAvailable(true)}
             params={{ userId }}
-            type="business"
+            type="Business"
           />
         )}
       </View>

@@ -112,14 +112,6 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
