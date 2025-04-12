@@ -133,6 +133,7 @@ const schema = a.schema({
       status: a.enum(['ACTIVE', 'INACTIVE', 'ON_LEAVE']),
       permissions: a.string(),
       lastLogin: a.datetime(),
+      userId: a.id().required(),
       // Relationships
       // orders: a.hasMany('Order', 'employeeId'),
       // transactions: a.hasMany('Transaction', 'employeeId'),

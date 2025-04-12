@@ -5,7 +5,7 @@ import { AuthUser } from "@aws-amplify/auth";
 import Dashboard from "../screens/Dashboard/Dashboard";
 // Import additional screens
 import CustomersScreen from "../screens/Customers/Customers";
-// import EmployeesScreen from "../screens/Employees/Employees";
+import EmployeesScreen from "../screens/Employees/Employees";
 // import OrdersScreen from "../screens/Orders/Orders";
 // import ReportsScreen from "../screens/Reports/Reports";
 // import ProductsScreen from "../screens/Products/Products";
@@ -22,6 +22,9 @@ export default function Navigation({ user }: { user: AuthUser }) {
         </Stack.Screen>
         <Stack.Screen name="Customers">
           {(props) => <CustomersScreen {...props} user={user} />}
+        </Stack.Screen>
+        <Stack.Screen name="Employees">
+          {(props) => <EmployeesScreen {...props} user={user} />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>

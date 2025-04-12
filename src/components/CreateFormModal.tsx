@@ -1,7 +1,9 @@
+// src/components/CreateFormModal.tsx (updated)
 import React from 'react';
 import { Modal, View, Text, StyleSheet } from 'react-native';
 import BusinessForm from './BusinessForm';
 import CustomerForm from '../screens/Customers/components/CustomerForm';
+import EmployeeForm from '../screens/Employees/components/EmployeeForm';
 import { CreateFormModalProps } from '../types';
 
 const CreateFormModal: React.FC<CreateFormModalProps> = ({
@@ -26,6 +28,9 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
           )}
           {type === 'Customer' && (
             <CustomerForm onCloseModal={onClose} createOrEdit={createOrEdit} params={params}/>
+          )}
+          {type === 'Employee' && (
+            <EmployeeForm onCloseModal={onClose} createOrEdit={createOrEdit} params={params}/>
           )}
         </View>
       </View>
