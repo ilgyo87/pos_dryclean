@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Keyboard, TouchableWithoutFeedback, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { Schema } from '../../../../amplify/data/resource';
+import type { Schema } from '../../amplify/data/resource';
 
 type Customer = Schema['Customer']['type'];
 

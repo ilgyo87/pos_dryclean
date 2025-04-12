@@ -8,7 +8,7 @@ import { Schema } from '../../../amplify/data/resource';
 import type { DashboardCategory } from "../../types";
 import { DashboardGrid } from "./components/DashboardGrid";
 import styles from "./styles/DashboardStyles";
-import PredictiveSearch from "../Customers/components/PredictiveSearch";
+import PredictiveSearch from "../../components/PredictiveSearch";
 
 const client = generateClient<Schema>();
 

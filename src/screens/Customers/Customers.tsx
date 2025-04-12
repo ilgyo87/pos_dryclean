@@ -9,7 +9,7 @@ import { useCustomersData } from "./hooks/useCustomerData";
 import styles from "./styles/CustomerStyles";
 import { Schema } from "../../../amplify/data/resource";
 import CreateFormModal from "../../components/CreateFormModal";
-import PredictiveSearch from "./components/PredictiveSearch";
+import PredictiveSearch from "../../components/PredictiveSearch";
 
 export default function Customers({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
