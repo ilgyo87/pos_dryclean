@@ -6,20 +6,27 @@ import { generateClient } from "aws-amplify/data";
 
 const client = generateClient<Schema>();
 
-export default function CustomerForm({ userId, onCloseModal, onEntityCreated }: { userId: string, onCloseModal: () => void, onEntityCreated?: () => void }) {
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
-    const [address, setAddress] = useState('');
-    const [city, setCity] = useState('');
-    const [state, setState] = useState('');
-    const [zipCode, setZipCode] = useState('');
+export default function CustomerForm({ onCloseModal, createOrEdit, params }: { onCloseModal: () => void, createOrEdit: 'create' | 'edit', params: Record<string, any> }) {
+    const existingCustomer = createOrEdit === 'edit' ? params?.customer : null;
+    const [firstName, setFirstName] = useState(existingCustomer?.firstName || '');
+    const [lastName, setLastName] = useState(existingCustomer?.lastName || '');
+    const [email, setEmail] = useState(existingCustomer?.email || '');
+    const [phoneNumber, setPhoneNumber] = useState(existingCustomer?.phoneNumber || '');
+    const [address, setAddress] = useState(existingCustomer?.address || '');
+    const [city, setCity] = useState(existingCustomer?.city || '');
+    const [state, setState] = useState(existingCustomer?.state || '');
+    const [zipCode, setZipCode] = useState(existingCustomer?.zipCode || '');
     const [phoneNumberAvailable, setPhoneNumberAvailable] = useState<boolean | null>(null);
     const [isFormValid, setIsFormValid] = useState(false);
 
     useEffect(() => {
         const checkPhoneNumberAvailability = async () => {
+            // Skip validation if in edit mode
+            if (createOrEdit === 'edit') {
+                setPhoneNumberAvailable(true);
+                return;
+            }
+
             if (phoneNumber?.length === 10) {
                 try {
                     const { data, errors } = await client.models.Customer.list();
@@ -39,17 +46,17 @@ export default function CustomerForm({ userId, onCloseModal, onEntityCreated }: 
             }
         };
         checkPhoneNumberAvailability();
-    }, [phoneNumber]);
+    }, [phoneNumber, createOrEdit]);
 
     useEffect(() => {
-        const isValid = 
-          firstName.trim().length > 0 && 
-          lastName.trim().length > 0 && 
-          phoneNumber.length === 10 && 
-          phoneNumberAvailable === true;
-        
+        const isValid =
+            firstName.trim().length > 0 &&
+            lastName.trim().length > 0 &&
+            phoneNumber.length === 10 &&
+            (createOrEdit === 'edit' || phoneNumberAvailable === true);
+
         setIsFormValid(isValid);
-      }, [firstName, lastName, phoneNumber, phoneNumberAvailable]);
+    }, [firstName, lastName, phoneNumber, phoneNumberAvailable, createOrEdit]);
 
     const resetForm = () => {
         setFirstName('');
@@ -93,14 +100,16 @@ export default function CustomerForm({ userId, onCloseModal, onEntityCreated }: 
                     onChangeText={formatPhoneNumber}
                     style={[
                         styles.input,
-                        phoneNumberAvailable === true && styles.validInput,
-                        phoneNumberAvailable === false && styles.invalidInput
+                        // Only apply validation styling in create mode
+                        createOrEdit === 'create' && phoneNumberAvailable === true && styles.validInput,
+                        createOrEdit === 'create' && phoneNumberAvailable === false && styles.invalidInput
                     ]}
                     keyboardType="phone-pad"
                     maxLength={10}
                     placeholderTextColor="#A0A0A0"
                 />
-                {phoneNumberAvailable !== null && (
+                {/* Only show availability message in create mode */}
+                {createOrEdit === 'create' && phoneNumberAvailable !== null && (
                     <Text
                         style={
                             phoneNumberAvailable
@@ -165,11 +174,10 @@ export default function CustomerForm({ userId, onCloseModal, onEntityCreated }: 
                 />
             </View>
 
-            
+
             <View style={styles.buttonContainer}>
                 <CancelResetCreateButtons
                     onCloseModal={onCloseModal}
-                    userId={userId}
                     entityName="Customer"
                     params={{
                         firstName,
@@ -179,11 +187,12 @@ export default function CustomerForm({ userId, onCloseModal, onEntityCreated }: 
                         city,
                         state,
                         zipCode,
-                        email
+                        email,
+                        userId: params.userId
                     }}
                     onResetForm={resetForm}
                     isFormValid={isFormValid}
-                    onEntityCreated={onEntityCreated}
+                    createOrEdit={createOrEdit}
                 />
             </View>
         </View>

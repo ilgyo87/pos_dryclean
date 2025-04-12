@@ -7,17 +7,17 @@ export interface CreateFormModalProps {
   onClose: () => void;
   params: Record<string, any>;
   type: EntityType;
+  createOrEdit: 'create' | 'edit';
 }
 
 export interface CancelResetCreateButtonsProps {
-    userId: string;
     entityName: string;
     params: Record<string, any>;
     phoneNumberAvailable?: boolean | null;
     onCloseModal: () => void;
     onResetForm?: () => void;
     isFormValid: boolean;
-    onEntityCreated?: () => void;
+    createOrEdit: 'create' | 'edit';
 }
 
 export type DashboardCategory = {

@@ -6,7 +6,7 @@ import { generateClient } from "aws-amplify/data";
 
 const client = generateClient<Schema>();
 
-export default function BusinessForm({ userId, onCloseModal }: { userId: string, onCloseModal: () => void }) {
+export default function BusinessForm({ onCloseModal, createOrEdit, params }: { onCloseModal: () => void, createOrEdit: 'create' | 'edit', params: Record<string, any> }) {
     const [businessName, setBusinessName] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -109,17 +109,18 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
             <View style={styles.buttonContainer}>
                 <CancelResetCreateButtons
                     onCloseModal={onCloseModal}
-                    userId={userId}
                     entityName="Business"
                     params={{
                         businessName,
                         firstName,
                         lastName,
-                        phoneNumber
+                        phoneNumber,
+                        userId: params.userId
                     }}
                     phoneNumberAvailable={phoneNumberAvailable}
                     onResetForm={resetForm}
                     isFormValid={isFormValid}
+                    createOrEdit={createOrEdit}
                 />
             </View>
         </View>

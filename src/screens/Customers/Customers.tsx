@@ -29,7 +29,7 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
   useEffect(() => {
     console.log(`Customer count: ${customers?.length || 0}`);
   }, [customers]);
-  
+
   const handleCreateCustomer = () => {
     if (!user) return;
     setModalType('create');
@@ -100,7 +100,7 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
               ...(editingCustomer ? { customer: editingCustomer } : {})
             }}
             type="Customer"
-
+            createOrEdit={modalType}  // Change from hardcoded 'edit' to use modalType state
           />
         )}
       </View>

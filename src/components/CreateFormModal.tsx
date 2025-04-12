@@ -9,7 +9,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
   onClose,
   params,
   type,
-  
+  createOrEdit
 }) => {
   return (
     <Modal
@@ -22,10 +22,10 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
         <View style={styles.modalContent}>
           <Text style={styles.title}>{type}</Text>
           {type === 'Business' && (
-            <BusinessForm userId={params.userId} onCloseModal={onClose} />
+            <BusinessForm onCloseModal={onClose} createOrEdit={createOrEdit} params={params}/>
           )}
           {type === 'Customer' && (
-            <CustomerForm userId={params.userId} onCloseModal={onClose} onEntityCreated={params.fetchCustomers} />
+            <CustomerForm onCloseModal={onClose} createOrEdit={createOrEdit} params={params}/>
           )}
         </View>
       </View>
@@ -50,6 +50,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 15,
+    textAlign: 'center',
   },
 });
 

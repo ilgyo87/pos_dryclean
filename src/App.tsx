@@ -58,6 +58,7 @@ function AuthenticatedApp() {
             onClose={() => setIsBusinessAvailable(true)}
             params={{ userId }}
             type="Business"
+            createOrEdit="create"
           />
         )}
       </View>
