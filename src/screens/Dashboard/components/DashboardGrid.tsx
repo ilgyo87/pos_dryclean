@@ -42,8 +42,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    marginTop: 10,
+    paddingVertical: 4, 
+    marginTop: 30,      
+    gap: 9, 
   }
 });
 

@@ -38,8 +38,8 @@ const styles = StyleSheet.create({
   card: {
     padding: 16,
     borderRadius: 12,
-    margin: '2%',
-    height: 130,
+    margin: '1%',      
+    height: 140,      
     justifyContent: 'space-between',
     elevation: 3,
     shadowColor: '#000',

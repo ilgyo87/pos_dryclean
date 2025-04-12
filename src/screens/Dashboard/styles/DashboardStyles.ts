@@ -8,11 +8,13 @@ export const dashboardStyles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 30,
+    padding: 20,
   },
   gridContainer: {
     flex: 1,
-    marginTop: 10,
+    width: '100%',
+    marginTop: 130,  // Add margin to lower the grid
+    paddingHorizontal: 10,
   },
   header: {
     marginBottom: 16,
