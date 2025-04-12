@@ -10,6 +10,7 @@ import { useCustomersData } from "./hooks/useCustomerData";
 import styles from "./styles/CustomerStyles";
 import { Schema } from "../../../amplify/data/resource";
 import CreateFormModal from "../../components/CreateFormModal";
+import PredictiveSearch from "./components/PredictiveSearch";
 
 export default function Customers({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -55,6 +56,13 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
     );
   });
 
+  const handleCustomerSearch = (customer: Schema["Customer"]["type"]) => {
+    // Instead of navigating, open the edit modal
+    setModalType('edit');
+    setEditingCustomer(customer);
+    setIsModalVisible(true);
+  };
+
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loading}>
@@ -65,6 +73,8 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
 
   const closeModal = () => {
     setIsModalVisible(false);
+    // Refresh the customer list when modal closes
+    fetchCustomers();
   };
   return (
     <SafeAreaView style={styles.container}>
@@ -73,11 +83,12 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
           <Text style={styles.title}>Customers</Text>
         </View>
 
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search by name, email or phone..."
+        <View style={styles.searchContainer}>
+        <PredictiveSearch 
+          customers={customers || []} 
+          onCustomerSelect={handleCustomerSearch}
         />
+      </View>
 
         <CustomerToolbar onCreatePress={handleCreateCustomer} />
 

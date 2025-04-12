@@ -6,10 +6,6 @@ export default StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
   header: {
     marginBottom: 16,
   },
@@ -22,5 +18,15 @@ export default StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  searchContainer: {
+    marginVertical: 16,
+    width: '100%',
+    zIndex: 100,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+    width: '100%',
   },
 });

@@ -26,7 +26,12 @@ export const dashboardStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
+  searchContainer: {
+    marginVertical: 16,
+    width: '100%',
+    zIndex: 100,
+  },
 });
 
 export default dashboardStyles;

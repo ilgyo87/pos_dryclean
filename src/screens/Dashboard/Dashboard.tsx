@@ -9,6 +9,7 @@ import type { DashboardCategory } from "../../types";
 import { DashboardGrid } from "./components/DashboardGrid";
 import { SearchBar } from "../../components/SearchBar";
 import styles from "./styles/DashboardStyles";
+import PredictiveSearch from "../Customers/components/PredictiveSearch";
 
 // Create the client
 const client = generateClient<Schema>();
@@ -17,6 +18,8 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
   const [searchQuery, setSearchQuery] = useState("");
   const [business, setBusiness] = useState<Schema['Business']['type'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [customers, setCustomers] = useState<Schema['Customer']['type'][]>([]);
+
   const [counts, setCounts] = useState({
     customers: 0,
     employees: 0,
@@ -29,24 +32,29 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
       setIsLoading(false);
       return;
     }
-    
+
     try {
       setIsLoading(true);
-      
+
       // Fetch business by userId
       const businessResponse = await client.models.Business.list({
         filter: { userId: { eq: user.userId } }
       });
-      
+
       if (businessResponse.data && businessResponse.data.length > 0) {
         setBusiness(businessResponse.data[0]);
-        
+
         // Now fetch counts for each entity
         const customersResponse = await client.models.Customer.list();
         const employeesResponse = await client.models.Employee.list();
         const ordersResponse = await client.models.Order.list();
         const productsResponse = await client.models.Item.list();
-        
+
+        // Store the actual customer data too
+        if (customersResponse.data) {
+          setCustomers(customersResponse.data);
+        }
+
         setCounts({
           customers: customersResponse.data?.length || 0,
           employees: employeesResponse.data?.length || 0,
@@ -59,6 +67,15 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Add a handler for customer selection from search
+  const handleCustomerSearch = (customer: Schema["Customer"]["type"]) => {
+    // Navigate to customer edit mode
+    navigation.navigate('Customers', {
+      screen: 'CustomerEdit',
+      params: { customerId: customer.id }
+    });
   };
 
   // Fetch data when user changes
@@ -120,14 +137,17 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
             <Text style={styles.businessName}>{business.name}</Text>
           </View>
         )}
-        
-        <SearchBar 
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+
+        <View style={styles.searchContainer}>
+          <PredictiveSearch
+            customers={customers}
+            onCustomerSelect={handleCustomerSearch}
+            placeholder="Search customers..."
+          />
+        </View>
 
         <View style={styles.gridContainer}>
-          <DashboardGrid 
+          <DashboardGrid
             categories={categories}
             onCardPress={navigateToSection}
           />
