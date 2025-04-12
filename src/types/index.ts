@@ -17,6 +17,7 @@ export interface CancelResetCreateButtonsProps {
     onCloseModal: () => void;
     onResetForm?: () => void;
     isFormValid: boolean;
+    onEntityCreated?: () => void;
 }
 
 export type DashboardCategory = {

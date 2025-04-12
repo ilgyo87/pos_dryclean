@@ -19,7 +19,9 @@ export const useCustomersData = (user: AuthUser | null) => {
     }
 
     try {
-      const { data, errors } = await client.models.Customer.list();
+      const { data, errors } = await client.models.Customer.list({
+        filter: { userId: { eq: user.userId } }
+      });
       
       if (errors) {
         console.error("Error fetching customers:", errors);
@@ -56,7 +58,7 @@ export const useCustomersData = (user: AuthUser | null) => {
       firstName: customerData.firstName,
       lastName: customerData.lastName,
       email: customerData.email,
-      phone: customerData.phone,
+      phoneNumber: customerData.phoneNumber,
       address: customerData.address,
       notes: customerData.notes,
       userId: user?.userId || '',

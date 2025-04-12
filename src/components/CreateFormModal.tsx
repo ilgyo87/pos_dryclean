@@ -9,6 +9,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
   onClose,
   params,
   type,
+  
 }) => {
   return (
     <Modal
@@ -24,7 +25,7 @@ const CreateFormModal: React.FC<CreateFormModalProps> = ({
             <BusinessForm userId={params.userId} onCloseModal={onClose} />
           )}
           {type === 'Customer' && (
-            <CustomerForm userId={params.userId} onCloseModal={onClose} />
+            <CustomerForm userId={params.userId} onCloseModal={onClose} onEntityCreated={params.fetchCustomers} />
           )}
         </View>
       </View>

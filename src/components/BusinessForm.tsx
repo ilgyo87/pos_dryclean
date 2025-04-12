@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, View, Text, TextInput, Platform, Alert } from "react-native";
-import BusinessButtons from "./CancelResetCreateButtons";
+import { StyleSheet, View, Text, TextInput, Platform } from "react-native";
+import CancelResetCreateButtons from "./CancelResetCreateButtons";
 import type { Schema } from "../../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
 
@@ -107,7 +107,7 @@ export default function BusinessForm({ userId, onCloseModal }: { userId: string,
                 )}
             </View>
             <View style={styles.buttonContainer}>
-                <BusinessButtons
+                <CancelResetCreateButtons
                     onCloseModal={onCloseModal}
                     userId={userId}
                     entityName="Business"

@@ -13,7 +13,8 @@ export default function CancelResetCreateButtons({
     entityName,
     params,
     onResetForm,
-    isFormValid
+    isFormValid,
+    onEntityCreated
 }: CancelResetCreateButtonsProps) {
     
     const handleCancel = () => {
@@ -45,22 +46,32 @@ export default function CancelResetCreateButtons({
                 lastName: params.lastName.trim() || '',
                 userId: userId
               };
-              await client.models.Business.create(businessData);
+              const { data: createdBusiness, errors: businessErrors } = await client.models.Business.create(businessData);
+              console.log("Business created response:", JSON.stringify(createdBusiness));
+              if (businessErrors) {
+                console.error("Error creating business:", businessErrors);
+                throw new Error('Failed to create business');
+              }
               break;
               
             case "Customer":
               const customerData = {
-                firstName: params.firstName?.trim(),
-                lastName: params.lastName?.trim(),
-                phoneNumber: params.phoneNumber?.trim(),
-                email: params.email?.trim(),
-                address: params.address?.trim(),
-                city: params.city?.trim(),
-                state: params.state?.trim(),
-                zipCode: params.zipCode?.trim(),
+                firstName: params.firstName.trim(),
+                lastName: params.lastName.trim(),
+                phoneNumber: params.phoneNumber.trim(),
+                email: params.email.trim() || 'none@example.com',
+                address: params.address.trim() || '',
+                city: params.city.trim() || '',
+                state: params.state.trim() || '',
+                zipCode: params.zipCode.trim() || '',
                 userId: userId
               };
-              await client.models.Customer.create(customerData);
+              const { data: createdCustomer, errors: customerErrors } = await client.models.Customer.create(customerData);
+              console.log("Customer created response:", JSON.stringify(createdCustomer));
+              if (customerErrors) {
+                console.error("Error creating customer:", customerErrors);
+                throw new Error('Failed to create customer');
+              }
               break;
               
             case "Category":
@@ -69,7 +80,12 @@ export default function CancelResetCreateButtons({
                 description: params.description?.trim(),
                 userId: userId
               };
-              await client.models.Category.create(categoryData);
+              const { data: createdCategory, errors: categoryErrors } = await client.models.Category.create(categoryData);
+              console.log("Category created response:", JSON.stringify(createdCategory));
+              if (categoryErrors) {
+                console.error("Error creating category:", categoryErrors);
+                throw new Error('Failed to create category');
+              }
               break;
               
             case "Item":
@@ -80,7 +96,12 @@ export default function CancelResetCreateButtons({
                 description: params.description?.trim(),
                 sku: params.sku?.trim(),
               };
-              await client.models.Item.create(itemData);
+              const { data: createdItem, errors: itemErrors } = await client.models.Item.create(itemData);
+              console.log("Item created response:", JSON.stringify(createdItem));
+              if (itemErrors) {
+                console.error("Error creating item:", itemErrors);
+                throw new Error('Failed to create item');
+              }
               break;
               
             case "Employee":
@@ -92,7 +113,12 @@ export default function CancelResetCreateButtons({
                 role: params.role?.trim(),
                 pin: params.pin?.trim(),
               };
-              await client.models.Employee.create(employeeData);
+              const { data: createdEmployee, errors: employeeErrors } = await client.models.Employee.create(employeeData);
+              console.log("Employee created response:", JSON.stringify(createdEmployee));
+              if (employeeErrors) {
+                console.error("Error creating employee:", employeeErrors);
+                throw new Error('Failed to create employee');
+              }
               break;
               
             default:
@@ -101,6 +127,9 @@ export default function CancelResetCreateButtons({
           
           console.log(`${entityName} created successfully`);
           Alert.alert("Success", `${entityName} created successfully!`);
+          if (onEntityCreated) {
+            onEntityCreated();
+          }
           onCloseModal();
         } catch (error) {
           console.error(`Error creating ${entityName}:`, error);

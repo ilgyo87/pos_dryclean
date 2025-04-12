@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, View, Text, TextInput, Platform, Alert } from "react-native";
-import BusinessButtons from "../../../components/CancelResetCreateButtons";
+import { StyleSheet, View, Text, TextInput } from "react-native";
+import CancelResetCreateButtons from "../../../components/CancelResetCreateButtons";
 import type { Schema } from "../../../../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
 
 const client = generateClient<Schema>();
 
-export default function CustomerForm({ userId, onCloseModal }: { userId: string, onCloseModal: () => void }) {
+export default function CustomerForm({ userId, onCloseModal, onEntityCreated }: { userId: string, onCloseModal: () => void, onEntityCreated?: () => void }) {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
@@ -50,6 +50,7 @@ export default function CustomerForm({ userId, onCloseModal }: { userId: string,
         
         setIsFormValid(isValid);
       }, [firstName, lastName, phoneNumber, phoneNumberAvailable]);
+
     const resetForm = () => {
         setFirstName('');
         setLastName('');
@@ -166,7 +167,7 @@ export default function CustomerForm({ userId, onCloseModal }: { userId: string,
 
             
             <View style={styles.buttonContainer}>
-                <BusinessButtons
+                <CancelResetCreateButtons
                     onCloseModal={onCloseModal}
                     userId={userId}
                     entityName="Customer"
@@ -182,6 +183,7 @@ export default function CustomerForm({ userId, onCloseModal }: { userId: string,
                     }}
                     onResetForm={resetForm}
                     isFormValid={isFormValid}
+                    onEntityCreated={onEntityCreated}
                 />
             </View>
         </View>

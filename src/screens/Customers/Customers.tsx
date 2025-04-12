@@ -1,5 +1,5 @@
 // src/screens/Customers/Customers.tsx
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { View, SafeAreaView, Text, ActivityIndicator } from "react-native";
 import { AuthUser } from "aws-amplify/auth";
 import { useFocusEffect } from "@react-navigation/native";
@@ -26,6 +26,10 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
 
   const { customers, isLoading, fetchCustomers, refreshing, setRefreshing } = useCustomersData(user);
 
+  useEffect(() => {
+    console.log(`Customer count: ${customers?.length || 0}`);
+  }, [customers]);
+  
   const handleCreateCustomer = () => {
     if (!user) return;
     setModalType('create');
@@ -92,9 +96,11 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
             onClose={closeModal}
             params={{
               userId: user?.userId,
+              fetchCustomers,
               ...(editingCustomer ? { customer: editingCustomer } : {})
             }}
             type="Customer"
+
           />
         )}
       </View>

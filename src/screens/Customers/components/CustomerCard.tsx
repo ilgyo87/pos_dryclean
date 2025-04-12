@@ -20,7 +20,7 @@ export default function CustomerCard({ customer, onPress }: CustomerCardProps) {
       <View style={styles.info}>
         <Text style={styles.name}>{customer.firstName} {customer.lastName}</Text>
         {customer.email && <Text style={styles.detail}>{customer.email}</Text>}
-        {customer.phone && <Text style={styles.detail}>{customer.phone}</Text>}
+        {customer.phoneNumber && <Text style={styles.detail}>{customer.phoneNumber}</Text>}
       </View>
       <Ionicons name="chevron-forward" size={24} color="#cccccc" />
     </TouchableOpacity>
