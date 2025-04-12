@@ -28,6 +28,7 @@ export default function PredictiveSearch({
             setShowSuggestions(false);
         }
     };
+
     // Filter customers based on query
     useEffect(() => {
         if (!query.trim()) {
@@ -37,14 +38,27 @@ export default function PredictiveSearch({
         }
 
         const normalizedQuery = query.toLowerCase().trim();
-        const filtered = customers
-            .filter(customer =>
-                customer.firstName.toLowerCase().includes(normalizedQuery) ||
-                customer.lastName.toLowerCase().includes(normalizedQuery) ||
-                customer.phoneNumber?.includes(normalizedQuery) ||
-                customer.email?.toLowerCase().includes(normalizedQuery)
-            )
-            .slice(0, 8); // Limit to 8 suggestions
+
+        if (!normalizedQuery) {
+          setSuggestions([]);
+          setShowSuggestions(false);
+          return;
+      }
+
+      const filtered = customers
+      .filter(customer => {
+          const fullName = `${customer.firstName} ${customer.lastName}`.toLowerCase();
+          
+          // Check if query appears in full name or individual fields
+          return (
+              fullName.includes(normalizedQuery) ||
+              customer.firstName.toLowerCase().includes(normalizedQuery) ||
+              customer.lastName.toLowerCase().includes(normalizedQuery) ||
+              customer.phoneNumber?.includes(normalizedQuery) ||
+              customer.email?.toLowerCase().includes(normalizedQuery)
+          );
+      })
+      .slice(0, 8); // Limit to 8 suggestions
 
         setSuggestions(filtered);
         setShowSuggestions(filtered.length > 0);
@@ -53,31 +67,24 @@ export default function PredictiveSearch({
 
     // Handle keyboard navigation
     const handleKeyPress = (e: any) => {
-        // For debugging - find out what keys are actually being received
-        console.log('Key pressed:', e.nativeEvent.key);
-
         if (!showSuggestions || suggestions.length === 0) return;
 
-        // Using the key property for keyboard event detection
         const key = e.nativeEvent.key;
 
         if (key === 'ArrowDown' || key === 'Down') {
-            e.preventDefault?.(); // Prevent default scrolling if available
+            e.preventDefault?.();
             setSelectedIndex(prev =>
                 prev < suggestions.length - 1 ? prev + 1 : prev
             );
         } else if (key === 'ArrowUp' || key === 'Up') {
-            e.preventDefault?.(); // Prevent default scrolling if available
+            e.preventDefault?.();
             setSelectedIndex(prev => (prev > 0 ? prev - 1 : 0));
         } else if (key === 'Enter' || key === 'Return') {
-            e.preventDefault?.(); // Prevent form submission if available
+            e.preventDefault?.();
 
-            // Always select the first item if nothing is selected
             if (selectedIndex === -1 && suggestions.length > 0) {
                 handleSelectCustomer(suggestions[0]);
-            }
-            // Otherwise select the highlighted item
-            else if (selectedIndex >= 0) {
+            } else if (selectedIndex >= 0) {
                 handleSelectCustomer(suggestions[selectedIndex]);
             }
         }
@@ -86,6 +93,7 @@ export default function PredictiveSearch({
     const handleSelectCustomer = (customer: Customer) => {
         onCustomerSelect(customer);
         setQuery('');
+        setSuggestions([]);
         setShowSuggestions(false);
         Keyboard.dismiss();
     };
@@ -96,181 +104,169 @@ export default function PredictiveSearch({
         setShowSuggestions(false);
     };
 
-    // Highlight matching text in suggestions
     const highlightText = (text: string, query: string) => {
-        if (!query.trim()) return <Text>{text}</Text>;
-
-        const regex = new RegExp(`(${query.trim()})`, 'gi');
-        const parts = text.split(regex);
-
-        return (
-            <Text>
-                {parts.map((part, i) =>
-                    regex.test(part) ?
-                        <Text key={i} style={styles.highlight}>{part}</Text> :
-                        <Text key={i}>{part}</Text>
-                )}
-            </Text>
-        );
-    };
+      if (!query.trim()) return <Text>{text}</Text>;
+  
+      // Use a regex that captures the query as a group
+      const regex = new RegExp(`(${query.trim()})`, 'gi');
+      
+      // Split the text while preserving the matches
+      const parts = text.split(regex);
+  
+      return (
+          <Text>
+              {parts.map((part, i) => {
+                  // Check if this part matches the query (case insensitive)
+                  if (part.toLowerCase() === query.trim().toLowerCase()) {
+                      return <Text key={i} style={styles.highlight}>{part}</Text>;
+                  } else {
+                      return <Text key={i}>{part}</Text>;
+                  }
+              })}
+          </Text>
+      );
+  };
 
     return (
-        <View style={styles.container}>
-        {/* Input section */}
-        <View style={styles.inputContainer}>
-          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            placeholder={placeholder}
-            value={query}
-            onChangeText={setQuery}
-            onFocus={() => setShowSuggestions(true)}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-          {query.length > 0 && (
-            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={18} color="#888" />
-            </TouchableOpacity>
-          )}
-        </View>
-    
-        {/* Suggestions overlay with backdrop */}
-        {showSuggestions && (
-          <>
-            <TouchableWithoutFeedback onPress={handleOutsideTouch}>
-              <View style={styles.backdrop} />
-            </TouchableWithoutFeedback>
-            
-            <View style={styles.suggestionsContainer}>
-              <FlatList
-                data={suggestions}
-                keyExtractor={(item) => item.id}
-                keyboardShouldPersistTaps="always"
-                renderItem={({ item, index }) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.suggestionItem,
-                        selectedIndex === index ? styles.selectedItem : null
-                      ]}
-                      onPress={() => handleSelectCustomer(item)}
-                    >
-                      <View style={styles.avatar}>
-                        <Ionicons name="person" size={20} color="#fff" />
-                      </View>
-                      <View style={styles.suggestionContent}>
-                        <Text style={styles.suggestionName}>
-                          {highlightText(`${item.firstName} ${item.lastName}`, query)}
-                        </Text>
-                        {item.phoneNumber && (
-                          <Text style={styles.suggestionDetail}>
-                            {highlightText(item.phoneNumber, query)}
-                          </Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  )}
-              />
+        <TouchableWithoutFeedback onPress={handleOutsideTouch}>
+            <View style={styles.container} ref={searchContainerRef}>
+                <View style={styles.searchContainer}>
+                    <TextInput
+                        ref={inputRef}
+                        style={styles.searchInput}
+                        placeholder={placeholder}
+                        value={query}
+                        onChangeText={setQuery}
+                        onFocus={() => query.trim() && setSuggestions(suggestions)}
+                        onKeyPress={handleKeyPress}
+                    />
+                    {query ? (
+                        <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                            <Ionicons name="close-circle" size={20} color="#888" />
+                        </TouchableOpacity>
+                    ) : (
+                        <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
+                    )}
+                </View>
+
+                {showSuggestions && (
+                    <>
+                        <TouchableWithoutFeedback onPress={handleOutsideTouch}>
+                            <View style={styles.backdrop} />
+                        </TouchableWithoutFeedback>
+                        
+                        <View style={styles.suggestionsContainer}>
+                            <FlatList
+                                data={suggestions}
+                                keyExtractor={(item) => item.id}
+                                keyboardShouldPersistTaps="always"
+                                renderItem={({ item, index }) => (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.suggestionItem,
+                                            index === selectedIndex && styles.selectedSuggestion
+                                        ]}
+                                        onPress={() => handleSelectCustomer(item)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View>
+                                            <Text style={styles.customerName}>
+                                                {highlightText(`${item.firstName} ${item.lastName}`, query)}
+                                            </Text>
+                                            {item.phoneNumber && (
+                                                <Text style={styles.customerDetail}>
+                                                    {highlightText(item.phoneNumber, query)}
+                                                </Text>
+                                            )}
+                                            {item.email && (
+                                                <Text style={styles.customerDetail}>
+                                                    {highlightText(item.email, query)}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                )}
+                            />
+                        </View>
+                    </>
+                )}
             </View>
-          </>
-        )}
-      </View>
+        </TouchableWithoutFeedback>
     );
 }
 
+const { width } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
-    outerContainer: {
+    container: {
         position: 'relative',
-        zIndex: 100,
-        width: '100%', // Make sure this is full width
-      },
-      container: {
         width: '100%',
         zIndex: 100,
-      },
-      // Make sure these styles are correctly defined
-      inputContainer: {
+    },
+    searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f0f0f0',
         borderRadius: 8,
-        padding: 10,
-        marginBottom: 5,
-      },
-    searchIcon: {
-        marginRight: 6,
+        paddingHorizontal: 12,
+        marginVertical: 10,
     },
-    input: {
+    searchInput: {
         flex: 1,
-        height: 40,
+        height: 45,
         fontSize: 16,
         color: '#333',
+    },
+    searchIcon: {
+        marginLeft: 8,
     },
     clearButton: {
         padding: 5,
     },
+    backdrop: {
+        position: 'absolute',
+        top: 55,
+        left: 0,
+        right: 0,
+        bottom: -1000,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        zIndex: 10,
+    },
     suggestionsContainer: {
         position: 'absolute',
-        top: 45,
+        top: 55,
         left: 0,
         right: 0,
         backgroundColor: 'white',
         borderRadius: 8,
         maxHeight: 300,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
+        zIndex: 20,
+        elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.2,
         shadowRadius: 4,
-        elevation: 3,
-        zIndex: 20,
     },
     suggestionItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
         padding: 12,
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
     },
-    selectedItem: {
-        backgroundColor: '#f0f7ff',
+    selectedSuggestion: {
+        backgroundColor: '#f5f5f5',
     },
-    avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#4285F4',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    suggestionContent: {
-        flex: 1,
-    },
-    suggestionName: {
+    customerName: {
         fontSize: 16,
+        fontWeight: '500',
         color: '#333',
-        marginBottom: 2,
     },
-    suggestionDetail: {
+    customerDetail: {
         fontSize: 14,
         color: '#666',
+        marginTop: 2,
     },
     highlight: {
-        backgroundColor: '#ffe066',
-        fontWeight: '500',
+        backgroundColor: 'rgba(255,230,0,0.4)',
+        fontWeight: '600',
     },
-    backdrop: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'transparent',
-        height: Dimensions.get('window').height,
-        width: Dimensions.get('window').width,
-        zIndex: 50,
-      },
 });

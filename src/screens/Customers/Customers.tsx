@@ -3,7 +3,6 @@ import React, { useState, useCallback, useEffect } from "react";
 import { View, SafeAreaView, Text, ActivityIndicator } from "react-native";
 import { AuthUser } from "aws-amplify/auth";
 import { useFocusEffect } from "@react-navigation/native";
-import { SearchBar } from "../../components/SearchBar";
 import CustomerList from "./components/CustomerList";
 import CustomerToolbar from "./components/CustomerToolbar";
 import { useCustomersData } from "./hooks/useCustomerData";
@@ -25,7 +24,7 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
     }, [user?.userId])
   );
 
-  const { customers, isLoading, fetchCustomers, refreshing, setRefreshing } = useCustomersData(user);
+  const { customers, isLoading, fetchCustomers, refreshing, setRefreshing, createCustomer, updateCustomer, deleteCustomer } = useCustomersData(user);
 
   useEffect(() => {
     console.log(`Customer count: ${customers?.length || 0}`);
@@ -108,6 +107,9 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
             params={{
               userId: user?.userId,
               fetchCustomers,
+              createCustomer,
+              updateCustomer,
+              deleteCustomer,
               ...(editingCustomer ? { customer: editingCustomer } : {})
             }}
             type="Customer"

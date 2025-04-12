@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, View, Text, TextInput, Platform } from "react-native";
+import { StyleSheet, View, Text, TextInput, Platform, Alert } from "react-native";
 import CancelResetCreateButtons from "./CancelResetCreateButtons";
 import type { Schema } from "../../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
@@ -13,6 +13,7 @@ export default function BusinessForm({ onCloseModal, createOrEdit, params }: { o
     const [phoneNumber, setPhoneNumber] = useState('');
     const [isFormValid, setIsFormValid] = useState(false);
     const [phoneNumberAvailable, setPhoneNumberAvailable] = useState<boolean | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const checkPhoneNumberAvailability = async () => {
@@ -53,6 +54,70 @@ export default function BusinessForm({ onCloseModal, createOrEdit, params }: { o
         setFirstName('');
         setLastName('');
         setPhoneNumber('');
+    };
+
+    // Business creation function
+    const createBusiness = async (businessData: any) => {
+        try {
+            // Check if phone number has proper format
+            if (businessData.phoneNumber.length !== 10) {
+                throw new Error('Phone number must be 10 digits');
+            }
+
+            // Create business in the database
+            const { data, errors } = await client.models.Business.create({
+                ...businessData,
+                userId: params.userId || ''
+            });
+
+            if (errors) {
+                console.error('Error creating business:', errors[0].message);
+                throw new Error(errors[0].message);
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error in createBusiness:', error);
+            throw error;
+        }
+    };
+
+    // Business update function
+    const updateBusiness = async (businessData: any) => {
+        try {
+            if (!businessData.id) {
+                throw new Error('Business ID is required for updates');
+            }
+
+            const { data, errors } = await client.models.Business.update({
+                ...businessData,
+                userId: params.userId || ''
+            });
+
+            if (errors) {
+                console.error('Error updating business:', errors[0].message);
+                throw new Error(errors[0].message);
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Error in updateBusiness:', error);
+            throw error;
+        }
+    };
+
+    // Handler for create or update operation
+    const handleBusinessOperation = async (businessData: any) => {
+        setIsLoading(true);
+        try {
+            if (createOrEdit === 'edit') {
+                return await updateBusiness(businessData);
+            } else {
+                return await createBusiness(businessData);
+            }
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -108,19 +173,23 @@ export default function BusinessForm({ onCloseModal, createOrEdit, params }: { o
             </View>
             <View style={styles.buttonContainer}>
                 <CancelResetCreateButtons
-                    onCloseModal={onCloseModal}
-                    entityName="Business"
-                    params={{
+                    onCancel={onCloseModal}
+                    entityType="Business"
+                    data={{
                         businessName,
                         firstName,
                         lastName,
                         phoneNumber,
                         userId: params.userId
                     }}
-                    phoneNumberAvailable={phoneNumberAvailable}
-                    onResetForm={resetForm}
-                    isFormValid={isFormValid}
-                    createOrEdit={createOrEdit}
+                    onReset={resetForm}
+                    isValid={isFormValid}
+                    isLoading={isLoading}
+                    isEdit={createOrEdit === 'edit'}
+                    onCreate={async (data) => {
+                        await handleBusinessOperation(data);
+                        return;
+                    }}
                 />
             </View>
         </View>

@@ -1,19 +1,44 @@
 import { Alert, StyleSheet, TouchableOpacity, Text, View } from "react-native";
 import { useEffect, useState } from "react";
 import type { CancelResetCreateButtonsProps } from "../types";
-import { generateClient } from "aws-amplify/data";
-import type { Schema } from "../../amplify/data/resource";
-
-const client = generateClient<Schema>();
 
 export default function CancelResetCreateButtons({
-  onCloseModal,
-  entityName,
-  params,
-  onResetForm,
-  isFormValid,
-  createOrEdit
+  onCancel,
+  onReset,
+  onCreate,
+  isValid,
+  isLoading,
+  entityType,
+  isEdit,
+  data,
+  onDelete
 }: CancelResetCreateButtonsProps) {
+
+  const handleDelete = () => {
+    if (!data || !onDelete) return;
+
+    Alert.alert(
+      `Delete ${entityType}`,
+      `Are you sure you want to delete this ${entityType?.toLowerCase()}? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await onDelete(data);
+              Alert.alert("Success", `${entityType} deleted successfully!`);
+              onCancel();
+            } catch (error) {
+              console.error(`Error deleting ${entityType}:`, error);
+              Alert.alert("Error", `Failed to delete ${entityType}. Please try again.`);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const handleCancel = () => {
     Alert.alert(
@@ -26,7 +51,7 @@ export default function CancelResetCreateButtons({
         },
         {
           text: 'Yes, Cancel',
-          onPress: onCloseModal,
+          onPress: onCancel,
           style: 'destructive',
         },
       ]
@@ -35,132 +60,53 @@ export default function CancelResetCreateButtons({
 
   const handleCreateEntity = async () => {
     try {
-      switch (entityName) {
-        case "Business":
-          const businessData = {
-            name: params.businessName.trim() || '',
-            phoneNumber: params.phoneNumber.trim() || '',
-            firstName: params.firstName.trim() || '',
-            lastName: params.lastName.trim() || '',
-            userId: params.userId
-          };
-          const { data: createdBusiness, errors: businessErrors } = await client.models.Business.create(businessData);
-          console.log("Business created response:", JSON.stringify(createdBusiness));
-          if (businessErrors) {
-            console.error("Error creating business:", businessErrors);
-            throw new Error('Failed to create business');
-          }
-          break;
-
-        case "Customer":
-          const customerData = {
-            firstName: params.firstName.trim(),
-            lastName: params.lastName.trim(),
-            phoneNumber: params.phoneNumber.trim(),
-            email: params.email.trim() || 'none@example.com',
-            address: params.address.trim() || '',
-            city: params.city.trim() || '',
-            state: params.state.trim() || '',
-            zipCode: params.zipCode.trim() || '',
-            userId: params.userId
-          };
-          const { data: createdCustomer, errors: customerErrors } = await client.models.Customer.create(customerData);
-          console.log("Customer created response:", JSON.stringify(createdCustomer));
-          if (customerErrors) {
-            console.error("Error creating customer:", customerErrors);
-            throw new Error('Failed to create customer');
-          }
-          break;
-
-        case "Category":
-          const categoryData = {
-            name: params.name?.trim(),
-            description: params.description?.trim(),
-            userId: params.userId
-          };
-          const { data: createdCategory, errors: categoryErrors } = await client.models.Category.create(categoryData);
-          console.log("Category created response:", JSON.stringify(createdCategory));
-          if (categoryErrors) {
-            console.error("Error creating category:", categoryErrors);
-            throw new Error('Failed to create category');
-          }
-          break;
-
-        case "Item":
-          const itemData = {
-            name: params.name?.trim(),
-            price: params.price,
-            categoryId: params.categoryId,
-            description: params.description?.trim(),
-            sku: params.sku?.trim(),
-          };
-          const { data: createdItem, errors: itemErrors } = await client.models.Item.create(itemData);
-          console.log("Item created response:", JSON.stringify(createdItem));
-          if (itemErrors) {
-            console.error("Error creating item:", itemErrors);
-            throw new Error('Failed to create item');
-          }
-          break;
-
-        case "Employee":
-          const employeeData = {
-            firstName: params.firstName?.trim(),
-            lastName: params.lastName?.trim(),
-            email: params.email?.trim(),
-            phoneNumber: params.phoneNumber?.trim(),
-            role: params.role?.trim(),
-            pin: params.pin?.trim(),
-          };
-          const { data: createdEmployee, errors: employeeErrors } = await client.models.Employee.create(employeeData);
-          console.log("Employee created response:", JSON.stringify(createdEmployee));
-          if (employeeErrors) {
-            console.error("Error creating employee:", employeeErrors);
-            throw new Error('Failed to create employee');
-          }
-          break;
-
-        default:
-          throw new Error(`Entity type "${entityName}" not supported`);
-      }
-
-      console.log(`${entityName} created successfully`);
-      Alert.alert("Success", `${entityName} created successfully!`);
-      onCloseModal();
+      // Try to execute the onCreate function
+      await onCreate(data);
+      
+      // If we get here, close the modal - success alerts are handled by the specific forms
+      onCancel();
     } catch (error) {
-      console.error(`Error creating ${entityName}:`, error);
-      Alert.alert("Error", `Failed to create ${entityName}.`);
+      // Error alerts are handled by the specific forms
+      console.error(`Error ${isEdit ? 'updating' : 'creating'} ${entityType}:`, error);
+      // Do not call onCancel() here - we want to keep the form open on errors
     }
   };
 
   return (
     <View style={styles.container}>
       <TouchableOpacity
-        style={[styles.button, styles.cancelButton]}
-        onPress={handleCancel}
+        style={styles.cancelButton}
+        onPress={onCancel}
       >
-        <Text style={styles.buttonText}>Cancel</Text>
+        <Text style={styles.cancelButtonText}>Cancel</Text>
       </TouchableOpacity>
 
-      {onResetForm && (
+      <TouchableOpacity
+        style={styles.resetButton}
+        onPress={onReset}
+      >
+        <Text style={styles.resetButtonText}>Reset</Text>
+      </TouchableOpacity>
+
+      {isEdit && onDelete && (
         <TouchableOpacity
-          style={[styles.button, styles.resetButton]}
-          onPress={onResetForm}
+          style={styles.deleteButton}
+          onPress={handleDelete}
         >
-          <Text style={styles.buttonText}>Reset</Text>
+          <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       )}
 
       <TouchableOpacity
         style={[
-          styles.button,
-          createOrEdit === 'create' ? styles.createButton : styles.editButton,
-          !isFormValid && styles.disabledButton
+          styles.createButton,
+          (!isValid || isLoading) && styles.disabledButton
         ]}
         onPress={handleCreateEntity}
-        disabled={!isFormValid}
+        disabled={!isValid || isLoading}
       >
-        <Text style={styles.buttonText}>
-          {createOrEdit === 'create' ? 'Create' : 'Update'}
+        <Text style={styles.createButtonText}>
+          {isLoading ? "Processing..." : isEdit ? "Update" : "Create"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -170,9 +116,11 @@ export default function CancelResetCreateButtons({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 20,
+    justifyContent: 'flex-end',
+    padding: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    backgroundColor: 'white',
   },
   button: {
     paddingVertical: 12,
@@ -188,12 +136,35 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     backgroundColor: 'skyblue',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  resetButtonText: {
+    color: 'white',
+    fontWeight: '500',
   },
   cancelButton: {
     backgroundColor: '#ff6b6b',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontWeight: '500',
   },
   createButton: {
     backgroundColor: '#4ecdc4',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+  },
+  createButtonText: {
+    color: 'white',
+    fontWeight: '500',
   },
   disabledButton: {
     backgroundColor: '#a0a0a0',
@@ -205,6 +176,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   editButton: {
-    backgroundColor: '#6a5acd', 
+    backgroundColor: '#6a5acd',
+  },
+  deleteButton: {
+    backgroundColor: '#ff3b30', // Red color for delete
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  deleteButtonText: {
+    color: 'white',
+    fontWeight: '500',
   },
 });

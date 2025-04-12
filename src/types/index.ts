@@ -11,13 +11,15 @@ export interface CreateFormModalProps {
 }
 
 export interface CancelResetCreateButtonsProps {
-    entityName: string;
-    params: Record<string, any>;
-    phoneNumberAvailable?: boolean | null;
-    onCloseModal: () => void;
-    onResetForm?: () => void;
-    isFormValid: boolean;
-    createOrEdit: 'create' | 'edit';
+  onCancel: () => void;
+  onReset: () => void;
+  onCreate: (data: any) => Promise<void>;
+  isValid: boolean;
+  isLoading: boolean;
+  entityType?: string;
+  isEdit?: boolean;
+  data?: any; 
+  onDelete?: (data: any) => Promise<void>; 
 }
 
 export type DashboardCategory = {
