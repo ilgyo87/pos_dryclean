@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Keyboard } from 'react-native';
+import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Keyboard, TouchableWithoutFeedback, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Schema } from '../../../../amplify/data/resource';
 
@@ -21,7 +21,13 @@ export default function PredictiveSearch({
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const inputRef = useRef<TextInput>(null);
+    const searchContainerRef = useRef<View>(null);
 
+    const handleOutsideTouch = () => {
+        if (showSuggestions) {
+            setShowSuggestions(false);
+        }
+    };
     // Filter customers based on query
     useEffect(() => {
         if (!query.trim()) {
@@ -110,83 +116,88 @@ export default function PredictiveSearch({
 
     return (
         <View style={styles.container}>
-            <View style={styles.inputContainer}>
-                <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-                <TextInput
-                    ref={inputRef}
-                    style={styles.input}
-                    placeholder={placeholder}
-                    value={query}
-                    onChangeText={setQuery}
-                    onFocus={() => query.trim() && setShowSuggestions(true)}
-                    onKeyPress={handleKeyPress}
-                    returnKeyType="search"
-                    clearButtonMode="while-editing"
-                    onSubmitEditing={() => {
-                        // When user presses the keyboard's submit/enter button
-                        if (suggestions.length > 0) {
-                            handleSelectCustomer(selectedIndex >= 0 ? suggestions[selectedIndex] : suggestions[0]);
-                        }
-                    }}
-                />
-                {query.length > 0 && (
-                    <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-                        <Ionicons name="close-circle" size={18} color="#888" />
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {showSuggestions && (
-                <View style={styles.suggestionsContainer}>
-                    <FlatList
-                        data={suggestions}
-                        keyExtractor={(item) => item.id}
-                        keyboardShouldPersistTaps="always"
-                        renderItem={({ item, index }) => (
-                            <TouchableOpacity
-                                style={[
-                                    styles.suggestionItem,
-                                    selectedIndex === index ? styles.selectedItem : null
-                                ]}
-                                onPress={() => handleSelectCustomer(item)}
-                            >
-                                <View style={styles.avatar}>
-                                    <Ionicons name="person" size={20} color="#fff" />
-                                </View>
-                                <View style={styles.suggestionContent}>
-                                    <Text style={styles.suggestionName}>
-                                        {highlightText(`${item.firstName} ${item.lastName}`, query)}
-                                    </Text>
-                                    {item.phoneNumber && (
-                                        <Text style={styles.suggestionDetail}>
-                                            {highlightText(item.phoneNumber, query)}
-                                        </Text>
-                                    )}
-                                </View>
-                            </TouchableOpacity>
-                        )}
-                    />
-                </View>
-            )}
+        {/* Input section */}
+        <View style={styles.inputContainer}>
+          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            placeholder={placeholder}
+            value={query}
+            onChangeText={setQuery}
+            onFocus={() => setShowSuggestions(true)}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+              <Ionicons name="close-circle" size={18} color="#888" />
+            </TouchableOpacity>
+          )}
         </View>
+    
+        {/* Suggestions overlay with backdrop */}
+        {showSuggestions && (
+          <>
+            <TouchableWithoutFeedback onPress={handleOutsideTouch}>
+              <View style={styles.backdrop} />
+            </TouchableWithoutFeedback>
+            
+            <View style={styles.suggestionsContainer}>
+              <FlatList
+                data={suggestions}
+                keyExtractor={(item) => item.id}
+                keyboardShouldPersistTaps="always"
+                renderItem={({ item, index }) => (
+                    <TouchableOpacity
+                      style={[
+                        styles.suggestionItem,
+                        selectedIndex === index ? styles.selectedItem : null
+                      ]}
+                      onPress={() => handleSelectCustomer(item)}
+                    >
+                      <View style={styles.avatar}>
+                        <Ionicons name="person" size={20} color="#fff" />
+                      </View>
+                      <View style={styles.suggestionContent}>
+                        <Text style={styles.suggestionName}>
+                          {highlightText(`${item.firstName} ${item.lastName}`, query)}
+                        </Text>
+                        {item.phoneNumber && (
+                          <Text style={styles.suggestionDetail}>
+                            {highlightText(item.phoneNumber, query)}
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  )}
+              />
+            </View>
+          </>
+        )}
+      </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        width: '100%',
+    outerContainer: {
         position: 'relative',
-        zIndex: 10,
-    },
-    inputContainer: {
+        zIndex: 100,
+        width: '100%', // Make sure this is full width
+      },
+      container: {
+        width: '100%',
+        zIndex: 100,
+      },
+      // Make sure these styles are correctly defined
+      inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#f5f5f5',
         borderRadius: 8,
-        paddingHorizontal: 10,
-        borderWidth: 1,
-        borderColor: '#e0e0e0',
-    },
+        padding: 10,
+        marginBottom: 5,
+      },
     searchIcon: {
         marginRight: 6,
     },
@@ -251,4 +262,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffe066',
         fontWeight: '500',
     },
+    backdrop: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'transparent',
+        height: Dimensions.get('window').height,
+        width: Dimensions.get('window').width,
+        zIndex: 50,
+      },
 });

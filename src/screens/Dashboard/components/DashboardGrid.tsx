@@ -15,8 +15,10 @@ export const DashboardGrid = ({ categories, onCardPress }: DashboardGridProps) =
   
   const getGridColumns = () => {
     if (isLandscape) {
-      return width > 1024 ? 6 : 4;
+      // Return 3 columns for larger screens, 2 for smaller
+      return width > 1024 ? 3 : 2;
     }
+    // Return 3 columns for larger screens, 2 for smaller
     return width > 768 ? 3 : 2;
   };
 
@@ -43,8 +45,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     paddingVertical: 4, 
-    marginTop: 30,      
+    marginTop: 130,      
     gap: 9, 
+    paddingHorizontal: 10,
   }
 });
 

@@ -7,15 +7,12 @@ import { generateClient } from 'aws-amplify/data';
 import { Schema } from '../../../amplify/data/resource';
 import type { DashboardCategory } from "../../types";
 import { DashboardGrid } from "./components/DashboardGrid";
-import { SearchBar } from "../../components/SearchBar";
 import styles from "./styles/DashboardStyles";
 import PredictiveSearch from "../Customers/components/PredictiveSearch";
 
-// Create the client
 const client = generateClient<Schema>();
 
 export default function Dashboard({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
-  const [searchQuery, setSearchQuery] = useState("");
   const [business, setBusiness] = useState<Schema['Business']['type'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [customers, setCustomers] = useState<Schema['Customer']['type'][]>([]);
@@ -36,7 +33,6 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
     try {
       setIsLoading(true);
 
-      // Fetch business by userId
       const businessResponse = await client.models.Business.list({
         filter: { userId: { eq: user.userId } }
       });
@@ -44,13 +40,10 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
       if (businessResponse.data && businessResponse.data.length > 0) {
         setBusiness(businessResponse.data[0]);
 
-        // Now fetch counts for each entity
         const customersResponse = await client.models.Customer.list();
         const employeesResponse = await client.models.Employee.list();
         const ordersResponse = await client.models.Order.list();
         const productsResponse = await client.models.Item.list();
-
-        // Store the actual customer data too
         if (customersResponse.data) {
           setCustomers(customersResponse.data);
         }
@@ -69,23 +62,19 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
     }
   };
 
-  // Add a handler for customer selection from search
   const handleCustomerSearch = (customer: Schema["Customer"]["type"]) => {
-    // Navigate to customer edit mode
     navigation.navigate('Customers', {
       screen: 'CustomerEdit',
       params: { customerId: customer.id }
     });
   };
 
-  // Fetch data when user changes
   useEffect(() => {
     if (user) {
       fetchBusinessData();
     }
   }, [user?.userId]);
 
-  // Refetch when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchBusinessData();
@@ -102,7 +91,6 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
   ];
 
   const navigateToSection = (sectionId: string) => {
-    // Handle navigation to different sections
     if (navigation) {
       switch (sectionId) {
         case 'customers':

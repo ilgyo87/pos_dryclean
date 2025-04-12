@@ -36,10 +36,11 @@ export default function CategoryCard({ category, onPress, width }: CategoryCardP
 
 const styles = StyleSheet.create({
   card: {
-    padding: 16,
+    padding: 40,
     borderRadius: 12,
-    margin: '1%',      
-    height: 140,      
+    margin: '1.5%',      
+    height: 150,     
+    width: '100%', 
     justifyContent: 'space-between',
     elevation: 3,
     shadowColor: '#000',
@@ -56,7 +57,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
   },
   count: {
