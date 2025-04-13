@@ -4,6 +4,7 @@ import { StyleSheet, View, Text, TextInput, Alert, Platform, ScrollView, Pressab
 import CancelResetCreateButtons from "../../../components/CancelResetCreateButtons";
 import type { Schema } from "../../../../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
+import PinInput from "../../../components/PinInput";
 
 const client = generateClient<Schema>();
 
@@ -22,6 +23,8 @@ export default function EmployeeForm({ onCloseModal, createOrEdit, params }: { o
     const [status, setStatus] = useState(existingEmployee?.status || 'ACTIVE');
     const [isFormValid, setIsFormValid] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [pinCode, setPinCode] = useState(existingEmployee?.pinCode || '');
+
 
     const { createEmployee, updateEmployee, deleteEmployee } = params;
 
@@ -33,10 +36,11 @@ export default function EmployeeForm({ onCloseModal, createOrEdit, params }: { o
             firstName.trim().length > 0 &&
             lastName.trim().length > 0 &&
             phoneNumber.length === 10 &&
-            role.trim().length > 0;
+            role.trim().length > 0 &&
+            (pinCode.length === 4 || pinCode.length === 0);
 
         setIsFormValid(isValid);
-    }, [firstName, lastName, phoneNumber, role]);
+    }, [firstName, lastName, phoneNumber, role, pinCode]);
 
     const resetForm = () => {
         if (createOrEdit === 'edit' && existingEmployee) {
@@ -52,6 +56,7 @@ export default function EmployeeForm({ onCloseModal, createOrEdit, params }: { o
             setState(existingEmployee.state || '');
             setZipCode(existingEmployee.zipCode || '');
             setStatus(existingEmployee.status || 'ACTIVE');
+            setPinCode(existingEmployee.pinCode || '');
         } else {
             // In create mode, clear the form completely
             setFirstName('');
@@ -65,8 +70,9 @@ export default function EmployeeForm({ onCloseModal, createOrEdit, params }: { o
             setState('');
             setZipCode('');
             setStatus('ACTIVE');
+            setPinCode('');
         }
-        
+
         // Show confirmation to the user
         Alert.alert('Form Reset', 'The form has been reset to its initial state.');
     };
@@ -77,20 +83,28 @@ export default function EmployeeForm({ onCloseModal, createOrEdit, params }: { o
         setPhoneNumber(cleaned);
     };
 
-    const handleTextChange = (setter: React.Dispatch<React.SetStateAction<string>>) => 
+    const handleTextChange = (setter: React.Dispatch<React.SetStateAction<string>>) =>
         (text: string) => setter(text);
 
     const handleCreateOrUpdate = async (formData: any) => {
         setIsLoading(true);
         try {
+            // Validate PIN code
+            if (!pinCode || pinCode.length < 4) {
+                Alert.alert("Validation Error", "Please enter a 4-digit PIN code");
+                setIsLoading(false);
+                return;
+            }
+
             // Format hourly rate from string to number
-            const hourlyRateValue = hourlyRate && hourlyRate.trim() !== '' 
-                ? parseFloat(hourlyRate) 
+            const hourlyRateValue = hourlyRate && hourlyRate.trim() !== ''
+                ? parseFloat(hourlyRate)
                 : undefined;
-            
+
             // Use the data passed from the component or build it from state
             const employeeData = {
                 ...formData,
+                pinCode,
                 hourlyRate: hourlyRateValue,
                 hireDate: formData.hireDate || new Date().toISOString()
             };
@@ -101,7 +115,7 @@ export default function EmployeeForm({ onCloseModal, createOrEdit, params }: { o
             } else {
                 await createEmployee(employeeData);
             }
-            
+
             // If we reach here without errors, it was successful
             console.log(`Employee ${createOrEdit === 'edit' ? 'updated' : 'created'} successfully`);
             Alert.alert("Success", `Employee ${createOrEdit === 'edit' ? 'updated' : 'created'} successfully!`);
@@ -211,6 +225,15 @@ export default function EmployeeForm({ onCloseModal, createOrEdit, params }: { o
                         placeholderTextColor="#A0A0A0"
                     />
 
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>PIN Code (4 digits)</Text>
+                        <PinInput
+                            value={pinCode}
+                            onChange={setPinCode}
+                            maxLength={4}
+                        />
+                    </View>
+
                     <Text style={styles.label}>Address</Text>
                     <TextInput
                         placeholder="Enter address"
@@ -272,6 +295,7 @@ export default function EmployeeForm({ onCloseModal, createOrEdit, params }: { o
                             city,
                             state,
                             zipCode,
+                            pinCode,
                             userId: params.userId
                         }}
                         onDelete={createOrEdit === 'edit' ? handleDelete : undefined}
@@ -340,5 +364,8 @@ const styles = StyleSheet.create({
     },
     buttonContainer: {
         marginTop: 10,
+    },
+    formGroup: {
+        marginBottom: 15,
     },
 });
