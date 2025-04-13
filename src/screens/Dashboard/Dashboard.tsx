@@ -69,12 +69,6 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
     });
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchBusinessData();
-    }
-  }, [user?.userId]);
-
   useFocusEffect(
     useCallback(() => {
       fetchBusinessData();

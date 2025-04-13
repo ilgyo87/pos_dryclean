@@ -1,32 +1,44 @@
 import React, { useRef } from 'react';
-import { View, TextInput, StyleSheet, Pressable, Text } from 'react-native';
+import { View, TextInput, StyleSheet, Pressable, Text, Modal, TouchableWithoutFeedback } from 'react-native';
 
 type PinInputProps = {
   value: string;
   onChange: (value: string) => void;
   maxLength: number;
+  isVisible: boolean;
+  onClose: () => void;
+  onSubmit?: () => void;
+  title?: string;
 };
 
-const PinInput = ({ value, onChange, maxLength }: PinInputProps) => {
+export function PinInput({ 
+  value, 
+  onChange, 
+  maxLength, 
+  isVisible,
+  onClose,
+  onSubmit,
+  title = "Enter PIN" 
+}: PinInputProps) {
   const inputRef = useRef<TextInput>(null);
 
-  // Handle numeric input only
   const handleChange = (text: string) => {
-    // Remove non-numeric characters
     const numericValue = text.replace(/[^0-9]/g, '');
     
-    // Limit to maxLength
     if (numericValue.length <= maxLength) {
       onChange(numericValue);
+      
+      // Auto-submit when all digits are entered
+      if (numericValue.length === maxLength && onSubmit) {
+        onSubmit();
+      }
     }
   };
 
-  // Focus the hidden input when container is pressed
   const focusInput = () => {
     inputRef.current?.focus();
   };
 
-  // Create an array of individual PIN digit boxes
   const renderDigitBoxes = () => {
     const boxes = [];
     
@@ -44,42 +56,85 @@ const PinInput = ({ value, onChange, maxLength }: PinInputProps) => {
   };
 
   return (
-    <Pressable style={styles.container} onPress={focusInput}>
-      <View style={styles.boxesContainer}>
-        {renderDigitBoxes()}
-      </View>
-      
-      <TextInput
-        ref={inputRef}
-        value={value}
-        onChangeText={handleChange}
-        keyboardType="numeric"
-        style={styles.hiddenInput}
-        maxLength={maxLength}
-        secureTextEntry
-      />
-    </Pressable>
+    <Modal
+      visible={isVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={focusInput}>
+            <View style={styles.modalContent}>
+              <Text style={styles.title}>{title}</Text>
+              
+              <View style={styles.pinContainer} onTouchStart={focusInput}>
+                {renderDigitBoxes()}
+              </View>
+              
+              <TextInput
+                ref={inputRef}
+                value={value}
+                onChangeText={handleChange}
+                style={styles.hiddenInput}
+                keyboardType="numeric"
+                maxLength={maxLength}
+                autoFocus
+                secureTextEntry
+              />
+              
+              <Pressable 
+                style={styles.cancelButton} 
+                onPress={onClose}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-  },
-  boxesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginVertical: 20,
-  },
-  digitBox: {
-    width: 50,
-    height: 60,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    marginHorizontal: 5,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  pinContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  digitBox: {
+    width: 40,
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
   },
   digit: {
     fontSize: 24,
@@ -88,9 +143,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     opacity: 0,
     height: 0,
-    width: '100%',
-    bottom: 0,
+    width: 0,
   },
+  cancelButton: {
+    marginTop: 15,
+    padding: 10,
+  },
+  cancelButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+  }
 });
-
-export default PinInput;

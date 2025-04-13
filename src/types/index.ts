@@ -1,6 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
+import { AuthUser } from "@aws-amplify/auth";
 
 export type EntityType = 'Business' | 'Employee' | 'Customer' | 'Garment' | 'Rack' | 'Product' | 'Category' | 'Unknown';
+
+export interface NavigationProps {
+  user: AuthUser | null;
+  employee: { id: string, name: string } | null;
+  onSwitchEmployee: () => void;
+}
 
 export interface CreateFormModalProps {
   visible: boolean;
