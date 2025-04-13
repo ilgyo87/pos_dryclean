@@ -2,7 +2,7 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthUser } from "@aws-amplify/auth";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, Image } from "react-native";
 import Dashboard from "../screens/Dashboard/Dashboard";
 import CustomersScreen from "../screens/Customers/Customers";
 import EmployeesScreen from "../screens/Employees/Employees";
@@ -12,29 +12,31 @@ import Products from "../screens/Products/Products";
 
 const Stack = createNativeStackNavigator();
 
-const CustomHeader = ({ 
-  employee, 
+const CustomHeader = ({
+  employee,
   title,
-  onSwitchEmployee 
-}: { 
-  employee: { id: string, name: string } | null, 
+  onSwitchEmployee
+}: {
+  employee: { id: string, name: string } | null,
   title: string,
-  onSwitchEmployee: () => void 
+  onSwitchEmployee: () => void
 }) => (
   <View style={styles.headerContainer}>
     <Text style={styles.headerTitle}>{title}</Text>
-    
+
     <View style={styles.employeeContainer}>
       <View style={styles.employeeNameAndSwitch}>
         <Text style={styles.employeeName}>
           {employee ? employee.name : "Employee Not Signed In"}
         </Text>
         <Pressable onPress={onSwitchEmployee} style={styles.switchButton}>
-          <Text>Switch</Text>
-        </Pressable>
+          <Image
+            source={require('../../assets/alter.png')}
+            style={{ width: 24, height: 24 }}
+          />        </Pressable>
       </View>
     </View>
-    
+
     <View style={styles.signOutContainer}>
       <SignOutButton />
     </View>
@@ -42,8 +44,8 @@ const CustomHeader = ({
 );
 
 
-export default function Navigation({ 
-  user, 
+export default function Navigation({
+  user,
   employee,
   onSwitchEmployee
 }: NavigationProps) {
@@ -60,9 +62,9 @@ export default function Navigation({
           },
           headerBackVisible: true,
           headerTitle: (props) => (
-            <CustomHeader 
-              employee={employee} 
-              title={props.children} 
+            <CustomHeader
+              employee={employee}
+              title={props.children}
               onSwitchEmployee={onSwitchEmployee}
             />
           ),
@@ -79,7 +81,7 @@ export default function Navigation({
         </Stack.Screen>
         <Stack.Screen name="Products">
           {(props) => <Products {...props} user={user} />}
-        </Stack.Screen> 
+        </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -102,20 +104,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'flex-end',
-    marginTop: -60, 
+    marginTop: -60,
   },
   employeeContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   employeeNameAndSwitch: {
     flexDirection: 'row',
-    alignItems: 'center', 
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   employeeName: {
     fontSize: 18,
     color: "#555",
@@ -123,11 +125,10 @@ const styles = StyleSheet.create({
     marginRight: 40, // Space between name and button
     marginLeft: 90,
   },
-  
+
   switchButton: {
     padding: 8,
     marginTop: 1,
-    backgroundColor: 'skyblue',
     borderRadius: 5,
   },
 });
