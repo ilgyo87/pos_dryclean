@@ -254,6 +254,8 @@ const schema = a.schema({
       notes: a.string().array(),
       estimatedTotal: a.float(),
       actualTotal: a.float(),
+      discount: a.float().default(0),
+      additionalCharges: a.float().default(0),
       priority: a.integer().default(0),
       // Delivery specific fields
       isDelivery: a.boolean().default(false),
@@ -274,7 +276,7 @@ const schema = a.schema({
       // employee: a.belongsTo('Employee', 'employeeId'),
       // deliveryAddressId: a.id(),
       // deliveryAddress: a.belongsTo('DeliveryAddress', 'deliveryAddressId'),
-      // orderItems: a.hasMany('OrderItem', 'orderId'),
+      orderItems: a.hasMany('OrderItem', 'orderId'),
       // garments: a.hasMany('Garment', 'orderId'),
       // transactionId: a.id(),
       // transaction: a.belongsTo('Transaction', 'transactionId'),
@@ -290,12 +292,14 @@ const schema = a.schema({
   OrderItem: a
     .model({
       quantity: a.integer().required(),
-      priceAtOrder: a.float().required(),
+      price: a.float().required(),
+      duration: a.integer(),
+      taxable: a.boolean().default(false),
       notes: a.string().array(),
       specialInstructions: a.string().array(),
       // Relationships
-      // orderId: a.id().required(),
-      // order: a.belongsTo('Order', 'orderId'),
+      orderId: a.id().required(),
+      order: a.belongsTo('Order', 'orderId'),
       // itemId: a.id().required(),
       // item: a.belongsTo('Item', 'itemId'),
       // garment: a.hasOne('Garment', 'orderItemId')
