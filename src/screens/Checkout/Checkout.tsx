@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   leftColumn: {
-    width: '75%',
+    width: '67%',
     backgroundColor: '#fff',
     borderRightWidth: 1,
     borderRightColor: '#e0e0e0',
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   rightColumn: {
-    width: '25%', // Takes 40% of the width
+    width: '33%', // Takes 40% of the width
     backgroundColor: '#f8f8f8',
     height: '100%',
   },
