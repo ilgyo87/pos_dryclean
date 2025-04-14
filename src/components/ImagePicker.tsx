@@ -1,153 +1,233 @@
+// src/components/ImagePicker.tsx
 import React, { useState } from 'react';
-import { View, TouchableOpacity, Image, StyleSheet, Text, Alert } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import * as ImagePickerLib from 'react-native-image-picker';
+import { getImageSource, getAssetImageNames } from '../utils/productImages';
 
-interface ImagePickerProps {
-  imageUri: string | null;
-  onImageSelected: (uri: string | null) => void;
-  height?: number;
+interface ProductImagePickerProps {
+  currentImage: string;
+  onImageSelected: (imageSource: string) => void;
 }
 
-const CustomImagePicker: React.FC<ImagePickerProps> = ({ 
-  imageUri, 
-  onImageSelected,
-  height = 150
+const ProductImagePicker: React.FC<ProductImagePickerProps> = ({ 
+  currentImage, 
+  onImageSelected 
 }) => {
-  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const availableImages = getAssetImageNames();
 
-  const requestPermission = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'We need permission to access your photos to set product images.'
-      );
-      return false;
-    }
-    return true;
-  };
-
-  const selectImage = async () => {
-    try {
-      const hasPermission = await requestPermission();
-      if (!hasPermission) return;
-
-      setLoading(true);
-      
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      setLoading(false);
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const selectedImageUri = result.assets[0].uri;
-        onImageSelected(selectedImageUri);
+  const openCamera = () => {
+    ImagePickerLib.launchCamera({
+      mediaType: 'photo',
+      includeBase64: false,
+      maxHeight: 500,
+      maxWidth: 500,
+    }, (response) => {
+      if (response.assets && response.assets[0]?.uri) {
+        onImageSelected(response.assets[0].uri);
+        setModalVisible(false);
       }
-    } catch (error) {
-      setLoading(false);
-      console.error('Error selecting image:', error);
-      Alert.alert('Error', 'Failed to select image. Please try again.');
-    }
+    });
   };
 
-  const removeImage = () => {
-    onImageSelected(null);
+  const openGallery = () => {
+    ImagePickerLib.launchImageLibrary({
+      mediaType: 'photo',
+      includeBase64: false,
+      maxHeight: 500,
+      maxWidth: 500,
+    }, (response) => {
+      if (response.assets && response.assets[0]?.uri) {
+        onImageSelected(response.assets[0].uri);
+        setModalVisible(false);
+      }
+    });
   };
 
   return (
-    <View style={[styles.container, { height }]}>
-      {imageUri ? (
-        <View style={styles.imageContainer}>
-          <Image 
-            source={{ uri: imageUri }} 
-            style={styles.image}
-            resizeMode="cover"
-          />
-          <TouchableOpacity 
-            style={styles.removeButton}
-            onPress={removeImage}
-          >
-            <Ionicons name="close-circle" size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.changeButton}
-            onPress={selectImage}
-          >
-            <Text style={styles.changeText}>Change</Text>
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <TouchableOpacity 
+        style={styles.previewContainer} 
+        onPress={() => setModalVisible(true)}
+      >
+        <Image 
+          source={getImageSource(null, currentImage)}
+          style={styles.previewImage}
+        />
+        <Text style={styles.changeText}>Change Image</Text>
+      </TouchableOpacity>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Image</Text>
+            
+            <View style={styles.sourceButtons}>
+              <TouchableOpacity style={styles.sourceButton} onPress={openCamera}>
+                <Text style={styles.buttonText}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sourceButton} onPress={openGallery}>
+                <Text style={styles.buttonText}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.sectionTitle}>App Assets</Text>
+            <ScrollView style={styles.assetList}>
+              <View style={styles.imageGrid}>
+                {availableImages.map((imageName) => (
+                  <TouchableOpacity
+                    key={imageName}
+                    style={[
+                      styles.assetItem,
+                      currentImage === imageName && styles.selectedAsset
+                    ]}
+                    onPress={() => {
+                      onImageSelected(imageName);
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Image
+                      source={getImageSource(null, imageName)}
+                      style={styles.assetImage}
+                    />
+                    <Text style={styles.assetName} numberOfLines={1}>
+                      {imageName.replace(/_/g, ' ')}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      ) : (
-        <TouchableOpacity 
-          style={styles.placeholder}
-          onPress={selectImage}
-          disabled={loading}
-        >
-          <Ionicons name="camera-outline" size={32} color="#999" />
-          <Text style={styles.placeholderText}>
-            {loading ? 'Loading...' : 'Select Image'}
-          </Text>
-        </TouchableOpacity>
-      )}
+      </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    height: 150,
+    marginVertical: 10,
+  },
+  previewContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: '#f5f5f5',
-  },
-  imageContainer: {
-    width: '100%',
-    height: '100%',
-    position: 'relative',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  removeButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 12,
-    padding: 4,
-  },
-  changeButton: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     padding: 8,
-    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+  },
+  previewImage: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
   },
   changeText: {
+    marginTop: 8,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '90%',
+    maxHeight: '80%',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  sourceButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 24,
+  },
+  sourceButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    width: '45%',
+    alignItems: 'center',
+  },
+  buttonText: {
     color: 'white',
     fontWeight: 'bold',
   },
-  placeholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  assetList: {
+    maxHeight: 300,
+  },
+  imageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  assetItem: {
+    width: '30%',
+    marginBottom: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
   },
-  placeholderText: {
-    marginTop: 8,
-    color: '#666',
+  selectedAsset: {
+    borderColor: '#34C759',
+    borderWidth: 2,
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
   },
+  assetImage: {
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
+  },
+  assetName: {
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  closeButton: {
+    backgroundColor: '#FF3B30',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  closeButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  }
 });
 
-export default CustomImagePicker;
+export default ProductImagePicker;

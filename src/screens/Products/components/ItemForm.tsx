@@ -1,7 +1,7 @@
 // src/screens/Products/components/ItemForm.tsx
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { StyleSheet, View, Text, TextInput, Alert, ScrollView, Switch } from "react-native";
-import CustomImagePicker from '../../../components/ImagePicker';
+import ProductImagePicker from '../../../components/ImagePicker';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store';
 
@@ -29,6 +29,7 @@ const ItemForm = forwardRef(({
   const [duration, setDuration] = useState(existingItem?.duration?.toString() || '');
   const [taxable, setTaxable] = useState(existingItem?.taxable || false);
   const [imageUrl, setImageUrl] = useState(existingItem?.imageUrl || '');
+  const [imageSource, setImageSource] = useState(existingItem?.imageSource || 'placeholder');
 
   // Get loading state from Redux store
   const isReduxLoading = useSelector((state: RootState) => state.item.isLoading);
@@ -38,7 +39,7 @@ const ItemForm = forwardRef(({
     if (onFormChange) {
       onFormChange();
     }
-  }, [name, description, price, duration, taxable, imageUrl]);
+  }, [name, description, price, duration, taxable, imageUrl, imageSource]);
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
@@ -51,6 +52,7 @@ const ItemForm = forwardRef(({
         setDuration(existingItem.duration?.toString() || '');
         setTaxable(existingItem.taxable || false);
         setImageUrl(existingItem.imageUrl || '');
+        setImageSource(existingItem.imageSource || 'placeholder');
       } else {
         // Clear form
         setName('');
@@ -59,6 +61,7 @@ const ItemForm = forwardRef(({
         setDuration('');
         setTaxable(false);
         setImageUrl('');
+        setImageSource('placeholder');
       }
     },
     validateAndGetFormData: () => {
@@ -91,6 +94,7 @@ const ItemForm = forwardRef(({
         duration: formattedDuration,
         taxable,
         imageUrl: imageUrl.trim() || undefined,
+        imageSource,
         categoryId
       };
 
@@ -179,10 +183,9 @@ const ItemForm = forwardRef(({
         </View>
 
         <Text style={styles.label}>Product Image</Text>
-        <CustomImagePicker
-          imageUri={imageUrl}
-          onImageSelected={setImageUrl}
-          height={180}
+        <ProductImagePicker
+          currentImage={imageSource}
+          onImageSelected={setImageSource}
         />
       </View>
     </ScrollView>

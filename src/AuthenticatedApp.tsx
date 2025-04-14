@@ -27,10 +27,8 @@ export default function AuthenticatedApp() {
             });
 
             if (data && !errors && data.length > 0) {
-                console.log("Business found:", data);
                 setIsBusinessAvailable(true);
             } else {
-                console.error("Error checking business:", errors);
                 setErrorMessage(errors?.[0]?.message || 'Failed to check business');
                 setIsBusinessAvailable(false);
             }
