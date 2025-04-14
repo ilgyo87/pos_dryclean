@@ -13,6 +13,7 @@ import { createCustomer, updateCustomer, deleteCustomer } from '../store/slices/
 import { createEmployee, updateEmployee, deleteEmployee } from '../store/slices/EmployeeSlice';
 import { createCategory, updateCategory, deleteCategory } from '../store/slices/CategorySlice';
 import { createItem, updateItem, deleteItem } from '../store/slices/ItemSlice';
+import { createBusiness, updateBusiness, deleteBusiness } from '../store/slices/BusinessSlice';
 
 // Define FormRef interface to use with useRef
 export interface FormRef {
@@ -41,6 +42,15 @@ export default function CreateFormModal({
   const formRef = useRef<FormRef>(null);
   const [loading, setLoading] = useState(false);
   const [isFormValid, setIsFormValid] = useState(true);
+  
+  // Update form validity state whenever the form changes
+  useEffect(() => {
+    // Only check validity if the form has changed and the form has an isFormValid method
+    if (formChanged && formRef.current?.isFormValid) {
+      const currentFormValid = formRef.current.isFormValid();
+      setIsFormValid(currentFormValid);
+    }
+  }, [formChanged]);
 
   // Get current user for hooks
   const { user } = useAuthenticator((context) => [context.user]);
@@ -60,6 +70,9 @@ export default function CreateFormModal({
   );
   const itemLoading = useSelector((state: RootState) => 
     type === 'Item' ? state.item.isLoading : false
+  );
+  const businessLoading = useSelector((state: RootState) => 
+    type === 'Business' ? state.business.isLoading : false
   );
 
   // Reset form handler - to be passed to form components
@@ -84,35 +97,109 @@ export default function CreateFormModal({
 
   // Generic handler for form submission
   const handleSubmit = async () => {
-    if (!formRef.current) return;
+    console.log('handleSubmit called');
+    
+    if (!formRef.current) {
+      console.log('formRef is null');
+      return;
+    }
 
     try {
       setLoading(true);
+      console.log('About to validate form data');
       const formData = formRef.current.validateAndGetFormData();
+      console.log('Form data result:', formData);
 
       if (!formData) {
+        console.log('Form data is null or undefined');
         setLoading(false);
+        return;
+      }
+      
+      if (!formData.valid) {
+        console.log('Form validation failed:', formData?.message);
+        setLoading(false);
+        if (formData.message) {
+            Alert.alert("Validation Error", formData.message);
+        }
         return; // Validation failed
       }
+      
+      console.log('Form validation passed, proceeding with submission');
+      
+      // Extract business data without the valid flag if it exists
+      const { valid, ...cleanedData } = formData;
 
       // Handle submission based on form type
       switch (type) {
-        case 'Customer':
+        case 'Business':
           if (createOrEdit === 'create') {
-            const resultAction = await dispatch(createCustomer({ 
-              customerData: formData, 
+            console.log('Attempting to create business with data:', cleanedData);
+            try {
+              const resultAction = await dispatch(createBusiness({ 
+                businessData: cleanedData, 
+                userId: user?.userId || '' 
+              }));
+              console.log('Create business action result:', resultAction);
+            
+              if (createBusiness.fulfilled.match(resultAction)) {
+                console.log('Business creation succeeded');
+                Alert.alert("Success", "Business created successfully!");
+                onClose();
+              } else if (createBusiness.rejected.match(resultAction)) {
+                console.log('Business creation failed:', resultAction.payload);
+                Alert.alert("Error", `Failed to create business: ${resultAction.payload}`);
+              } else {
+                console.log('Business creation returned unexpected result');
+              }
+            } catch (error) {
+              const dispatchError = error as Error;
+              console.log('Error dispatching createBusiness:', dispatchError);
+              Alert.alert("Error", `Failed to create business: ${dispatchError.message || 'Unknown error'}`);
+            }
+          } else {
+            const resultAction = await dispatch(updateBusiness({ 
+              businessData: cleanedData, 
               userId: user?.userId || '' 
             }));
             
-            if (createCustomer.fulfilled.match(resultAction)) {
-              Alert.alert("Success", "Customer created successfully!");
+            if (updateBusiness.fulfilled.match(resultAction)) {
+              Alert.alert("Success", "Business updated successfully!");
               onClose();
-            } else if (createCustomer.rejected.match(resultAction)) {
-              Alert.alert("Error", `Failed to create customer: ${resultAction.payload}`);
+            } else if (updateBusiness.rejected.match(resultAction)) {
+              Alert.alert("Error", `Failed to update business: ${resultAction.payload}`);
+            }
+          }
+          break;
+          
+        case 'Customer':
+          if (createOrEdit === 'create') {
+            console.log('Attempting to create customer with data:', cleanedData);
+            try {
+              const resultAction = await dispatch(createCustomer({ 
+                customerData: cleanedData, 
+                userId: user?.userId || '' 
+              }));
+              console.log('Create customer action result:', resultAction);
+              
+              if (createCustomer.fulfilled.match(resultAction)) {
+                console.log('Customer creation succeeded');
+                Alert.alert("Success", "Customer created successfully!");
+                onClose();
+              } else if (createCustomer.rejected.match(resultAction)) {
+                console.log('Customer creation failed:', resultAction.payload);
+                Alert.alert("Error", `Failed to create customer: ${resultAction.payload}`);
+              } else {
+                console.log('Customer creation returned unexpected result');
+              }
+            } catch (error) {
+              const dispatchError = error as Error;
+              console.log('Error dispatching createCustomer:', dispatchError);
+              Alert.alert("Error", `Failed to create customer: ${dispatchError.message || 'Unknown error'}`);
             }
           } else {
             const resultAction = await dispatch(updateCustomer({ 
-              customerData: formData, 
+              customerData: cleanedData, 
               userId: user?.userId || '' 
             }));
             
@@ -128,7 +215,7 @@ export default function CreateFormModal({
         case 'Employee':
           if (createOrEdit === 'create') {
             const resultAction = await dispatch(createEmployee({ 
-              employeeData: formData, 
+              employeeData: cleanedData, 
               userId: user?.userId || '' 
             }));
             
@@ -140,7 +227,7 @@ export default function CreateFormModal({
             }
           } else {
             const resultAction = await dispatch(updateEmployee({ 
-              employeeData: formData, 
+              employeeData: cleanedData, 
               userId: user?.userId || '' 
             }));
             
@@ -156,7 +243,7 @@ export default function CreateFormModal({
         case 'Category':
           if (createOrEdit === 'create') {
             const resultAction = await dispatch(createCategory({ 
-              categoryData: formData, 
+              categoryData: cleanedData, 
               userId: user?.userId || '' 
             }));
             
@@ -168,7 +255,7 @@ export default function CreateFormModal({
             }
           } else {
             const resultAction = await dispatch(updateCategory({ 
-              categoryData: formData, 
+              categoryData: cleanedData, 
               userId: user?.userId || '' 
             }));
             
@@ -183,7 +270,12 @@ export default function CreateFormModal({
           
         case 'Item':
           if (createOrEdit === 'create') {
-            const resultAction = await dispatch(createItem(formData));
+            // ItemSlice expects the data directly, not wrapped in an object
+            const itemData = {
+              ...cleanedData,
+              userId: user?.userId || ''
+            };
+            const resultAction = await dispatch(createItem(itemData));
             
             if (createItem.fulfilled.match(resultAction)) {
               Alert.alert("Success", "Product created successfully!");
@@ -192,7 +284,12 @@ export default function CreateFormModal({
               Alert.alert("Error", `Failed to create product: ${resultAction.payload}`);
             }
           } else {
-            const resultAction = await dispatch(updateItem(formData));
+            // ItemSlice expects the data directly, not wrapped in an object
+            const itemData = {
+              ...cleanedData,
+              userId: user?.userId || ''
+            };
+            const resultAction = await dispatch(updateItem(itemData));
             
             if (updateItem.fulfilled.match(resultAction)) {
               Alert.alert("Success", "Product updated successfully!");
@@ -203,21 +300,8 @@ export default function CreateFormModal({
           }
           break;
           
-        case 'Business':
-          // For Business type, use the methods from params
-          if (createOrEdit === 'create') {
-            if (params.createBusiness) {
-              await params.createBusiness(formData);
-            }
-            Alert.alert("Success", `${type} created successfully!`);
-          } else {
-            if (params.updateBusiness) {
-              await params.updateBusiness(formData);
-            }
-            Alert.alert("Success", `${type} updated successfully!`);
-          }
-          onClose();
-          break;
+        // Business case is now handled above
+        // The old implementation using params.createBusiness and params.updateBusiness has been replaced with Redux actions
       }
     } catch (error) {
       Alert.alert("Error", `Failed to ${createOrEdit} ${type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -269,6 +353,22 @@ export default function CreateFormModal({
                     onClose();
                   } else if (deleteEmployee.rejected.match(employeeResult)) {
                     Alert.alert("Error", `Failed to delete employee: ${employeeResult.payload}`);
+                  }
+                  break;
+                  
+                case 'Business':
+                  const businessEntityId = params.business?.id;
+                  if (!businessEntityId) {
+                    throw new Error('Business ID is required for deletion');
+                  }
+                  
+                  const businessResult = await dispatch(deleteBusiness(businessEntityId));
+                  
+                  if (deleteBusiness.fulfilled.match(businessResult)) {
+                    Alert.alert("Success", "Business deleted successfully!");
+                    onClose();
+                  } else if (deleteBusiness.rejected.match(businessResult)) {
+                    Alert.alert("Error", `Failed to delete business: ${businessResult.payload}`);
                   }
                   break;
                   
@@ -447,10 +547,16 @@ export default function CreateFormModal({
             <View style={styles.rightButtons}>
               {createOrEdit === 'create' ? (
                 <CreateButton
-                  onPress={handleSubmit}
+                  onPress={() => {
+                    console.log('Create button clicked');
+                    // Direct call to handleSubmit without any conditions
+                    if (formRef.current) {
+                      handleSubmit();
+                    }
+                  }}
                   loading={loading}
                   style={styles.buttonSpacing}
-                  disabled={!isFormValid}
+                  disabled={false}
                 />
               ) : (
                 <>

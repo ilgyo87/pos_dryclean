@@ -72,12 +72,16 @@ export const createEmployee = createAsyncThunk(
         return rejectWithValue('PIN code must be exactly 4 digits');
       }
       
+      // Remove the valid flag as it's not in the schema
+      const { valid, ...cleanEmployeeData } = employeeData;
+      
       const input = { 
-        ...employeeData, 
+        ...cleanEmployeeData, 
         userId,
         hireDate: new Date().toISOString() // Set the hire date automatically
       };
       
+      console.log('Sending to API:', input);
       const { data, errors } = await client.models.Employee.create(input);
 
       if (errors) {
@@ -107,7 +111,11 @@ export const updateEmployee = createAsyncThunk(
         return rejectWithValue('PIN code must be exactly 4 digits');
       }
       
-      const input = { ...employeeData, userId };
+      // Remove the valid flag as it's not in the schema
+      const { valid, ...cleanEmployeeData } = employeeData;
+      const input = { ...cleanEmployeeData, userId };
+      
+      console.log('Sending to API for update:', input);
       const { data, errors } = await client.models.Employee.update(input);
 
       if (errors) {

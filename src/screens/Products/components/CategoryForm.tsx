@@ -54,12 +54,16 @@ const CategoryForm = forwardRef(({
       }
     },
     validateAndGetFormData: () => {
+      console.log('CategoryForm.validateAndGetFormData called');
+      
       // Basic validation
       if (!name.trim()) {
-        Alert.alert("Validation Error", "Service name is required");
-        return null;
+        console.log('Service name is required');
+        return { valid: false, message: "Service name is required" };
       }
 
+      console.log('Category validation passed');
+      
       // Create data object with properly defined structure
       const formattedPrice = price && price.trim() !== '' 
         ? parseFloat(price) 
@@ -69,9 +73,12 @@ const CategoryForm = forwardRef(({
         name: name.trim(),
         description: description.trim() || undefined,
         price: formattedPrice,
-        imageUrl: imageUrl.trim() || undefined
+        imageUrl: imageUrl.trim() || undefined,
+        valid: true // Add valid flag for successful validation
       };
 
+      console.log('Category data being returned:', categoryData);
+      
       // Add ID if editing
       if (createOrEdit === 'edit' && existingCategory?.id) {
         return {

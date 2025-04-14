@@ -1,50 +1,41 @@
+// src/AuthenticatedApp.tsx
 import { useEffect, useState } from "react";
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../amplify/data/resource';
 import { SafeAreaView, View, Alert } from "react-native";
 import Navigation from "./components/Navigation";
 import CreateFormModal from "./components/CreateFormModal";
 import { ActivityIndicator } from "react-native";
 import Toast from 'react-native-toast-message';
-
-const client = generateClient<Schema>();
+import { useAppDispatch, useAppSelector } from './store/hooks';
+import { fetchBusinesses } from './store/slices/BusinessSlice';
 
 export default function AuthenticatedApp() {
     const { user } = useAuthenticator((context) => [context.user]);
     const userId = user?.userId;
     const [isBusinessAvailable, setIsBusinessAvailable] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [errorMessage, setErrorMessage] = useState('');
     const [currentEmployee, setCurrentEmployee] = useState<{ id: string, name: string } | null>(null);
-
-    const checkUserBusiness = async (uid: string) => {
-        try {
-            setIsLoading(true);
-
-            const { data, errors } = await client.models.Business.list({
-                filter: { userId: { eq: uid } }
-            });
-
-            if (data && !errors && data.length > 0) {
-                setIsBusinessAvailable(true);
-            } else {
-                setErrorMessage(errors?.[0]?.message || 'Failed to check business');
-                setIsBusinessAvailable(false);
-            }
-        } catch (error) {
-            Alert.alert('Error', errorMessage);
-            setIsBusinessAvailable(false);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    
+    // Redux hooks
+    const dispatch = useAppDispatch();
+    const { businesses, isLoading: isBusinessLoading, error } = useAppSelector(state => state.business);
 
     useEffect(() => {
         if (userId) {
-            checkUserBusiness(userId);
+            // Fetch businesses using Redux
+            dispatch(fetchBusinesses(userId))
+                .unwrap()
+                .then((result) => {
+                    setIsBusinessAvailable(result.length > 0);
+                    setIsLoading(false);
+                })
+                .catch((err) => {
+                    console.error("Error fetching businesses:", err);
+                    setIsBusinessAvailable(false);
+                    setIsLoading(false);
+                });
         }
-    }, [userId]);
+    }, [userId, dispatch]);
 
     return (
         <SafeAreaView style={{ flex: 1 }}>

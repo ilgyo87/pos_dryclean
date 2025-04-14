@@ -18,25 +18,47 @@ const ProductList: React.FC<ProductListProps> = ({
   onAddProduct,
   onEditProduct,
 }) => {
+  // Sort products by createdDate if available, newest first
+  const sortedProducts = [...products].sort((b, a) => {
+    // If both have createdAt, sort by that (newest first)
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    // If only one has createdAt, prioritize the one with createdAt
+    if (a.createdAt) return -1;
+    if (b.createdAt) return 1;
+    // Fall back to name comparison if no createdAt available
+    return a.name.localeCompare(b.name);
+  });
   
   const renderItem = ({ item }: { item: Schema["Item"]["type"] }) => {
-    // Use our getImageSource utility to support both remote URLs and local image sources
+    // Log the item details to help with debugging
+    console.log(`Rendering item ${item.id} with name: ${item.name}, imageSource: ${item.imageSource}`);
+    
+    // Get the image for this item
     const imageSourceObj = getImageSource(item.imageUrl, item.imageSource);
+    console.log(`Image source for ${item.name}:`, item.imageSource, imageSourceObj);
       
     return (
       <TouchableOpacity 
         style={styles.productCard}
-        onPress={() => onEditProduct(item)}
+        onPress={() => {
+          console.log('Editing item:', item);
+          onEditProduct(item);
+        }}
       >
         <View style={styles.imageContainer}>
           {imageSourceObj ? (
             <Image 
               source={imageSourceObj} 
               style={styles.productImage}
+              onLoad={() => console.log(`Image loaded for ${item.name}`)}
+              onError={(e) => console.error(`Image load error for ${item.name}:`, e.nativeEvent)}
             />
           ) : (
             <View style={styles.placeholderContainer}>
               <Ionicons name="shirt-outline" size={48} color="#ccc" />
+              <Text style={{fontSize: 10, textAlign: 'center', marginTop: 5}}>No image</Text>
             </View>
           )}
           
@@ -45,6 +67,13 @@ const ProductList: React.FC<ProductListProps> = ({
             <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
             <Text style={styles.productPrice}>${item.price?.toFixed(2) || "0.00"}</Text>
           </View>
+          
+          {/* Small indicator showing the imageSource name */}
+          {item.imageSource && (
+            <View style={styles.imageSourceTag}>
+              <Text style={styles.imageSourceText}>{item.imageSource}</Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -83,7 +112,7 @@ const ProductList: React.FC<ProductListProps> = ({
         </View>
       ) : (
         <FlatList
-          data={products}
+          data={sortedProducts}
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.productsList}
@@ -209,6 +238,21 @@ flex:1,
     color: '#666',
     fontSize: 14,
     textAlign: 'center',
+  },
+  // Style for the small tag showing the image source name
+  imageSourceTag: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  imageSourceText: {
+    color: '#ffffff',
+    fontSize: 8,
+    fontWeight: 'bold',
   }
 });
 

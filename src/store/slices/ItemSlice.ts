@@ -53,9 +53,56 @@ export const fetchItems = createAsyncThunk(
         return rejectWithValue(errors[0]?.message || 'Failed to fetch items');
       }
       
-      // Make items serializable before returning
-      const serializedItems = data.map(makeSerializable);
-      return serializedItems;
+      // Make items serializable and ensure imageSource is properly set
+      const enhancedItems = data.map(item => {
+        // Check if this item already has an imageSource in our Redux state
+        // This ensures we don't lose the imageSource when re-fetching items
+        const baseItem = makeSerializable(item);
+        
+        // First check if there's an existing imageSource in the database item
+        if (baseItem.imageSource) {
+          console.log(`Item ${item.id} already has imageSource: ${baseItem.imageSource}`);
+          return baseItem;
+        }
+        
+        // Item name for analysis
+        const itemName = item.name?.toLowerCase() || '';
+        
+        // Use a lookup table for common product types
+        const imageSourceMap: Record<string, string[]> = {
+          'blanket': ['blanket', 'comforter', 'duvet', 'bedding'],
+          'tshirt': ['shirt', 'tshirt', 't-shirt', 'top', 'blouse'],
+          'shoes': ['shoe', 'footwear', 'boot', 'sneaker'],
+          'dress': ['dress', 'gown'],
+          'jacket': ['jacket', 'coat', 'blazer', 'sweater'],
+          'jeans': ['jeans', 'pants', 'trousers', 'slacks'],
+          'curtain': ['curtain', 'drape', 'blind'],
+          'suit': ['suit', 'tuxedo'],
+        };
+        
+        // Find a matching image source based on the item name
+        let suggestedImageSource = 'placeholder';
+        Object.entries(imageSourceMap).forEach(([source, keywords]) => {
+          if (keywords.some(keyword => itemName.includes(keyword))) {
+            suggestedImageSource = source;
+          }
+        });
+        
+        console.log(`Assigning imageSource ${suggestedImageSource} to item ${item.id} (${item.name})`);
+        
+        // Add the imageSource to the item
+        return {
+          ...baseItem,
+          imageSource: suggestedImageSource
+        };
+      });
+      
+      // Log a summary instead of the full items array (which could be large)
+      console.log(`Fetched and enhanced ${enhancedItems.length} items`);
+      enhancedItems.forEach(item => {
+        console.log(`Item ${item.id}: ${item.name}, imageSource: ${item.imageSource}`);
+      });
+      return enhancedItems;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch items');
     }
@@ -78,17 +125,68 @@ export const createItem = createAsyncThunk(
       if (itemData.price === undefined || itemData.price === null) {
         return rejectWithValue('Price is required');
       }
-      
-      const { data, errors } = await client.models.Item.create(itemData);
 
-      if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to create item');
-      }
+      // Store the original imageSource for adding to Redux state later
+      const originalImageSource = itemData.imageSource;
+      console.log('Original imageSource for UI:', originalImageSource);
       
-      // Make item serializable before returning
-      return makeSerializable(data);
-    } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to create item');
+      // Remove fields that are not in the schema
+      const { valid, imageSource, userId, ...cleanItemData } = itemData;
+      
+      // Clean up undefined values to null for GraphQL
+      const createData = {
+        ...cleanItemData,
+        // Convert undefined to null for optional fields
+        description: cleanItemData.description || null,
+        imageUrl: cleanItemData.imageUrl || null,
+        duration: cleanItemData.duration || null
+      };
+      
+      console.log('Removed userId and imageSource fields for GraphQL compatibility');
+      console.log('Sending to API for create (cleaned):', createData);
+      
+      try {
+        // Use a straightforward create approach
+        const createResult = await client.models.Item.create(createData);
+        
+        console.log('Create result:', createResult);
+        
+        if (!createResult.data) {
+          console.error('Failed to create item, no data returned');
+          return rejectWithValue('Failed to create item');
+        }
+        
+        const data = createResult.data;
+        
+        // Add back the imageSource for UI purposes
+        const enhancedData = {
+          ...makeSerializable(data),
+          imageSource: originalImageSource || 'placeholder'
+        };
+        
+        console.log('Enhanced data with imageSource for Redux:', enhancedData);
+        return enhancedData;
+      } catch (error) {
+        // Give more detailed error information to help with debugging
+        console.error('Error creating item:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        
+        // Try to determine specific error type for better error messages
+        let errorMessage = 'Failed to create item';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+          
+          // Add more context if it's a validation error
+          if (error.message.includes('validation')) {
+            errorMessage = `Schema validation error: ${error.message}`;
+          }
+        }
+        
+        return rejectWithValue(errorMessage);
+      }
+    } catch (outerError) {
+      console.error('Outer error in create process:', outerError);
+      return rejectWithValue(outerError instanceof Error ? outerError.message : 'Failed to process item creation');
     }
   }
 );
@@ -109,17 +207,89 @@ export const updateItem = createAsyncThunk(
       if (itemData.price === undefined || itemData.price === null) {
         return rejectWithValue('Price is required');
       }
-      
-      const { data, errors } = await client.models.Item.update(itemData);
 
-      if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to update item');
+      // Store the original imageSource for adding to Redux state later
+      const originalImageSource = itemData.imageSource;
+      console.log('Original imageSource for UI:', originalImageSource);
+      
+      // Remove fields that are not in the schema
+      const { valid, imageSource, userId, ...cleanItemData } = itemData;
+      console.log('Removed userId and imageSource fields for GraphQL compatibility');
+
+      // We must have an ID for updates
+      if (!cleanItemData.id) {
+        console.error('Missing ID for item update');
+        return rejectWithValue('Item ID is required for update');
       }
       
-      // Make item serializable before returning
-      return makeSerializable(data);
-    } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update item');
+      // Clean up undefined values to null for GraphQL
+      const cleanedData = {
+        ...cleanItemData,
+        // Convert undefined to null for optional fields
+        description: cleanItemData.description || null,
+        imageUrl: cleanItemData.imageUrl || null,
+        duration: cleanItemData.duration || null
+      };
+      
+      console.log('Sending to API for update (cleaned):', cleanedData);
+      
+      // Use a simpler approach that bypasses the problematic code
+      console.log('Attempting simplified update for item:', cleanItemData.id);
+      
+      try {
+        // Split the update data properly - ID is handled differently
+        const { id, ...updateData } = cleanItemData;
+        
+        if (!id) {
+          return rejectWithValue('Item ID is required for update');
+        }
+        
+        console.log(`Updating item ID ${id} with data:`, updateData);
+        
+        // Use a straightforward update approach
+        const updateResult = await client.models.Item.update({
+          id,
+          ...updateData
+        });
+        
+        console.log('Update result:', updateResult);
+        
+        if (!updateResult.data) {
+          console.error('Failed to update item, no data returned');
+          return rejectWithValue('Failed to update item');
+        }
+        
+        const data = updateResult.data;
+        
+        // Add back the imageSource for UI purposes
+        const enhancedData = {
+          ...makeSerializable(data),
+          imageSource: originalImageSource || 'placeholder'
+        };
+        
+        console.log('Enhanced data with imageSource for Redux:', enhancedData);
+        return enhancedData;
+      } catch (error) {
+        // Give more detailed error information to help with debugging
+        console.error('Error updating item:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        
+        // Try to determine specific error type for better error messages
+        let errorMessage = 'Failed to update item';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+          
+          // Add more context if it's a validation error
+          if (error.message.includes('validation')) {
+            errorMessage = `Schema validation error: ${error.message}`;
+          }
+        }
+        
+        return rejectWithValue(errorMessage);
+      }
+    } catch (outerError) {
+      console.error('Outer error in update process:', outerError);
+      return rejectWithValue(outerError instanceof Error ? outerError.message : 'Failed to process item update');
     }
   }
 );

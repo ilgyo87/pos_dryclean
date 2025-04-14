@@ -69,30 +69,34 @@ const CustomerForm = forwardRef(({
             }
         },
         validateAndGetFormData: () => {
+            console.log('CustomerForm.validateAndGetFormData called');
+            
             // Basic validation
             if (!firstName.trim()) {
-                Alert.alert("Validation Error", "First name is required");
-                return null;
+                console.log('First name is required');  
+                return { valid: false, message: "First name is required" };
             }
             if (!lastName.trim()) {
-                Alert.alert("Validation Error", "Last name is required");
-                return null;
+                console.log('Last name is required');  
+                return { valid: false, message: "Last name is required" };
             }
             if (!phoneNumber.trim()) {
-                Alert.alert("Validation Error", "Phone number is required");
-                return null;
+                console.log('Phone number is required');  
+                return { valid: false, message: "Phone number is required" };
             }
             // Check if phone number is available
             if (phoneNumberAvailable === false) {
-                Alert.alert("Validation Error", "This phone number is already in use");
-                return null;
+                console.log('This phone number is already in use');  
+                return { valid: false, message: "This phone number is already in use" };
             }
 
             if (phoneNumberAvailable === null && createOrEdit === 'create') {
-                Alert.alert("Validation Error", "Please enter a valid phone number and wait for availability check");
-                return null;
+                console.log('Please enter a valid phone number and wait for availability check');  
+                return { valid: false, message: "Please enter a valid phone number and wait for availability check" };
             }
-            // Return the form data
+            
+            console.log('Customer validation passed');
+            // Return the form data with valid flag
             return {
                 firstName,
                 lastName,
@@ -102,6 +106,7 @@ const CustomerForm = forwardRef(({
                 city,
                 state,
                 zipCode,
+                valid: true, // Add valid flag for successful validation
                 ...(createOrEdit === 'edit' && existingCustomer?.id ? { id: existingCustomer.id } : {})
             };
         },

@@ -66,7 +66,11 @@ export const createCategory = createAsyncThunk(
         return rejectWithValue('Category name is required');
       }
       
-      const input = { ...categoryData, userId };
+      // Remove the valid flag as it's not in the schema
+      const { valid, ...cleanCategoryData } = categoryData;
+      const input = { ...cleanCategoryData, userId };
+      console.log('Sending to API:', input);
+      
       const { data, errors } = await client.models.Category.create(input);
 
       if (errors) {
@@ -94,7 +98,10 @@ export const updateCategory = createAsyncThunk(
         return rejectWithValue('Category name is required');
       }
       
-      const input = { ...categoryData, userId };
+      // Remove the valid flag as it's not in the schema
+      const { valid, ...cleanCategoryData } = categoryData;
+      const input = { ...cleanCategoryData, userId };
+      console.log('Sending to API for update:', input);
       const { data, errors } = await client.models.Category.update(input);
 
       if (errors) {

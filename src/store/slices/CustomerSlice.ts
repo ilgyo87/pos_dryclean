@@ -61,7 +61,11 @@ export const createCustomer = createAsyncThunk(
   'customer/createCustomer',
   async ({ customerData, userId }: { customerData: any, userId: string }, { rejectWithValue }) => {
     try {
-      const input = { ...customerData, userId };
+      // Remove the valid flag as it's not in the schema
+      const { valid, ...cleanCustomerData } = customerData;
+      const input = { ...cleanCustomerData, userId };
+      
+      console.log('Sending to API:', input);
       const { data, errors } = await client.models.Customer.create(input);
 
       if (errors) {
@@ -80,7 +84,11 @@ export const updateCustomer = createAsyncThunk(
   'customer/updateCustomer',
   async ({ customerData, userId }: { customerData: any, userId: string }, { rejectWithValue }) => {
     try {
-      const input = { ...customerData, userId };
+      // Remove the valid flag as it's not in the schema
+      const { valid, ...cleanCustomerData } = customerData;
+      const input = { ...cleanCustomerData, userId };
+      
+      console.log('Sending to API for update:', input);
       const { data, errors } = await client.models.Customer.update(input);
 
       if (errors) {

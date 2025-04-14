@@ -9,7 +9,7 @@ const imageAssets: Record<string, ImageSourcePropType> = {
   'box_clothes': require('../../assets/items/box_clothes.png'),
   'curtain': require('../../assets/items/curtain.png'),
   'dress': require('../../assets/items/dress.png'),
-  'dress_shirt': require('../../assets/items/dress_shirt.png'),
+  'dress-shirt': require('../../assets/items/dress-shirt.png'),
   'groom-suit': require('../../assets/items/groom-suit.png'),
   'hem_cut': require('../../assets/items/hem_cut.png'),
   'jacket': require('../../assets/items/jacket.png'),
@@ -47,23 +47,12 @@ export const getImageSource = (imageUrl?: string | null, imageSource?: string | 
   // Second priority: Check if we have an imageSource to map to a local asset
   if (imageSource) {
     // Normalize the imageSource name (replace hyphens with underscores)
-    const normalizedName = imageSource.replace(/-/g, '_').toLowerCase();
+    const normalizedName = imageSource.toLowerCase();
     
     // Direct match in our assets
     if (imageAssets[normalizedName]) {
       return imageAssets[normalizedName];
     }
-    
-    // Try partial matching (for common patterns)
-    const possibleMatches = Object.keys(imageAssets).filter(key => 
-      normalizedName.includes(key) || key.includes(normalizedName)
-    );
-    
-    if (possibleMatches.length > 0) {
-      // Use the closest match (shortest distance)
-      return imageAssets[possibleMatches[0]];
-    }
-
   }
   
   // Default fallback

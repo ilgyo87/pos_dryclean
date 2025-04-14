@@ -167,42 +167,47 @@ const EmployeeForm = forwardRef(({
             }
         },
         validateAndGetFormData: () => {
+            console.log('EmployeeForm.validateAndGetFormData called');
+            
             // Basic validation
             if (!firstName.trim()) {
-                Alert.alert("Validation Error", "First name is required");
-                return null;
+                console.log('First name is required');
+                return { valid: false, message: "First name is required" };
             }
             if (!lastName.trim()) {
-                Alert.alert("Validation Error", "Last name is required");
-                return null;
+                console.log('Last name is required');
+                return { valid: false, message: "Last name is required" };
             }
             if (!phoneNumber.trim()) {
-                Alert.alert("Validation Error", "Phone number is required");
-                return null;
+                console.log('Phone number is required');
+                return { valid: false, message: "Phone number is required" };
             }
             // Check if phone number is available
             if (phoneNumberAvailable === false) {
-                Alert.alert("Validation Error", "This phone number is already in use");
-                return null;
+                console.log('This phone number is already in use');
+                return { valid: false, message: "This phone number is already in use" };
             }
 
             // Additional validation for pin code if provided - it should be exactly 4 digits
             if (!pinCode.trim() || pinCode.length !== 4) {
-                Alert.alert("Validation Error", "A 4-digit PIN code is required");
-                return null;
+                console.log('A 4-digit PIN code is required');
+                return { valid: false, message: "A 4-digit PIN code is required" };
             }
             // Check if PIN code is available
             if (pinCodeAvailable === false) {
-                Alert.alert("Validation Error", "This PIN code is already in use by another employee");
-                return null;
+                console.log('This PIN code is already in use by another employee');
+                return { valid: false, message: "This PIN code is already in use by another employee" };
             }
+            
+            console.log('Employee validation passed');
 
             // Create employee data object with properly defined structure
-            const employeeData: EmployeeFormData = {
+            const employeeData: EmployeeFormData & { valid: boolean } = {
                 firstName,
                 lastName,
                 phoneNumber,
-                role
+                role,
+                valid: true // Add the valid flag for successful validation
             };
 
             // Add optional fields if they have values
@@ -219,7 +224,8 @@ const EmployeeForm = forwardRef(({
             if (createOrEdit === 'edit' && existingEmployee?.id) {
                 employeeData.id = existingEmployee.id;
             }
-
+            
+            console.log('Employee data being returned:', employeeData);
             return employeeData;
         },
         isFormValid: () => {

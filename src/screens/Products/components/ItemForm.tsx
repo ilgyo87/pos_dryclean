@@ -65,21 +65,25 @@ const ItemForm = forwardRef(({
       }
     },
     validateAndGetFormData: () => {
+      console.log('ItemForm.validateAndGetFormData called');
+      
       // Basic validation
       if (!name.trim()) {
-        Alert.alert("Validation Error", "Product name is required");
-        return null;
+        console.log('Product name is required');
+        return { valid: false, message: "Product name is required" };
       }
 
       if (!price || price.trim() === '' || isNaN(parseFloat(price))) {
-        Alert.alert("Validation Error", "Valid price is required");
-        return null;
+        console.log('Valid price is required');
+        return { valid: false, message: "Valid price is required" };
       }
 
       if (!categoryId) {
-        Alert.alert("Validation Error", "Category ID is missing");
-        return null;
+        console.log('Category ID is missing');
+        return { valid: false, message: "Category ID is missing" };
       }
+      
+      console.log('Item validation passed');
 
       // Create data object with properly defined structure
       const formattedPrice = parseFloat(price);
@@ -95,8 +99,11 @@ const ItemForm = forwardRef(({
         taxable,
         imageUrl: imageUrl.trim() || undefined,
         imageSource,
-        categoryId
+        categoryId,
+        valid: true // Add valid flag for successful validation
       };
+      
+      console.log('Item data being returned:', itemData);
 
       // Add ID if editing
       if (createOrEdit === 'edit' && existingItem?.id) {

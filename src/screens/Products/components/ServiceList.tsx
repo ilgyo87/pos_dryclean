@@ -19,6 +19,18 @@ export default function ServiceList({
   onAddService,
   onEditService,
 }: ServiceListProps) {
+  // Sort services by createdDate if available, newest first
+  const sortedServices = [...services].sort((b, a) => {
+    // If both have createdAt, sort by that (newest first)
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    // If only one has createdAt, prioritize the one with createdAt
+    if (a.createdAt) return -1;
+    if (b.createdAt) return 1;
+    // Fall back to name comparison if no createdAt available
+    return a.name.localeCompare(b.name);
+  });
   return (
     <View style={styles.servicesContainer}>
       <View style={styles.sectionHeader}>
@@ -39,7 +51,7 @@ export default function ServiceList({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.serviceList}
         >
-          {services.map(service => (
+          {sortedServices.map(service => (
             <TouchableOpacity 
               key={service.id}
               style={[
