@@ -68,19 +68,20 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
 
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
   const [selectedItems, setSelectedItems] = useState<CartItem[]>(items || []);
-  
+  const [showCalendar, setShowCalendar] = useState(false);
+
   // Get categories and items from Redux store
   const { categories, isLoading: isLoadingCategories } = useSelector((state: RootState) => state.category);
   const { items: productItems, isLoading: isLoadingItems } = useSelector((state: RootState) => state.item);
 
   // Tax rate - this could be fetched from the backend or config
   const taxRate = 0.07; // 7% tax rate
-  
+
   // Calculate the actual subtotal based on selected items
   const calculatedSubtotal = selectedItems.reduce(
     (sum, item) => sum + (item.price * item.quantity), 0
   );
-  
+
   // For tip and totals calculation
   const tipAmount = parseFloat(tip) || 0;
   const calculatedTaxAmount = calculatedSubtotal * taxRate;
@@ -102,20 +103,20 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
       setSelectedItems([...selectedItems, newItem]);
     }
   };
-  
+
   // Function to remove an item from the order
   const handleRemoveItem = (itemId: string) => {
     const updatedItems = selectedItems.filter(item => item.id !== itemId);
     setSelectedItems(updatedItems);
   };
-  
+
   // Fetch categories and items when component mounts or user changes
   useEffect(() => {
     if (user?.userId) {
       dispatch(fetchCategories(user.userId));
     }
   }, [dispatch, user?.userId]);
-  
+
   // Fetch items when selectedServiceId changes
   useEffect(() => {
     if (selectedServiceId) {
@@ -155,6 +156,18 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
     setConfirmationVisible(true);
   };
 
+  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
+    // Prevent quantity from going below 1
+    if (newQuantity < 1) return;
+    
+    // Update the item quantity
+    const updatedItems = selectedItems.map(item => 
+      item.id === itemId ? { ...item, quantity: newQuantity } : item
+    );
+    
+    // Update state with the new items array
+    setSelectedItems(updatedItems);
+  };
 
   // Confirm and create the order
   const confirmOrder = async () => {
@@ -188,7 +201,7 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
       if (createOrder.fulfilled.match(resultAction)) {
         // Order was created successfully
         const newOrder = resultAction.payload;
-        
+
         // Close confirmation modal
         setConfirmationVisible(false);
 
@@ -216,7 +229,7 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
       <View style={styles.headerBar}>
         <View style={styles.customerInfo}>
           <Text style={styles.customerName}>Customer: {customerName}</Text>
-          <Text style={styles.pickupDate}>Pickup: {formatDate(pickupDate)}</Text>
+          <Text style={styles.notes}>NOTES: {additionalNotes}</Text>
         </View>
       </View>
 
@@ -231,11 +244,11 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
             }}
             isLoading={isLoadingCategories}
           />
-          
+
           {/* Add Service Button */}
           {selectedServiceId && (
             <View style={styles.addServiceButtonContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.addServiceButton}
                 onPress={() => {
                   const service = categories.find(cat => cat.id === selectedServiceId);
@@ -255,7 +268,7 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
               </TouchableOpacity>
             </View>
           )}
-          
+
           {/* Products in a grid layout */}
           <View style={styles.productsSection}>
             <CheckoutProductList
@@ -273,97 +286,76 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
               }}
               isLoading={isLoadingItems}
             />
-            
+
             {/* Due Date Picker at bottom of product list */}
             <DueDatePicker
               selectedDate={dueDate}
-              onDateChange={(date) => setDueDate(date)}
+              onDateChange={setDueDate}
             />
           </View>
         </View>
         {/* Right Column: Order Summary and Payment Section */}
         <View style={styles.rightColumn}>
-          <ScrollView>
-            {/* Order Summary Section */}
+          {/* Fixed Header with Title and Notes */}
+          <View style={styles.fixedHeaderContainer}>
+            <Text style={styles.sectionTitle}>Order Summary</Text>
+          </View>
+
+          {/* Order Summary Section - only showing items list */}
+          <ScrollView style={styles.scrollableItemsContainer}>
             <OrderSummary
               items={selectedItems}
               subtotal={calculatedSubtotal}
-              tax={calculatedSubtotal * taxRate}
+              tax={calculatedTaxAmount}
               tip={tipAmount}
-              total={calculatedSubtotal + (calculatedSubtotal * taxRate) + tipAmount}
+              total={grandTotal}
               onRemoveItem={handleRemoveItem}
+              onUpdateQuantity={handleUpdateQuantity}
+              showTotals={false}
+              showTitle={false}
+              dueDate={dueDate}
             />
+          </ScrollView>
 
-            {/* Tip Section */}
-            <View style={styles.tipSection}>
-              <Text style={styles.sectionTitle}>Add Tip</Text>
-              <View style={styles.tipInput}>
-                <Text style={styles.tipDollarSign}>$</Text>
-                <TextInput
-                  style={styles.tipAmountInput}
-                  keyboardType="decimal-pad"
-                  value={tip}
-                  onChangeText={handleTipChange}
-                  placeholder="0.00"
-                />
+          {/* Fixed Process Order Button with Totals */}
+          <View style={styles.fixedButtonContainer}>
+            {/* Order totals */}
+            <View style={styles.orderTotals}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={styles.summaryValue}>${calculatedSubtotal.toFixed(2)}</Text>
               </View>
 
-              <View style={styles.quickTipButtons}>
-                <TouchableOpacity
-                  style={styles.quickTipButton}
-                  onPress={() => handleQuickTip(0.15)}
-                >
-                  <Text style={styles.quickTipText}>15%</Text>
-                </TouchableOpacity>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Tax</Text>
+                <Text style={styles.summaryValue}>${calculatedTaxAmount.toFixed(2)}</Text>
+              </View>
 
-                <TouchableOpacity
-                  style={styles.quickTipButton}
-                  onPress={() => handleQuickTip(0.18)}
-                >
-                  <Text style={styles.quickTipText}>18%</Text>
-                </TouchableOpacity>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Tip</Text>
+                <Text style={styles.summaryValue}>${tipAmount.toFixed(2)}</Text>
+              </View>
 
-                <TouchableOpacity
-                  style={styles.quickTipButton}
-                  onPress={() => handleQuickTip(0.20)}
-                >
-                  <Text style={styles.quickTipText}>20%</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.quickTipButton}
-                  onPress={() => handleQuickTip(0.25)}
-                >
-                  <Text style={styles.quickTipText}>25%</Text>
-                </TouchableOpacity>
+              <View style={styles.summaryTotalRow}>
+                <Text style={styles.summaryTotalLabel}>Total</Text>
+                <Text style={styles.summaryTotalValue}>${grandTotal.toFixed(2)}</Text>
               </View>
             </View>
 
-
-            {/* Process Order Button */}
+            {/* Process order button */}
             <TouchableOpacity
-              style={[styles.processButton, isLoading && styles.disabledButton]}
+              style={[
+                styles.processButton,
+                (selectedItems.length === 0 || isLoading) && styles.disabledButton
+              ]}
               onPress={handleProcessOrder}
-              disabled={isLoading}
+              disabled={selectedItems.length === 0 || isLoading}
             >
               <Text style={styles.processButtonText}>
                 {isLoading ? 'Processing...' : 'Process Order'}
               </Text>
             </TouchableOpacity>
-
-            {/* Customer Notes */}
-            <View style={styles.notesSection}>
-              <Text style={styles.sectionTitle}>Additional Notes</Text>
-              <TextInput
-                style={styles.notesInput}
-                multiline
-                numberOfLines={3}
-                value={additionalNotes}
-                onChangeText={setAdditionalNotes}
-                placeholder="Add special instructions or notes here..."
-              />
-            </View>
-          </ScrollView>
+          </View>
         </View>
       </View>
 
@@ -432,7 +424,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  pickupDate: {
+  notes: {
     fontSize: 14,
     color: '#555',
   },
@@ -441,7 +433,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   leftColumn: {
-    flex: 3, // Takes 60% of the width
+    width: '75%',
     backgroundColor: '#fff',
     borderRightWidth: 1,
     borderRightColor: '#e0e0e0',
@@ -454,9 +446,9 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   rightColumn: {
-    flex: 2, // Takes 40% of the width
+    width: '25%', // Takes 40% of the width
     backgroundColor: '#f8f8f8',
-    height: '100%', // Make sure it stretches the full height
+    height: '100%',
   },
   addServiceButtonContainer: {
     padding: 10,
@@ -613,6 +605,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+  },
+  fixedButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  orderTotals: {
+    marginBottom: 10,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 3,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#555',
+  },
+  summaryValue: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  summaryTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    marginTop: 3,
+  },
+  summaryTotalLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  summaryTotalValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fixedHeaderContainer: {
+    backgroundColor: 'white',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    zIndex: 1,
+  },
+  scrollableItemsContainer: {
+    flex: 1,
+    marginTop: 5,
+    marginBottom: 5,
   },
 });
 

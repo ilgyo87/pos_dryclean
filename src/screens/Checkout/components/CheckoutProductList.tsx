@@ -8,7 +8,7 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
-  Dimensions
+  useWindowDimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Schema } from '../../../../amplify/data/resource';
@@ -27,20 +27,30 @@ const CheckoutProductList = ({
   onSelectProduct,
   isLoading = false
 }: CheckoutProductListProps) => {
+  const placeholderImage = require('../../../../assets/items/tshirt.png');
+  // Get screen dimensions
+  const { width, height } = useWindowDimensions();
+  // Determine if we're in portrait mode (height > width)
+  const isPortrait = height > width;
+  // Set number of columns based on orientation
+  const numColumns = isPortrait ? 3 : 4;
   // Filter products by service if needed
-  const filteredProducts = selectedServiceId 
+  const filteredProducts = selectedServiceId
     ? products.filter(product => product.categoryId === selectedServiceId)
     : products;
 
   // Sort products by name
-  const sortedProducts = [...filteredProducts].sort((a, b) => 
-    a.name.localeCompare(b.name)
-  );
-  
-  // Calculate item dimensions based on screen width
-  const screenWidth = Dimensions.get('window').width;
-  const numColumns = 4; // We'll show 4 items per row
-  const itemWidth = (screenWidth * 0.6) / numColumns;
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    // If both have createdAt, sort by that (newest first)
+    if (a.createdAt && b.createdAt) {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }
+    // If only one has createdAt, prioritize the one with createdAt
+    if (a.createdAt) return -1;
+    if (b.createdAt) return 1;
+    // Fall back to name comparison if no createdAt available
+    return a.name.localeCompare(b.name);
+  });
 
   // Function to get the appropriate image for a product
   const getItemImage = (item: Schema["Item"]["type"]) => {
@@ -60,33 +70,33 @@ const CheckoutProductList = ({
       if (nameLower.includes('pant') || nameLower.includes('trouser')) return getImageSource('trousers');
       if (nameLower.includes('jacket')) return getImageSource('jacket');
       if (nameLower.includes('dress')) return getImageSource('dress');
-      
+
       // Fallback to placeholder
-      return getImageSource('placeholder');
+      return placeholderImage;
     }
   };
 
   const renderItem = ({ item }: { item: Schema["Item"]["type"] }) => {
     // Get the image for this item
     const imageSourceObj = getItemImage(item);
-    
+
     return (
-      <TouchableOpacity 
-        style={[styles.productCard, { width: itemWidth }]}
+      <TouchableOpacity
+        style={styles.productCard}
         onPress={() => onSelectProduct(item)}
       >
         <View style={styles.imageContainer}>
           {imageSourceObj ? (
-            <Image 
-              source={imageSourceObj} 
+            <Image
+              source={imageSourceObj}
               style={styles.productImage}
             />
           ) : (
             <View style={styles.placeholderContainer}>
-              <Ionicons name={getIconForProduct(item.name)} size={32} color="#ccc" />
+              <Image source={placeholderImage} style={styles.productImage} />
             </View>
           )}
-          
+
           {/* Overlay text on the image */}
           <View style={styles.textOverlay}>
             <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
@@ -95,25 +105,6 @@ const CheckoutProductList = ({
         </View>
       </TouchableOpacity>
     );
-  };
-  
-  // Function to determine which icon to use based on product name
-  const getIconForProduct = (name: string = "") => {
-    const nameLower = name.toLowerCase();
-    
-    if (nameLower.includes("shirt") || nameLower.includes("blouse")) return "shirt-outline";
-    if (nameLower.includes("pant") || nameLower.includes("trouser")) return "browsers-outline";
-    if (nameLower.includes("jacket") || nameLower.includes("coat")) return "hand-left-outline";
-    if (nameLower.includes("dress")) return "woman-outline";
-    if (nameLower.includes("suit")) return "business-outline";
-    if (nameLower.includes("shoe") || nameLower.includes("boot")) return "footsteps-outline";
-    if (nameLower.includes("hat") || nameLower.includes("cap")) return "egg-outline";
-    if (nameLower.includes("scarf")) return "infinite-outline";
-    if (nameLower.includes("blanket") || nameLower.includes("sheet")) return "bed-outline";
-    if (nameLower.includes("curtain")) return "git-branch-outline";
-    
-    // Default icon
-    return "square-outline";
   };
 
   if (isLoading) {
@@ -142,9 +133,10 @@ const CheckoutProductList = ({
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.productsList}
-          numColumns={4}
+          numColumns={numColumns}  // Using the dynamic column count
           columnWrapperStyle={styles.columnWrapper}
           showsVerticalScrollIndicator={false}
+          key={`list-${numColumns}`} // Force re-render when columns change
         />
       )}
     </View>
@@ -169,12 +161,13 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   productsList: {
-    padding: 8,
+    padding: 4,
   },
   columnWrapper: {
     justifyContent: 'flex-start',
   },
   productCard: {
+    flex: 1,
     height: 120,
     marginBottom: 10,
     marginRight: 10,
@@ -211,6 +204,7 @@ const styles = StyleSheet.create({
     padding: 4,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 15,
   },
   productName: {
     fontSize: 18,
@@ -220,7 +214,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   productPrice: {
-    fontSize: 21,
+    fontSize: 19,
     fontWeight: 'bold',
     color: '#34C759',
     width: '40%',

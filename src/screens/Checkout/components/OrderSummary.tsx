@@ -1,6 +1,5 @@
-// src/screens/Checkout/components/OrderSummary.tsx
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 type CartItem = {
@@ -20,79 +19,124 @@ interface OrderSummaryProps {
   tip: number;
   total: number;
   onRemoveItem?: (itemId: string) => void;
+  showTotals?: boolean;
+  showTitle?: boolean;
+  dueDate?: Date;
+  onUpdateQuantity?: (itemId: string, newQuantity: number) => void;
 }
 
-const OrderSummary = ({ items = [], subtotal, tax, tip, total, onRemoveItem }: OrderSummaryProps) => {
+const OrderSummary = ({
+  items = [],
+  subtotal,
+  tax,
+  tip,
+  total,
+  onRemoveItem,
+  showTotals = true,
+  showTitle = true,
+  dueDate,
+  onUpdateQuantity
+}: OrderSummaryProps) => {
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Order Summary</Text>
-      
+      {showTitle && <Text style={styles.title}>Order Summary</Text>}
+
       {items.length > 0 ? (
-        <FlatList
-          data={items}
-          keyExtractor={(item, index) => `${item.id}-${index}`}
-          renderItem={({ item }) => (
-            <View style={styles.itemContainer}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.name}</Text>
-                <Text style={styles.itemQuantity}>
-                  {item.quantity} x ${item.price.toFixed(2)}
-                </Text>
+        <View style={styles.itemsList}>
+          {/* Header row for columns */}
+          <View style={styles.headerRow}>
+            <Text style={[styles.headerText, styles.nameColumn]}>Item</Text>
+            <Text style={[styles.headerText, styles.quantityColumn]}>Qty</Text>
+            <Text style={[styles.headerText, styles.priceColumn]}>Price</Text>
+            <View style={styles.actionColumn}></View>
+          </View>
+
+          {items.map((item, index) => (
+            <View key={`${item.id}-${index}`} style={styles.itemRow}>
+              {/* Item name column */}
+              <Text style={[styles.itemName, styles.nameColumn]} numberOfLines={1}>
+                {item.name}
+              </Text>
+
+              {/* Quantity column */}
+              <View style={[styles.quantityControls, styles.quantityColumn]}>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => onUpdateQuantity && onUpdateQuantity(item.id, item.quantity - 1)}
+                  disabled={item.quantity <= 1}
+                >
+                  <Text style={[styles.quantityButtonText, item.quantity <= 1 && styles.disabledText]}>-</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.quantityText}>{item.quantity}</Text>
+
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => onUpdateQuantity && onUpdateQuantity(item.id, item.quantity + 1)}
+                >
+                  <Text style={styles.quantityButtonText}>+</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.itemActions}>
-                <Text style={styles.itemTotal}>
-                  ${(item.price * item.quantity).toFixed(2)}
-                </Text>
+
+              {/* Price column */}
+              <Text style={[styles.itemTotal, styles.priceColumn]}>
+                ${(item.price * item.quantity).toFixed(2)}
+              </Text>
+
+              {/* Action column */}
+              <View style={styles.actionColumn}>
                 {onRemoveItem && (
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => onRemoveItem(item.id)}
-                  >
-                    <Ionicons name="close-circle" size={20} color="#f44336" />
+                  <TouchableOpacity onPress={() => onRemoveItem(item.id)}>
+                    <Ionicons name="trash-outline" size={20} color="#ff6b6b" />
                   </TouchableOpacity>
                 )}
               </View>
             </View>
-          )}
-          style={styles.itemsList}
-        />
+          ))}
+        </View>
       ) : (
         <Text style={styles.emptyText}>No items in order</Text>
       )}
-      
-      <View style={styles.divider} />
-      
-      <View style={styles.row}>
-        <Text style={styles.label}>Subtotal</Text>
-        <Text style={styles.value}>${subtotal.toFixed(2)}</Text>
-      </View>
-      
-      <View style={styles.row}>
-        <Text style={styles.label}>Tax</Text>
-        <Text style={styles.value}>${tax.toFixed(2)}</Text>
-      </View>
-      
-      <View style={styles.row}>
-        <Text style={styles.label}>Tip</Text>
-        <Text style={styles.value}>${tip.toFixed(2)}</Text>
-      </View>
-      
-      <View style={styles.divider} />
-      
-      <View style={styles.totalRow}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
-      </View>
+
+      {showTotals && (
+        <View style={styles.totalsContainer}>
+          <View style={styles.divider} />
+          <View style={styles.row}>
+            <Text style={styles.label}>Subtotal</Text>
+            <Text style={styles.value}>${subtotal.toFixed(2)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Tax</Text>
+            <Text style={styles.value}>${tax.toFixed(2)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Tip</Text>
+            <Text style={styles.value}>${tip.toFixed(2)}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+          </View>
+
+          {dueDate && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Ready by</Text>
+              <Text style={styles.value}>{dueDate.toLocaleDateString()}</Text>
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     padding: 15,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   title: {
     fontSize: 18,
@@ -100,7 +144,41 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   itemsList: {
-    maxHeight: 200,
+    marginBottom: 15,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    paddingBottom: 8,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  headerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  nameColumn: {
+    flex: 4,
+    paddingRight: 8,
+  },
+  quantityColumn: {
+    flex: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  priceColumn: {
+    flex: 2,
+    textAlign: 'right',
+  },
+  actionColumn: {
+    flex: 1,
+    alignItems: 'flex-end',
   },
   emptyText: {
     textAlign: 'center',
@@ -108,36 +186,43 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     fontStyle: 'italic',
   },
-  itemContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  itemInfo: {
-    flex: 1,
-  },
   itemName: {
     fontSize: 15,
     fontWeight: '500',
   },
-  itemQuantity: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
-  },
-  itemActions: {
+  quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  quantityButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  disabledText: {
+    color: '#ccc',
+  },
+  quantityText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginHorizontal: 8,
+    minWidth: 20,
+    textAlign: 'center',
+  },
   itemTotal: {
     fontSize: 15,
-    fontWeight: 'bold',
-    marginRight: 10,
+    fontWeight: '500',
   },
-  removeButton: {
-    padding: 3,
+  totalsContainer: {
+    marginTop: 10,
   },
   row: {
     flexDirection: 'row',

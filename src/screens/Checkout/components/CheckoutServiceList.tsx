@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  useWindowDimensions,
   Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,9 +27,17 @@ export default function CheckoutServiceList({
   // Keep track of selected category for highlighting
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   // Sort categories by name for easy browsing
-  const sortedCategories = [...categories].sort((a, b) => 
-    a.name.localeCompare(b.name)
-  );
+  const sortedCategories = [...categories].sort((b, a) => {
+    // If both have createdAt, sort by that (newest first)
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    // If only one has createdAt, prioritize the one with createdAt
+    if (a.createdAt) return -1;
+    if (b.createdAt) return 1;
+    // Fall back to name comparison if no createdAt available
+    return a.name.localeCompare(b.name);
+  });
 
   if (isLoading) {
     return (

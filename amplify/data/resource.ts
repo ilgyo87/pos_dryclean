@@ -253,6 +253,8 @@ const schema = a.schema({
       ]),
       notes: a.string().array(),
       estimatedTotal: a.float(),
+      taxes: a.float(),
+      tips: a.float(),
       actualTotal: a.float(),
       discount: a.float().default(0),
       additionalCharges: a.float().default(0),
