@@ -31,12 +31,32 @@ const ProductList: React.FC<ProductListProps> = ({
     return a.name.localeCompare(b.name);
   });
   
+  const getItemImage = (item: Schema["Item"]["type"]) => {
+    console.log('getItemImage called with:', item);
+    
+    // First priority: imageSource if available and not placeholder
+    if (item.imageSource && item.imageSource !== 'placeholder') {
+      console.log('Using imageSource:', item.imageSource);
+      return getImageSource(item.imageSource);
+    }
+    // Second priority: imageUrl if available
+    else if (item.imageUrl) {
+      console.log('Using imageUrl:', item.imageUrl);
+      return getImageSource(item.imageUrl);
+    }
+    // Fallback: placeholder
+    else {
+      console.log('Using placeholder image');
+      return getImageSource('placeholder');
+    }
+  };
+
   const renderItem = ({ item }: { item: Schema["Item"]["type"] }) => {
     // Log the item details to help with debugging
     console.log(`Rendering item ${item.id} with name: ${item.name}, imageSource: ${item.imageSource}`);
     
     // Get the image for this item
-    const imageSourceObj = getImageSource(item.imageUrl, item.imageSource);
+    const imageSourceObj = getItemImage(item);
     console.log(`Image source for ${item.name}:`, item.imageSource, imageSourceObj);
       
     return (

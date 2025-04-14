@@ -66,7 +66,7 @@ const ItemForm = forwardRef(({
     },
     validateAndGetFormData: () => {
       console.log('ItemForm.validateAndGetFormData called');
-      
+
       // Basic validation
       if (!name.trim()) {
         console.log('Product name is required');
@@ -82,13 +82,13 @@ const ItemForm = forwardRef(({
         console.log('Category ID is missing');
         return { valid: false, message: "Category ID is missing" };
       }
-      
+
       console.log('Item validation passed');
 
       // Create data object with properly defined structure
       const formattedPrice = parseFloat(price);
-      const formattedDuration = duration && duration.trim() !== '' 
-        ? parseInt(duration, 10) 
+      const formattedDuration = duration && duration.trim() !== ''
+        ? parseInt(duration, 10)
         : undefined;
 
       const itemData = {
@@ -102,7 +102,7 @@ const ItemForm = forwardRef(({
         categoryId,
         valid: true // Add valid flag for successful validation
       };
-      
+
       console.log('Item data being returned:', itemData);
 
       // Add ID if editing
@@ -116,11 +116,11 @@ const ItemForm = forwardRef(({
       return itemData;
     },
     isFormValid: () => {
-      return name.trim() !== '' && 
-             price !== '' && 
-             !isNaN(parseFloat(price)) && 
-             parseFloat(price) > 0 && 
-             !!categoryId;
+      return name.trim() !== '' &&
+        price !== '' &&
+        !isNaN(parseFloat(price)) &&
+        parseFloat(price) > 0 &&
+        !!categoryId;
     }
   }));
 
@@ -194,6 +194,21 @@ const ItemForm = forwardRef(({
           currentImage={imageSource}
           onImageSelected={setImageSource}
         />
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Image URL (optional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="https://example.com/image.jpg"
+            value={imageUrl}
+            onChangeText={setImageUrl}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={styles.helperText}>
+            Enter a URL for an image if you don't have a local image. Local images will be prioritized if both are available.
+          </Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -227,7 +242,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 15,
-  }
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  helperText: {
+    color: '#666',
+    fontSize: 12,
+    marginTop: 5,
+  },
 });
 
 export default ItemForm;

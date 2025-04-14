@@ -37,29 +37,38 @@ const imageAssets: Record<string, ImageSourcePropType> = {
   'placeholder': require('../../assets/items/tshirt.png')
 };
 
-// Helper function to get image source that supports both remote URLs and local assets
-export const getImageSource = (imageUrl?: string | null, imageSource?: string | null) => {
-  // First priority: Check if we have a remote URL (imageUrl field)
-  if (imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'))) {
-    return { uri: imageUrl };
-  }
-  
-  // Second priority: Check if we have an imageSource to map to a local asset
-  if (imageSource) {
-    // Normalize the imageSource name (replace hyphens with underscores)
-    const normalizedName = imageSource.toLowerCase();
-    
-    // Direct match in our assets
-    if (imageAssets[normalizedName]) {
-      return imageAssets[normalizedName];
-    }
-  }
-  
-  // Default fallback
-  return imageAssets['placeholder'];
-};
-
 // Function to get all available image names (useful for image pickers)
 export const getAssetImageNames = (): string[] => {
   return Object.keys(imageAssets).filter(name => name !== 'placeholder');
+};
+
+// Helper function to get image source that supports both remote URLs and local assets
+export const getImageSource = (imageSourceOrUrl?: string | null, fallbackSource?: string | null) => {
+  console.log('getImageSource called with:', imageSourceOrUrl, fallbackSource);
+  
+  // First check if it's a URL
+  if (imageSourceOrUrl && (imageSourceOrUrl.startsWith('http://') || imageSourceOrUrl.startsWith('https://'))) {
+    console.log('Using URL:', imageSourceOrUrl);
+    return { uri: imageSourceOrUrl };
+  }
+  
+  // Then check if it's a valid image asset name
+  if (imageSourceOrUrl) {
+    const normalizedName = imageSourceOrUrl.toLowerCase();
+    if (imageAssets[normalizedName]) {
+      console.log('Found matching asset for:', normalizedName);
+      return imageAssets[normalizedName];
+    }
+    console.log('No matching asset found for:', normalizedName);
+  }
+  
+  // Try fallback if provided
+  if (fallbackSource && imageAssets[fallbackSource.toLowerCase()]) {
+    console.log('Using fallback source:', fallbackSource);
+    return imageAssets[fallbackSource.toLowerCase()];
+  }
+  
+  // Default fallback
+  console.log('Using default placeholder');
+  return imageAssets['placeholder'];
 };
