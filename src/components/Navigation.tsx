@@ -33,7 +33,8 @@ const CustomHeader = ({
           <Image
             source={require('../../assets/alter.png')}
             style={{ width: 24, height: 24 }}
-          />        </Pressable>
+          />        
+        </Pressable>
       </View>
     </View>
 

@@ -52,12 +52,12 @@ export const useCustomersData = (user: AuthUser | null) => {
         ...customerDataToSave,
         userId: user?.userId || '',
       });
-    
+
       if (errors) {
         console.error("Error creating customer:", errors[0].message);
-        throw new Error(errors[0].message); 
+        throw new Error(errors[0].message);
       }
-    
+
       return data;
     } catch (error) {
       console.error("Error in createCustomer:", error);
@@ -122,28 +122,19 @@ export const useCustomersData = (user: AuthUser | null) => {
     return data;
   };
 
-  const deleteCustomer = async (customer: Schema["Customer"]["type"]) => {
+  const deleteCustomer = async (customerId: string) => {
+    if (!customerId) {
+      throw new Error('Customer ID is required to delete');
+    }
+
     const { errors } = await client.models.Customer.delete({
-      id: customer.id,
+      id: customerId,
     });
 
     if (errors) {
       console.error("Error deleting customer:", errors);
       throw new Error('Failed to delete customer');
     }
-  };
-
-  const getBusinessId = async () => {
-    // Get the first business for this user
-    const { data } = await client.models.Business.list({
-      filter: { userId: { eq: user?.userId } }
-    });
-
-    if (data && data.length > 0) {
-      return data[0].id;
-    }
-
-    throw new Error('No business found for this user');
   };
 
   useEffect(() => {
