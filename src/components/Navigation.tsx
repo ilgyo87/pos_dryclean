@@ -9,6 +9,7 @@ import EmployeesScreen from "../screens/Employees/Employees";
 import SignOutButton from "./SignOutButton";
 import { NavigationProps } from "../types";
 import Products from "../screens/Products/Products";
+import Checkout from "../screens/Checkout/Checkout";
 
 const Stack = createNativeStackNavigator();
 
@@ -33,7 +34,7 @@ const CustomHeader = ({
           <Image
             source={require('../../assets/alter.png')}
             style={{ width: 24, height: 24 }}
-          />        
+          />
         </Pressable>
       </View>
     </View>
@@ -82,6 +83,9 @@ export default function Navigation({
         </Stack.Screen>
         <Stack.Screen name="Products">
           {(props) => <Products {...props} user={user} />}
+        </Stack.Screen>
+        <Stack.Screen name="Checkout">
+          {(props) => <Checkout {...props} user={user} />}
         </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>

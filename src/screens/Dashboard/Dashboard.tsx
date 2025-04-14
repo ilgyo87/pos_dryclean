@@ -1,6 +1,6 @@
 // src/screens/Dashboard/Dashboard.tsx
 import React, { useState, useCallback, useEffect } from "react";
-import { View, Text, ActivityIndicator, SafeAreaView } from "react-native";
+import { View, Text, ActivityIndicator, SafeAreaView, Alert } from "react-native";
 import { AuthUser } from "aws-amplify/auth";
 import { useFocusEffect } from "@react-navigation/native";
 import { generateClient } from 'aws-amplify/data';
@@ -63,10 +63,24 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
   };
 
   const handleCustomerSearch = (customer: Schema["Customer"]["type"]) => {
-    navigation.navigate('Customers', {
-      screen: 'CustomerEdit',
-      params: { customerId: customer.id }
-    });
+    // Navigate directly to checkout with this customer
+    if (business) {
+      navigation.navigate('Checkout', {
+        businessId: business.id,
+        customerId: customer.id,
+        customerName: `${customer.firstName} ${customer.lastName}`,
+        items: [], // Empty cart to start with
+        total: 0,   // No total yet
+        pickupDate: new Date(Date.now() + 86400000).toISOString(), // Default to tomorrow
+        customerPreferences: customer.preferences || ''
+      });
+    } else {
+      // Fallback to customer edit if no business found
+      navigation.navigate('Customers', {
+        screen: 'CustomerEdit',
+        params: { customerId: customer.id }
+      });
+    }
   };
 
   useFocusEffect(

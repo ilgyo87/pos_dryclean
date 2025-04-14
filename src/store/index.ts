@@ -5,6 +5,7 @@ import employeeReducer from './slices/EmployeeSlice';
 import categoryReducer from './slices/CategorySlice';
 import itemReducer from './slices/ItemSlice';
 import businessReducer from './slices/BusinessSlice';
+import orderReducer from './slices/OrderSlice'; // Add this
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +14,7 @@ export const store = configureStore({
     category: categoryReducer,
     item: itemReducer,
     business: businessReducer,
+    order: orderReducer, // Add this
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -33,7 +35,12 @@ export const store = configureStore({
           'item/createItem/fulfilled',
           'business/fetchBusinesses/fulfilled',
           'business/updateBusiness/fulfilled',
-          'business/createBusiness/fulfilled'
+          'business/createBusiness/fulfilled',
+          'order/fetchOrders/fulfilled',
+          'order/createOrder/fulfilled',
+          'order/updateOrderStatus/fulfilled',
+          'order/fetchOrderById/fulfilled',
+          'order/fetchOrdersByCustomer/fulfilled'
         ],
       },
     }),
