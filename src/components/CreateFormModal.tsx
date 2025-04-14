@@ -4,11 +4,15 @@ import { CreateButton, UpdateButton, DeleteButton, ResetButton, CancelButton } f
 import BusinessForm from '../components/BusinessForm';
 import CustomerForm from '../screens/Customers/components/CustomerForm';
 import EmployeeForm from '../screens/Employees/components/EmployeeForm';
+import CategoryForm from '../screens/Products/components/CategoryForm';
+import ItemForm from '../screens/Products/components/ItemForm';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
 import { createCustomer, updateCustomer, deleteCustomer } from '../store/slices/CustomerSlice';
 import { createEmployee, updateEmployee, deleteEmployee } from '../store/slices/EmployeeSlice';
+import { createCategory, updateCategory, deleteCategory } from '../store/slices/CategorySlice';
+import { createItem, updateItem, deleteItem } from '../store/slices/ItemSlice';
 
 // Define FormRef interface to use with useRef
 export interface FormRef {
@@ -21,7 +25,7 @@ interface CreateFormModalProps {
   visible: boolean;
   onClose: () => void;
   params: Record<string, any>;
-  type: 'Business' | 'Customer' | 'Employee';
+  type: 'Business' | 'Customer' | 'Employee' | 'Category' | 'Item';
   createOrEdit: 'create' | 'edit';
 }
 
@@ -50,6 +54,12 @@ export default function CreateFormModal({
   );
   const employeeLoading = useSelector((state: RootState) => 
     type === 'Employee' ? state.employee.isLoading : false
+  );
+  const categoryLoading = useSelector((state: RootState) => 
+    type === 'Category' ? state.category.isLoading : false
+  );
+  const itemLoading = useSelector((state: RootState) => 
+    type === 'Item' ? state.item.isLoading : false
   );
 
   // Reset form handler - to be passed to form components
@@ -86,76 +96,128 @@ export default function CreateFormModal({
       }
 
       // Handle submission based on form type
-      if (type === 'Customer') {
-        if (createOrEdit === 'create') {
-          // Dispatch create action with userId
-          const resultAction = await dispatch(createCustomer({ 
-            customerData: formData, 
-            userId: user?.userId || '' 
-          }));
+      switch (type) {
+        case 'Customer':
+          if (createOrEdit === 'create') {
+            const resultAction = await dispatch(createCustomer({ 
+              customerData: formData, 
+              userId: user?.userId || '' 
+            }));
+            
+            if (createCustomer.fulfilled.match(resultAction)) {
+              Alert.alert("Success", "Customer created successfully!");
+              onClose();
+            } else if (createCustomer.rejected.match(resultAction)) {
+              Alert.alert("Error", `Failed to create customer: ${resultAction.payload}`);
+            }
+          } else {
+            const resultAction = await dispatch(updateCustomer({ 
+              customerData: formData, 
+              userId: user?.userId || '' 
+            }));
+            
+            if (updateCustomer.fulfilled.match(resultAction)) {
+              Alert.alert("Success", "Customer updated successfully!");
+              onClose();
+            } else if (updateCustomer.rejected.match(resultAction)) {
+              Alert.alert("Error", `Failed to update customer: ${resultAction.payload}`);
+            }
+          }
+          break;
           
-          if (createCustomer.fulfilled.match(resultAction)) {
-            Alert.alert("Success", "Customer created successfully!");
-            onClose();
-          } else if (createCustomer.rejected.match(resultAction)) {
-            Alert.alert("Error", `Failed to create customer: ${resultAction.payload}`);
+        case 'Employee':
+          if (createOrEdit === 'create') {
+            const resultAction = await dispatch(createEmployee({ 
+              employeeData: formData, 
+              userId: user?.userId || '' 
+            }));
+            
+            if (createEmployee.fulfilled.match(resultAction)) {
+              Alert.alert("Success", "Employee created successfully!");
+              onClose();
+            } else if (createEmployee.rejected.match(resultAction)) {
+              Alert.alert("Error", `Failed to create employee: ${resultAction.payload}`);
+            }
+          } else {
+            const resultAction = await dispatch(updateEmployee({ 
+              employeeData: formData, 
+              userId: user?.userId || '' 
+            }));
+            
+            if (updateEmployee.fulfilled.match(resultAction)) {
+              Alert.alert("Success", "Employee updated successfully!");
+              onClose();
+            } else if (updateEmployee.rejected.match(resultAction)) {
+              Alert.alert("Error", `Failed to update employee: ${resultAction.payload}`);
+            }
           }
-        } else {
-          // Dispatch update action with userId
-          const resultAction = await dispatch(updateCustomer({ 
-            customerData: formData, 
-            userId: user?.userId || '' 
-          }));
+          break;
           
-          if (updateCustomer.fulfilled.match(resultAction)) {
-            Alert.alert("Success", "Customer updated successfully!");
-            onClose();
-          } else if (updateCustomer.rejected.match(resultAction)) {
-            Alert.alert("Error", `Failed to update customer: ${resultAction.payload}`);
+        case 'Category':
+          if (createOrEdit === 'create') {
+            const resultAction = await dispatch(createCategory({ 
+              categoryData: formData, 
+              userId: user?.userId || '' 
+            }));
+            
+            if (createCategory.fulfilled.match(resultAction)) {
+              Alert.alert("Success", "Service created successfully!");
+              onClose();
+            } else if (createCategory.rejected.match(resultAction)) {
+              Alert.alert("Error", `Failed to create service: ${resultAction.payload}`);
+            }
+          } else {
+            const resultAction = await dispatch(updateCategory({ 
+              categoryData: formData, 
+              userId: user?.userId || '' 
+            }));
+            
+            if (updateCategory.fulfilled.match(resultAction)) {
+              Alert.alert("Success", "Service updated successfully!");
+              onClose();
+            } else if (updateCategory.rejected.match(resultAction)) {
+              Alert.alert("Error", `Failed to update service: ${resultAction.payload}`);
+            }
           }
-        }
-      } else if (type === 'Employee') {
-        if (createOrEdit === 'create') {
-          // Dispatch create action with userId
-          const resultAction = await dispatch(createEmployee({ 
-            employeeData: formData, 
-            userId: user?.userId || '' 
-          }));
+          break;
           
-          if (createEmployee.fulfilled.match(resultAction)) {
-            Alert.alert("Success", "Employee created successfully!");
-            onClose();
-          } else if (createEmployee.rejected.match(resultAction)) {
-            Alert.alert("Error", `Failed to create employee: ${resultAction.payload}`);
+        case 'Item':
+          if (createOrEdit === 'create') {
+            const resultAction = await dispatch(createItem(formData));
+            
+            if (createItem.fulfilled.match(resultAction)) {
+              Alert.alert("Success", "Product created successfully!");
+              onClose();
+            } else if (createItem.rejected.match(resultAction)) {
+              Alert.alert("Error", `Failed to create product: ${resultAction.payload}`);
+            }
+          } else {
+            const resultAction = await dispatch(updateItem(formData));
+            
+            if (updateItem.fulfilled.match(resultAction)) {
+              Alert.alert("Success", "Product updated successfully!");
+              onClose();
+            } else if (updateItem.rejected.match(resultAction)) {
+              Alert.alert("Error", `Failed to update product: ${resultAction.payload}`);
+            }
           }
-        } else {
-          // Dispatch update action with userId
-          const resultAction = await dispatch(updateEmployee({ 
-            employeeData: formData, 
-            userId: user?.userId || '' 
-          }));
+          break;
           
-          if (updateEmployee.fulfilled.match(resultAction)) {
-            Alert.alert("Success", "Employee updated successfully!");
-            onClose();
-          } else if (updateEmployee.rejected.match(resultAction)) {
-            Alert.alert("Error", `Failed to update employee: ${resultAction.payload}`);
+        case 'Business':
+          // For Business type, use the methods from params
+          if (createOrEdit === 'create') {
+            if (params.createBusiness) {
+              await params.createBusiness(formData);
+            }
+            Alert.alert("Success", `${type} created successfully!`);
+          } else {
+            if (params.updateBusiness) {
+              await params.updateBusiness(formData);
+            }
+            Alert.alert("Success", `${type} updated successfully!`);
           }
-        }
-      } else {
-        // For Business type, use the methods from params
-        if (createOrEdit === 'create') {
-          if (type === 'Business' && params.createBusiness) {
-            await params.createBusiness(formData);
-          }
-          Alert.alert("Success", `${type} created successfully!`);
-        } else {
-          if (type === 'Business' && params.updateBusiness) {
-            await params.updateBusiness(formData);
-          }
-          Alert.alert("Success", `${type} updated successfully!`);
-        }
-        onClose();
+          onClose();
+          break;
       }
     } catch (error) {
       Alert.alert("Error", `Failed to ${createOrEdit} ${type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -177,46 +239,79 @@ export default function CreateFormModal({
             try {
               setLoading(true);
               
-              if (type === 'Customer') {
-                // Use Redux for Customer delete
-                const customerId = params.customer?.id;
-                if (!customerId) {
-                  throw new Error('Customer ID is required for deletion');
-                }
-                
-                const resultAction = await dispatch(deleteCustomer(customerId));
-                
-                if (deleteCustomer.fulfilled.match(resultAction)) {
-                  Alert.alert("Success", "Customer deleted successfully!");
-                  onClose();
-                } else if (deleteCustomer.rejected.match(resultAction)) {
-                  Alert.alert("Error", `Failed to delete customer: ${resultAction.payload}`);
-                }
-              } else if (type === 'Employee') {
-                // Use Redux for Employee delete
-                const employeeId = params.employee?.id;
-                if (!employeeId) {
-                  throw new Error('Employee ID is required for deletion');
-                }
-                
-                const resultAction = await dispatch(deleteEmployee(employeeId));
-                
-                if (deleteEmployee.fulfilled.match(resultAction)) {
-                  Alert.alert("Success", "Employee deleted successfully!");
-                  onClose();
-                } else if (deleteEmployee.rejected.match(resultAction)) {
-                  Alert.alert("Error", `Failed to delete employee: ${resultAction.payload}`);
-                }
-              } else {
-                // Use params methods for Business type
-                let id;
-                if (type === 'Business') {
-                  id = params.business?.id;
-                  await params.deleteBusiness(id);
-                }
-
-                Alert.alert("Success", `${type} deleted successfully!`);
-                onClose();
+              switch (type) {
+                case 'Customer':
+                  const customerId = params.customer?.id;
+                  if (!customerId) {
+                    throw new Error('Customer ID is required for deletion');
+                  }
+                  
+                  const customerResult = await dispatch(deleteCustomer(customerId));
+                  
+                  if (deleteCustomer.fulfilled.match(customerResult)) {
+                    Alert.alert("Success", "Customer deleted successfully!");
+                    onClose();
+                  } else if (deleteCustomer.rejected.match(customerResult)) {
+                    Alert.alert("Error", `Failed to delete customer: ${customerResult.payload}`);
+                  }
+                  break;
+                  
+                case 'Employee':
+                  const employeeId = params.employee?.id;
+                  if (!employeeId) {
+                    throw new Error('Employee ID is required for deletion');
+                  }
+                  
+                  const employeeResult = await dispatch(deleteEmployee(employeeId));
+                  
+                  if (deleteEmployee.fulfilled.match(employeeResult)) {
+                    Alert.alert("Success", "Employee deleted successfully!");
+                    onClose();
+                  } else if (deleteEmployee.rejected.match(employeeResult)) {
+                    Alert.alert("Error", `Failed to delete employee: ${employeeResult.payload}`);
+                  }
+                  break;
+                  
+                case 'Category':
+                  const categoryId = params.category?.id;
+                  if (!categoryId) {
+                    throw new Error('Service ID is required for deletion');
+                  }
+                  
+                  const categoryResult = await dispatch(deleteCategory(categoryId));
+                  
+                  if (deleteCategory.fulfilled.match(categoryResult)) {
+                    Alert.alert("Success", "Service deleted successfully!");
+                    onClose();
+                  } else if (deleteCategory.rejected.match(categoryResult)) {
+                    Alert.alert("Error", `Failed to delete service: ${categoryResult.payload}`);
+                  }
+                  break;
+                  
+                case 'Item':
+                  const itemId = params.item?.id;
+                  if (!itemId) {
+                    throw new Error('Product ID is required for deletion');
+                  }
+                  
+                  const itemResult = await dispatch(deleteItem(itemId));
+                  
+                  if (deleteItem.fulfilled.match(itemResult)) {
+                    Alert.alert("Success", "Product deleted successfully!");
+                    onClose();
+                  } else if (deleteItem.rejected.match(itemResult)) {
+                    Alert.alert("Error", `Failed to delete product: ${itemResult.payload}`);
+                  }
+                  break;
+                  
+                case 'Business':
+                  const businessId = params.business?.id;
+                  if (businessId && params.deleteBusiness) {
+                    await params.deleteBusiness(businessId);
+                    Alert.alert("Success", `${type} deleted successfully!`);
+                    onClose();
+                  }
+                  break;
               }
             } catch (error) {
               Alert.alert("Error", `Failed to delete ${type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -243,12 +338,37 @@ export default function CreateFormModal({
   
   // Set loading state from Redux based on entity type
   useEffect(() => {
-    if (type === 'Customer') {
-      setLoading(customerLoading);
-    } else if (type === 'Employee') {
-      setLoading(employeeLoading);
+    switch (type) {
+      case 'Customer':
+        setLoading(customerLoading);
+        break;
+      case 'Employee':
+        setLoading(employeeLoading);
+        break;
+      case 'Category':
+        setLoading(categoryLoading);
+        break;
+      case 'Item':
+        setLoading(itemLoading);
+        break;
     }
-  }, [customerLoading, employeeLoading, type]);
+  }, [customerLoading, employeeLoading, categoryLoading, itemLoading, type]);
+
+  // Get title text based on entity type
+  const getEntityTitle = () => {
+    switch (type) {
+      case 'Customer':
+        return 'Customer';
+      case 'Employee':
+        return 'Employee';
+      case 'Category':
+        return 'Service';
+      case 'Item':
+        return 'Product';
+      default:
+        return type;
+    }
+  };
 
   return (
     <Modal
@@ -260,7 +380,7 @@ export default function CreateFormModal({
       <View style={styles.container}>
         <View style={styles.modalContent}>
           <Text style={styles.title}>
-            {createOrEdit === 'create' ? `Create ${type}` : `Edit ${type}`}
+            {createOrEdit === 'create' ? `Create ${getEntityTitle()}` : `Edit ${getEntityTitle()}`}
           </Text>
 
           <ScrollView style={styles.formContainer}>
@@ -284,6 +404,24 @@ export default function CreateFormModal({
             )}
             {type === 'Employee' && (
               <EmployeeForm
+                ref={formRef}
+                onCloseModal={onClose}
+                createOrEdit={createOrEdit}
+                params={params}
+                onFormChange={() => setFormChanged(true)}
+              />
+            )}
+            {type === 'Category' && (
+              <CategoryForm
+                ref={formRef}
+                onCloseModal={onClose}
+                createOrEdit={createOrEdit}
+                params={params}
+                onFormChange={() => setFormChanged(true)}
+              />
+            )}
+            {type === 'Item' && (
+              <ItemForm
                 ref={formRef}
                 onCloseModal={onClose}
                 createOrEdit={createOrEdit}

@@ -13,7 +13,9 @@ export interface StockItem {
   description: string;
   price: number;
   duration?: number;
-  taxable: boolean;
+  imageSource?: string;
+  starch?: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
+  pressOnly?: boolean;
   imageUrl?: string;
 }
 
@@ -21,175 +23,221 @@ export const DEFAULT_CATEGORIES: StockCategory[] = [
   {
     name: "Dry Cleaning",
     description: "Standard dry cleaning services for various garments",
-    imageUrl: "dry-cleaning.png"
+    price: 5
   },
   {
-    name: "Laundered Shirts",
-    description: "Professional cleaning and pressing of shirts",
-    imageUrl: "shirt-cleaning.png"
-  },
-  {
-    name: "Household Items",
-    description: "Cleaning services for household textiles and items",
-    imageUrl: "household-cleaning.png"
-  },
-  {
-    name: "Specialty Cleaning",
-    description: "Specialized cleaning for delicate or unique items",
-    imageUrl: "specialty-cleaning.png"
+    name: "Washing",
+    description: "Professional washing and pressing of shirts",
+    price: 2.5
   },
   {
     name: "Alterations",
     description: "Garment alterations and repairs",
-    imageUrl: "alterations.png"
-  }
+    price: 10
+  },
+  {
+    name: "Household Items",
+    description: "Cleaning services for household textiles and items",
+    price: 20
+  },
+  {
+    name: "Specialty Cleaning",
+    description: "Specialized cleaning for delicate or unique items",
+    price: 10
+  },
 ];
 
 export const DEFAULT_ITEMS: Record<string, StockItem[]> = {
   "Dry Cleaning": [
     {
+      name: "Pants/Slacks",
+      description: "Dry cleaning for pants or slacks",
+      price: 5,
+      duration: 3,
+      imageSource: "trousers"
+    },
+    {
       name: "Men's Suit (2pc)",
       description: "Dry cleaning for a two-piece men's suit",
-      price: 15.99,
-      duration: 60,
-      taxable: true,
-      imageUrl: "mens-suit.png"
+      price: 10,
+      duration: 3,
+      imageSource: "groom-suit"
+    },
+    {
+      name: "Skirt",
+      description: "Dry cleaning for skirts",
+      price: 5,
+      duration: 3,
+      imageSource: "skirt"
     },
     {
       name: "Dress",
       description: "Standard dry cleaning for dresses",
-      price: 12.99,
-      duration: 45,
-      taxable: true,
-      imageUrl: "dress.png"
-    },
-    {
-      name: "Pants/Slacks",
-      description: "Dry cleaning for pants or slacks",
-      price: 7.99,
-      duration: 30,
-      taxable: true,
-      imageUrl: "pants.png"
+      price: 10,
+      duration: 3,
+      imageSource: "dress"
     },
     {
       name: "Blazer/Sport Coat",
       description: "Dry cleaning for blazers or sport coats",
-      price: 9.99,
-      duration: 45,
-      taxable: true,
-      imageUrl: "blazer.png"
+      price: 5,
+      duration: 3,
+      imageSource: "blazer"
+    },
+    {
+      name: "Polo Shirt",
+      description: "Dry cleaning for polo shirts",
+      price: 5,
+      duration: 3,
+      imageSource: "polo"
+    },
+    {
+      name: "Dress Shirt",
+      description: "Dry cleaning for dress shirts",
+      price: 5,
+      duration: 3,
+      imageSource: "dress-shirt"
+    },
+    {
+      name: "Jacket",
+      description: "Dry cleaning for jackets",
+      price: 10,
+      duration: 3,
+      imageSource: "jacket"
+    },
+    {
+      name: "Coat",
+      description: "Dry cleaning for coats",
+      price: 10,
+      duration: 3,
+      imageSource: "winter_coat"
+    },
+    {
+      name: "Sari",
+      description: "Dry cleaning for saris",
+      price: 10,
+      duration: 3,
+      imageSource: "sari"
+    },
+    {
+      name: "Jersey",
+      description: "Dry cleaning for jerseys",
+      price: 5,
+      duration: 3,
+      imageSource: "jersey"
+    },
+    {
+      name: "Kids Clothing",
+      description: "Dry cleaning for kids clothing",
+      price: 5,
+      duration: 3,
+      imageSource: "kids_clothes"
     }
   ],
-  "Laundered Shirts": [
+  "Washing": [
     {
       name: "Dress Shirt",
       description: "Laundering and pressing for dress shirts",
-      price: 3.49,
-      duration: 20,
-      taxable: true,
-      imageUrl: "dress-shirt.png"
+      price: 2.5,
+      duration: 3,
+      imageSource: "dress-shirt",
     },
     {
-      name: "Folded Shirt",
+      name: "Boxed Shirt",
       description: "Laundering with fold service",
-      price: 3.99,
-      duration: 20,
-      taxable: true,
-      imageUrl: "folded-shirt.png"
+      price: 3,
+      duration: 3,
+      imageSource: "box_clothes"
     },
     {
-      name: "Starched Shirt",
-      description: "Laundering with starch application",
-      price: 4.49,
-      duration: 25,
-      taxable: true,
-      imageUrl: "starched-shirt.png"
+      name: "Pants/Slacks",
+      description: "Laundering and pressing for pants or slacks",
+      price: 2.5,
+      duration: 3,
+      imageSource: "jeans"
     }
   ],
   "Household Items": [
     {
       name: "Comforter (Queen/King)",
       description: "Cleaning for queen or king size comforters",
-      price: 29.99,
-      duration: 120,
-      taxable: true,
-      imageUrl: "comforter.png"
+      price: 20,
+      duration: 5,
+      imageSource: "blanket"
     },
     {
       name: "Blanket",
       description: "Cleaning for standard blankets",
-      price: 19.99,
-      duration: 90,
-      taxable: true,
-      imageUrl: "blanket.png"
+      price: 10,
+      duration: 5,
+      imageSource: "towel"
+    },
+    {
+      name: "Pillow",
+      description: "Cleaning for pillows",
+      price: 5,
+      duration: 5,
+      imageSource: "pillow"
     },
     {
       name: "Curtains (per panel)",
       description: "Cleaning for curtain panels",
-      price: 12.99,
-      duration: 60,
-      taxable: true,
-      imageUrl: "curtains.png"
+      price: 10,
+      duration: 5,
+      imageSource: "curtain"
     },
     {
       name: "Area Rug (small)",
       description: "Cleaning for small area rugs",
-      price: 24.99,
-      duration: 120,
-      taxable: true,
-      imageUrl: "area-rug.png"
+      price: 10,
+      duration: 5,
+      imageSource: "rug"
     }
   ],
   "Specialty Cleaning": [
     {
       name: "Wedding Dress",
       description: "Specialized cleaning for wedding dresses",
-      price: 99.99,
-      duration: 240,
-      taxable: true,
-      imageUrl: "wedding-dress.png"
+      price: 100,
+      duration: 5,
+      imageSource: "wedding-dress"
     },
     {
       name: "Leather/Suede Item",
       description: "Specialized cleaning for leather or suede items",
-      price: 49.99,
-      duration: 180,
-      taxable: true,
-      imageUrl: "leather.png"
+      price: 50,
+      duration: 5,
+      imageSource: "leather-jacket"
     },
     {
-      name: "Silk Item",
-      description: "Delicate cleaning for silk garments",
-      price: 14.99,
-      duration: 60,
-      taxable: true,
-      imageUrl: "silk.png"
+      name: "Shoes",
+      description: "Specialized cleaning for shoes",
+      price: 20,
+      duration: 5,
+      imageSource: "shoes"
     }
   ],
   "Alterations": [
     {
       name: "Hem Pants",
       description: "Standard hemming for pants",
-      price: 12.99,
-      duration: 45,
-      taxable: true,
-      imageUrl: "hem-pants.png"
+      price: 10,
+      duration: 5,
+      imageSource: "hem_cut"
     },
     {
       name: "Replace Zipper",
       description: "Zipper replacement service",
-      price: 18.99,
-      duration: 60,
-      taxable: true,
-      imageUrl: "zipper.png"
+      price: 10,
+      duration: 5,
+      imageSource: "zipper"
     },
     {
       name: "Take in Waist",
       description: "Alter waistline of pants or skirts",
-      price: 15.99,
-      duration: 60,
-      taxable: true,
-      imageUrl: "waist-alteration.png"
+      price: 10,
+      duration: 5,
+      imageSource: "waist"
     }
   ]
 };

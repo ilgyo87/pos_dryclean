@@ -10,6 +10,9 @@ PODS:
   - DoubleConversion (1.1.6)
   - EXConstants (17.0.8):
     - ExpoModulesCore
+  - EXImageLoader (5.0.0):
+    - ExpoModulesCore
+    - React-Core
   - Expo (52.0.44):
     - ExpoModulesCore
   - ExpoAsset (11.0.5):
@@ -17,6 +20,8 @@ PODS:
   - ExpoFileSystem (18.0.12):
     - ExpoModulesCore
   - ExpoFont (13.0.4):
+    - ExpoModulesCore
+  - ExpoImagePicker (16.0.6):
     - ExpoModulesCore
   - ExpoKeepAwake (14.0.3):
     - ExpoModulesCore
@@ -1287,6 +1292,27 @@ PODS:
     - Yoga
   - react-native-get-random-values (1.11.0):
     - React-Core
+  - react-native-image-picker (8.2.0):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.01.01.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - react-native-netinfo (11.4.1):
     - React-Core
   - react-native-safe-area-context (4.14.1):
@@ -1909,10 +1935,12 @@ DEPENDENCIES:
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
+  - EXImageLoader (from `../node_modules/expo-image-loader/ios`)
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
+  - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
@@ -1951,6 +1979,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
+  - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - react-native-view-shot (from `../node_modules/react-native-view-shot`)
@@ -2008,6 +2037,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
   EXConstants:
     :path: "../node_modules/expo-constants/ios"
+  EXImageLoader:
+    :path: "../node_modules/expo-image-loader/ios"
   Expo:
     :path: "../node_modules/expo"
   ExpoAsset:
@@ -2016,6 +2047,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-file-system/ios"
   ExpoFont:
     :path: "../node_modules/expo-font/ios"
+  ExpoImagePicker:
+    :path: "../node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
   ExpoModulesCore:
@@ -2089,6 +2122,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
+  react-native-image-picker:
+    :path: "../node_modules/react-native-image-picker"
   react-native-netinfo:
     :path: "../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
@@ -2179,10 +2214,12 @@ SPEC CHECKSUMS:
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
   EXConstants: fcfc75800824ac2d5c592b5bc74130bad17b146b
+  EXImageLoader: e5da974e25b13585c196b658a440720c075482d5
   Expo: 75e002fc29a18a72aa3db967b41b29c2b206875d
   ExpoAsset: 48386d40d53a8c1738929b3ed509bcad595b5516
   ExpoFileSystem: 42d363d3b96f9afab980dcef60d5657a4443c655
   ExpoFont: f354e926f8feae5e831ec8087f36652b44a0b188
+  ExpoImagePicker: 24e5ba8da111f74519b1e6dc556e0b438b2b8464
   ExpoKeepAwake: b0171a73665bfcefcfcc311742a72a956e6aa680
   ExpoModulesCore: 98297c2cc7977c43740a2e52d850d94ac8dbf176
   FBLazyVector: ca8044c9df513671c85167838b4188791b6f37e1
@@ -2220,6 +2257,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: a381120aea722d2244d4e4b663a10d4c3b2d4e51
   React-microtasksnativemodule: d9b946675010659cddd1c7611c074216579c8ad3
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
+  react-native-image-picker: 732212151b686ff27ff57a7ea90f5d07d1a0c813
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-safe-area-context: 2985d96d364676d1e2e2d5e77f64860874e31e13
   react-native-view-shot: 60117a0ac87a504a39ee9f079e632011916e7724

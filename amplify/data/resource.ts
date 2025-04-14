@@ -58,7 +58,10 @@ const schema = a.schema({
       price: a.float().required(),
       duration: a.integer(),
       taxable: a.boolean().default(false),
-      imageUrl: a.url() || a.string(),
+      imageUrl: a.url(),
+      imageSource: a.string(),
+      starch: a.enum(['NONE', 'LIGHT', 'MEDIUM', 'HEAVY']),
+      pressOnly: a.boolean().default(false),
       // Relationships
       categoryId: a.id().required(),
       category: a.belongsTo('Category', 'categoryId'),
