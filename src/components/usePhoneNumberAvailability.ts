@@ -15,7 +15,7 @@ export const usePhoneNumberAvailability = (options: PhoneAvailabilityOptions = {
   const {
     initialPhoneNumber = '',
     currentEntityId,
-    entityType,
+    entityType = 'Customer',
     debounceMs = 500
   } = options;
 
@@ -40,44 +40,50 @@ export const usePhoneNumberAvailability = (options: PhoneAvailabilityOptions = {
         return;
       }
 
-      // Check if phone number exists in Businesses
-      const businessResult = await client.models.Business.list({
-        filter: { phoneNumber: { eq: phone } }
-      });
-      
-      // Check if phone number exists in Customers
-      const customerResult = await client.models.Customer.list({
-        filter: { phoneNumber: { eq: phone } }
-      });
-      
-      // Check if phone number exists in Employees
-      const employeeResult = await client.models.Employee.list({
-        filter: { phoneNumber: { eq: phone } }
-      });
+      let existingEntities;
 
-      // If we're editing, exclude our own entity from the check
-      const businessMatches = businessResult.data?.filter(b => 
-        !(entityType === 'Business' && b.id === currentEntityId)
-      ) || [];
+      // Only check the specific entity type
+      switch (entityType) {
+        case 'Business':
+          // Check if phone number exists in Businesses
+          const businessResult = await client.models.Business.list({
+            filter: { phoneNumber: { eq: phone } }
+          });
+          existingEntities = businessResult.data?.filter(b => 
+            b.id !== currentEntityId
+          ) || [];
+          break;
+          
+        case 'Customer':
+          // Check if phone number exists in Customers
+          const customerResult = await client.models.Customer.list({
+            filter: { phoneNumber: { eq: phone } }
+          });
+          existingEntities = customerResult.data?.filter(c => 
+            c.id !== currentEntityId
+          ) || [];
+          break;
+          
+        case 'Employee':
+          // Check if phone number exists in Employees
+          const employeeResult = await client.models.Employee.list({
+            filter: { phoneNumber: { eq: phone } }
+          });
+          existingEntities = employeeResult.data?.filter(e => 
+            e.id !== currentEntityId
+          ) || [];
+          break;
+          
+        default:
+          // Fallback: check all entity types
+          console.warn('Unknown entity type:', entityType);
+          existingEntities = [];
+      }
       
-      const customerMatches = customerResult.data?.filter(c => 
-        !(entityType === 'Customer' && c.id === currentEntityId)
-      ) || [];
-      
-      const employeeMatches = employeeResult.data?.filter(e => 
-        !(entityType === 'Employee' && e.id === currentEntityId)
-      ) || [];
-      
-      // Phone is available if it doesn't exist in any of the tables
-      // or it only exists for the current entity being edited
-      const isPhoneAvailable = 
-        businessMatches.length === 0 && 
-        customerMatches.length === 0 && 
-        employeeMatches.length === 0;
-      
-      setIsAvailable(isPhoneAvailable);
+      // Phone is available if it doesn't exist for other entities of the same type
+      setIsAvailable(existingEntities.length === 0);
     } catch (error) {
-      console.error("Error checking phone number availability:", error);
+      console.error(`Error checking phone number availability for ${entityType}:`, error);
       setIsAvailable(null);
     } finally {
       setIsChecking(false);

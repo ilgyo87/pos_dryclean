@@ -5,11 +5,13 @@ import { AuthUser } from "aws-amplify/auth";
 import { useFocusEffect } from "@react-navigation/native";
 import EmployeeList from "./components/EmployeeList";
 import EmployeeToolbar from "./components/EmployeeToolbar";
-import { useEmployeesData } from "./hooks/useEmployeeData";
 import styles from "./styles/EmployeeStyles";
 import { Schema } from "../../../amplify/data/resource";
 import CreateFormModal from "../../components/CreateFormModal";
 import SearchBar from "../../components/SearchBar";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../store";
+import { fetchEmployees } from "../../store/slices/EmployeeSlice";
 
 export default function Employees({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -17,18 +19,19 @@ export default function Employees({ user, navigation }: { user: AuthUser | null,
   const [editingEmployee, setEditingEmployee] = useState<Schema["Employee"]["type"] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Refetch when screen comes into focus
+  // Redux hooks
+  const dispatch = useDispatch<AppDispatch>();
+  const { employees, isLoading, error } = useSelector((state: RootState) => state.employee);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch employees when the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchEmployees();
-    }, [user?.userId])
+      if (user?.userId) {
+        dispatch(fetchEmployees(user.userId));
+      }
+    }, [user?.userId, dispatch])
   );
-
-  const { employees, isLoading, fetchEmployees, refreshing, setRefreshing, createEmployee, updateEmployee, deleteEmployee } = useEmployeesData(user);
-
-  useEffect(() => {
-    console.log(`Employee count: ${employees?.length || 0}`);
-  }, [employees]);
 
   const handleCreateEmployee = () => {
     if (!user) return;
@@ -51,15 +54,17 @@ export default function Employees({ user, navigation }: { user: AuthUser | null,
       employee.firstName?.toLowerCase().includes(searchLower) ||
       employee.lastName?.toLowerCase().includes(searchLower) ||
       employee.email?.toLowerCase().includes(searchLower) ||
-      employee.phoneNumber?.includes(searchQuery)
+      employee.phoneNumber?.includes(searchQuery) ||
+      employee.role?.toLowerCase().includes(searchLower)
     );
   });
 
-  const handleEmployeeSearch = (employee: Schema["Employee"]["type"]) => {
-    // Instead of navigating, open the edit modal
-    setModalType('edit');
-    setEditingEmployee(employee);
-    setIsModalVisible(true);
+  const handleRefresh = async () => {
+    if (user?.userId) {
+      setRefreshing(true);
+      await dispatch(fetchEmployees(user.userId));
+      setRefreshing(false);
+    }
   };
 
   if (isLoading && !refreshing) {
@@ -73,9 +78,11 @@ export default function Employees({ user, navigation }: { user: AuthUser | null,
   const closeModal = () => {
     setIsModalVisible(false);
     // Refresh the employee list when modal closes
-    fetchEmployees();
+    if (user?.userId) {
+      dispatch(fetchEmployees(user.userId));
+    }
   };
-  
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -97,10 +104,7 @@ export default function Employees({ user, navigation }: { user: AuthUser | null,
           employees={filteredEmployees || []}
           onEmployeePress={handleEditEmployee}
           refreshing={refreshing}
-          onRefresh={() => {
-            setRefreshing(true);
-            fetchEmployees().finally(() => setRefreshing(false));
-          }}
+          onRefresh={handleRefresh}
         />
         
         {isModalVisible && (
@@ -109,11 +113,7 @@ export default function Employees({ user, navigation }: { user: AuthUser | null,
             onClose={closeModal}
             params={{
               userId: user?.userId,
-              fetchEmployees,
-              createEmployee,
-              updateEmployee,
-              deleteEmployee,
-              ...(editingEmployee ? { employee: editingEmployee } : {})
+              employee: editingEmployee
             }}
             type="Employee"
             createOrEdit={modalType}

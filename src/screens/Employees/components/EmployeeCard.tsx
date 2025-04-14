@@ -24,6 +24,18 @@ export default function EmployeeCard({ employee, onPress }: EmployeeCardProps) {
     }
   };
 
+  // Function to format role for display
+  const formatRole = (role?: string) => {
+    if (!role) return 'Staff';
+    
+    // Replace underscores with spaces and capitalize each word
+    return role.replace(/_/g, ' ')
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -34,7 +46,7 @@ export default function EmployeeCard({ employee, onPress }: EmployeeCardProps) {
       </View>
       <View style={styles.info}>
         <Text style={styles.name}>{employee.firstName} {employee.lastName}</Text>
-        <Text style={styles.detail}>{employee.role?.replace('_', ' ')}</Text>
+        <Text style={styles.detail}>{formatRole(employee.role)}</Text>
         {employee.email && <Text style={styles.detail}>{employee.email}</Text>}
         {employee.phoneNumber && <Text style={styles.detail}>{employee.phoneNumber}</Text>}
       </View>

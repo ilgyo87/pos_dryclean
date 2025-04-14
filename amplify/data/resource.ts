@@ -134,7 +134,7 @@ const schema = a.schema({
       permissions: a.string(),
       lastLogin: a.datetime(),
       userId: a.id().required(),
-      pinCode: a.string(),
+      pinCode: a.string().required(),
       // Relationships
       // orders: a.hasMany('Order', 'employeeId'),
       // transactions: a.hasMany('Transaction', 'employeeId'),
