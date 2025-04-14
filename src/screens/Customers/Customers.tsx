@@ -5,11 +5,13 @@ import { AuthUser } from "aws-amplify/auth";
 import { useFocusEffect } from "@react-navigation/native";
 import CustomerList from "./components/CustomerList";
 import CustomerToolbar from "./components/CustomerToolbar";
-import { useCustomersData } from "./hooks/useCustomerData";
 import styles from "./styles/CustomerStyles";
 import { Schema } from "../../../amplify/data/resource";
 import CreateFormModal from "../../components/CreateFormModal";
 import PredictiveSearch from "../../components/PredictiveSearch";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../store";
+import { fetchCustomers } from "../../store/slices/CustomerSlice";
 
 export default function Customers({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -17,18 +19,19 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
   const [editingCustomer, setEditingCustomer] = useState<Schema["Customer"]["type"] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Refetch when screen comes into focus
+  // Redux hooks
+  const dispatch = useDispatch<AppDispatch>();
+  const { customers, isLoading, error } = useSelector((state: RootState) => state.customer);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch customers when the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchCustomers();
-    }, [user?.userId])
+      if (user?.userId) {
+        dispatch(fetchCustomers(user.userId));
+      }
+    }, [user?.userId, dispatch])
   );
-
-  const { customers, isLoading, fetchCustomers, refreshing, setRefreshing, createCustomer, updateCustomer, deleteCustomer } = useCustomersData(user);
-
-  useEffect(() => {
-    console.log(`Customer count: ${customers?.length || 0}`);
-  }, [customers]);
 
   const handleCreateCustomer = () => {
     if (!user) return;
@@ -43,7 +46,7 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
     setIsModalVisible(true);
   };
 
-  const filteredCustomers = customers?.filter(customer => {
+  const filteredCustomers = customers?.filter((customer) => {
     if (!searchQuery) return true;
 
     const searchLower = searchQuery.toLowerCase();
@@ -62,6 +65,14 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
     setIsModalVisible(true);
   };
 
+  const handleRefresh = async () => {
+    if (user?.userId) {
+      setRefreshing(true);
+      await dispatch(fetchCustomers(user.userId));
+      setRefreshing(false);
+    }
+  };
+
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loading}>
@@ -73,8 +84,11 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
   const closeModal = () => {
     setIsModalVisible(false);
     // Refresh the customer list when modal closes
-    fetchCustomers();
+    if (user?.userId) {
+      dispatch(fetchCustomers(user.userId));
+    }
   };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -83,11 +97,11 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
         </View>
 
         <View style={styles.searchContainer}>
-        <PredictiveSearch 
-          customers={customers || []} 
-          onCustomerSelect={handleCustomerSearch}
-        />
-      </View>
+          <PredictiveSearch 
+            customers={customers || []} 
+            onCustomerSelect={handleCustomerSearch}
+          />
+        </View>
 
         <CustomerToolbar onCreatePress={handleCreateCustomer} />
 
@@ -95,25 +109,19 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
           customers={filteredCustomers || []}
           onCustomerPress={handleEditCustomer}
           refreshing={refreshing}
-          onRefresh={() => {
-            setRefreshing(true);
-            fetchCustomers().finally(() => setRefreshing(false));
-          }}
+          onRefresh={handleRefresh}
         />
+        
         {isModalVisible && (
           <CreateFormModal
             visible={isModalVisible}
             onClose={closeModal}
             params={{
               userId: user?.userId,
-              fetchCustomers,
-              createCustomer,
-              updateCustomer,
-              deleteCustomer,
-              ...(editingCustomer ? { customer: editingCustomer } : {})
+              customer: editingCustomer
             }}
             type="Customer"
-            createOrEdit={modalType}  // Change from hardcoded 'edit' to use modalType state
+            createOrEdit={modalType}
           />
         )}
       </View>

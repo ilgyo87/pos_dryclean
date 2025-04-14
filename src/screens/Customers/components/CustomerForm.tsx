@@ -1,7 +1,9 @@
+// src/screens/Customers/components/CustomerForm.tsx
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { StyleSheet, View, Text, TextInput, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { usePhoneNumberAvailability } from '../../../components/usePhoneNumberAvailability';
-// Import any other necessary components and libraries
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store';
 
 const CustomerForm = forwardRef(({
     onCloseModal,
@@ -14,7 +16,9 @@ const CustomerForm = forwardRef(({
     params: Record<string, any>,
     onFormChange?: () => void
 }, ref) => {
+    // Get customer data from params or Redux state if editing
     const existingCustomer = createOrEdit === 'edit' ? params?.customer : null;
+    
     const [firstName, setFirstName] = useState(existingCustomer?.firstName || '');
     const [lastName, setLastName] = useState(existingCustomer?.lastName || '');
     const [email, setEmail] = useState(existingCustomer?.email || 'none@example.com');
@@ -35,6 +39,9 @@ const CustomerForm = forwardRef(({
     const [state, setState] = useState(existingCustomer?.state || '');
     const [zipCode, setZipCode] = useState(existingCustomer?.zipCode || '');
     const [isLoading, setIsLoading] = useState(false);
+
+    // Get loading state from Redux store
+    const reduxLoading = useSelector((state: RootState) => state.customer.isLoading);
 
     // Expose the resetForm method to parent components via ref
     useImperativeHandle(ref, () => ({
@@ -126,16 +133,14 @@ const CustomerForm = forwardRef(({
                 isPhoneValid = false;
             }
         
-            console.log({
-                hasRequiredFields,
-                isPhoneValid,
-                phoneNumberAvailable,
-                phoneLength: phoneNumber.length
-            });
-        
             return hasRequiredFields && isPhoneValid;
         }
     }));
+
+    // Update loading state from Redux
+    useEffect(() => {
+        setIsLoading(reduxLoading);
+    }, [reduxLoading]);
 
     // Notify parent component when form changes
     useEffect(() => {
@@ -147,7 +152,7 @@ const CustomerForm = forwardRef(({
     return (
         <View style={styles.container}>
             <ScrollView style={styles.formContainer}>
-                <Text style={styles.label}>First Name</Text>
+                <Text style={styles.label}>First Name*</Text>
                 <TextInput
                     placeholder="Enter first name"
                     value={firstName}
@@ -156,7 +161,7 @@ const CustomerForm = forwardRef(({
                     placeholderTextColor="#A0A0A0"
                 />
 
-                <Text style={styles.label}>Last Name</Text>
+                <Text style={styles.label}>Last Name*</Text>
                 <TextInput
                     placeholder="Enter last name"
                     value={lastName}
@@ -165,7 +170,7 @@ const CustomerForm = forwardRef(({
                     placeholderTextColor="#A0A0A0"
                 />
 
-                <Text style={styles.label}>Phone Number</Text>
+                <Text style={styles.label}>Phone Number*</Text>
                 <TextInput
                     placeholder="Enter phone number"
                     value={phoneNumber}
@@ -273,18 +278,6 @@ const styles = StyleSheet.create({
     invalidInput: {
         borderColor: '#E53935',  // Red for invalid
         backgroundColor: 'rgba(229, 57, 53, 0.1)',
-    },
-    availabilityTextAvailable: {
-        color: '#4CAF50', // Green
-        fontSize: 12,
-        marginRight: 5,
-        textAlign: 'right'
-    },
-    availabilityTextNotAvailable: {
-        color: '#E53935', // Red
-        fontSize: 12,
-        marginRight: 5,
-        textAlign: 'right'
     },
     statusText: {
         fontSize: 12,

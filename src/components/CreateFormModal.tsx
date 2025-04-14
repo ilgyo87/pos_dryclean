@@ -4,10 +4,10 @@ import { CreateButton, UpdateButton, DeleteButton, ResetButton, CancelButton } f
 import BusinessForm from '../components/BusinessForm';
 import CustomerForm from '../screens/Customers/components/CustomerForm';
 import EmployeeForm from '../screens/Employees/components/EmployeeForm';
-import { useBusinessData } from '../hooks/useBusinessData';
-import { useCustomersData } from '../screens/Customers/hooks/useCustomerData';
-import { useEmployeesData } from '../screens/Employees/hooks/useEmployeeData';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../store';
+import { createCustomer, updateCustomer, deleteCustomer } from '../store/slices/CustomerSlice';
 
 // Define FormRef interface to use with useRef
 export interface FormRef {
@@ -22,7 +22,6 @@ interface CreateFormModalProps {
   params: Record<string, any>;
   type: 'Business' | 'Customer' | 'Employee';
   createOrEdit: 'create' | 'edit';
-  resetForm: () => void;
 }
 
 export default function CreateFormModal({
@@ -40,11 +39,14 @@ export default function CreateFormModal({
 
   // Get current user for hooks
   const { user } = useAuthenticator((context) => [context.user]);
-
-  // Initialize hooks based on type
-  const { createBusiness, updateBusiness, deleteBusiness } = useBusinessData(user);
-  const { createCustomer, updateCustomer, deleteCustomer } = useCustomersData(user);
-  const { createEmployee, updateEmployee, deleteEmployee } = useEmployeesData(user);
+  
+  // Redux hooks
+  const dispatch = useDispatch<AppDispatch>();
+  
+  // Get loading state from customer slice if type is Customer
+  const customerLoading = useSelector((state: RootState) => 
+    type === 'Customer' ? state.customer.isLoading : false
+  );
 
   // Reset form handler - to be passed to form components
   const handleReset = () => {
@@ -79,39 +81,58 @@ export default function CreateFormModal({
         return; // Validation failed
       }
 
-      if (createOrEdit === 'create') {
-        switch (type) {
-          case 'Business':
-            await createBusiness(formData);
-            break;
-          case 'Customer':
-            await createCustomer(formData);
-            break;
-          case 'Employee':
-            await createEmployee(formData);
-            break;
+      // Handle submission based on form type
+      if (type === 'Customer') {
+        if (createOrEdit === 'create') {
+          // Dispatch create action with userId
+          const resultAction = await dispatch(createCustomer({ 
+            customerData: formData, 
+            userId: user?.userId || '' 
+          }));
+          
+          if (createCustomer.fulfilled.match(resultAction)) {
+            Alert.alert("Success", "Customer created successfully!");
+            onClose();
+          } else if (createCustomer.rejected.match(resultAction)) {
+            Alert.alert("Error", `Failed to create customer: ${resultAction.payload}`);
+          }
+        } else {
+          // Dispatch update action with userId
+          const resultAction = await dispatch(updateCustomer({ 
+            customerData: formData, 
+            userId: user?.userId || '' 
+          }));
+          
+          if (updateCustomer.fulfilled.match(resultAction)) {
+            Alert.alert("Success", "Customer updated successfully!");
+            onClose();
+          } else if (updateCustomer.rejected.match(resultAction)) {
+            Alert.alert("Error", `Failed to update customer: ${resultAction.payload}`);
+          }
         }
-        Alert.alert("Success", `${type} created successfully!`);
       } else {
-        switch (type) {
-          case 'Business':
-            await updateBusiness(formData);
-            break;
-          case 'Customer':
-            await updateCustomer(formData);
-            break;
-          case 'Employee':
-            await updateEmployee(formData);
-            break;
+        // For other entity types, use the methods from params
+        if (createOrEdit === 'create') {
+          if (type === 'Business' && params.createBusiness) {
+            await params.createBusiness(formData);
+          } else if (type === 'Employee' && params.createEmployee) {
+            await params.createEmployee(formData);
+          }
+          Alert.alert("Success", `${type} created successfully!`);
+        } else {
+          if (type === 'Business' && params.updateBusiness) {
+            await params.updateBusiness(formData);
+          } else if (type === 'Employee' && params.updateEmployee) {
+            await params.updateEmployee(formData);
+          }
+          Alert.alert("Success", `${type} updated successfully!`);
         }
-        Alert.alert("Success", `${type} updated successfully!`);
+        onClose();
       }
-
-      setLoading(false);
-      onClose();
     } catch (error) {
-      setLoading(false);
       Alert.alert("Error", `Failed to ${createOrEdit} ${type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -127,28 +148,40 @@ export default function CreateFormModal({
           onPress: async () => {
             try {
               setLoading(true);
-              let id;
-              switch (type) {
-                case 'Business':
+              
+              if (type === 'Customer') {
+                // Use Redux for Customer delete
+                const customerId = params.customer?.id;
+                if (!customerId) {
+                  throw new Error('Customer ID is required for deletion');
+                }
+                
+                const resultAction = await dispatch(deleteCustomer(customerId));
+                
+                if (deleteCustomer.fulfilled.match(resultAction)) {
+                  Alert.alert("Success", "Customer deleted successfully!");
+                  onClose();
+                } else if (deleteCustomer.rejected.match(resultAction)) {
+                  Alert.alert("Error", `Failed to delete customer: ${resultAction.payload}`);
+                }
+              } else {
+                // Use params methods for other entity types
+                let id;
+                if (type === 'Business') {
                   id = params.business?.id;
-                  await deleteBusiness(id);
-                  break;
-                case 'Customer':
-                  id = params.customer?.id;
-                  await deleteCustomer(id);
-                  break;
-                case 'Employee':
+                  await params.deleteBusiness(id);
+                } else if (type === 'Employee') {
                   id = params.employee?.id;
-                  await deleteEmployee(id);
-                  break;
-              }
+                  await params.deleteEmployee(id);
+                }
 
-              setLoading(false);
-              Alert.alert("Success", `${type} deleted successfully!`);
-              onClose();
+                Alert.alert("Success", `${type} deleted successfully!`);
+                onClose();
+              }
             } catch (error) {
-              setLoading(false);
               Alert.alert("Error", `Failed to delete ${type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            } finally {
+              setLoading(false);
             }
           },
           style: "destructive"
@@ -167,12 +200,14 @@ export default function CreateFormModal({
       setIsFormValid(true);
     }
   }, [formChanged]);
-  console.log('Form state:', {
-    isFormValid,
-    hasValidationMethod: !!formRef.current?.isFormValid,
-    type,
-    createOrEdit
-  });
+  
+  // Set loading state from Redux for Customer type
+  useEffect(() => {
+    if (type === 'Customer') {
+      setLoading(customerLoading);
+    }
+  }, [customerLoading, type]);
+
   return (
     <Modal
       visible={visible}

@@ -62,7 +62,7 @@ const BusinessForm = forwardRef(({
                 placeholderTextColor="#A0A0A0"
             />
 
-            <Text style={styles.label}>First Name</Text>
+            <Text style={styles.label}>First Name*</Text>
             <TextInput
                 placeholder="Enter first name"
                 value={firstName}
@@ -71,7 +71,7 @@ const BusinessForm = forwardRef(({
                 placeholderTextColor="#A0A0A0"
             />
 
-            <Text style={styles.label}>Last Name</Text>
+            <Text style={styles.label}>Last Name*</Text>
             <TextInput
                 placeholder="Enter last name"
                 value={lastName}
@@ -80,7 +80,7 @@ const BusinessForm = forwardRef(({
                 placeholderTextColor="#A0A0A0"
             />
 
-            <Text style={styles.label}>Phone Number</Text>
+            <Text style={styles.label}>Phone Number*</Text>
             <TextInput
                 placeholder="Enter phone number"
                 value={phoneNumber}
