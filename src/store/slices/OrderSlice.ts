@@ -169,26 +169,16 @@ export const createOrder = createAsyncThunk(
       // Generate a unique order number
       const orderNumber = generateOrderNumber();
       
-      // Create the order record
-      const orderInput = {
-        orderNumber,
-        customerID: orderData.customerId,
-        businessID: orderData.businessId,
+      // Use a properly typed object according to the Schema type definition
+      // This uses the exact input type expected by Amplify Gen 2
+      const { data: orderResult, errors: orderErrors } = await client.models.Order.create({
+        orderNumber: orderNumber,
         orderDate: new Date().toISOString(),
-        status: orderData.status,
-        dueDate: orderData.pickupDate,
-        estimatedTotal: orderData.subtotal,
-        actualTotal: orderData.total,
-        notes: orderData.notes ? [orderData.notes] : [],
-        tax: orderData.tax,
-        tip: orderData.tip,
-        paymentMethod: orderData.paymentMethod,
-        paymentStatus: orderData.paymentMethod === 'CASH' ? 'PAID' : 'PROCESSING',
-      };
+        status: orderData.status
+      });
       
-      console.log('Creating order with input:', orderInput);
-      
-      const { data: orderResult, errors: orderErrors } = await client.models.Order.create(orderInput);
+      console.log('Order creation result:', orderResult);
+      console.log('Order creation errors:', orderErrors);
       
       if (orderErrors) {
         console.error('Error creating order:', orderErrors);

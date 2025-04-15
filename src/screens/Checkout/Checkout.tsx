@@ -1,19 +1,15 @@
 // src/screens/Checkout/Checkout.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   Alert,
-  Modal,
-  KeyboardAvoidingView,
   Platform
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { createOrder } from '../../store/slices/OrderSlice';
 import { fetchCategories } from '../../store/slices/CategorySlice';
@@ -21,15 +17,13 @@ import { fetchItems } from '../../store/slices/ItemSlice';
 import { RootState, AppDispatch } from '../../store';
 
 import OrderSummary from './components/OrderSummary';
-import type { RouteProp } from '@react-navigation/native';
+import ReceiptModal from './components/ReceiptModal';
 import { AuthUser } from "aws-amplify/auth";
 import CheckoutServiceList from './components/CheckoutServiceList';
 import CheckoutProductList from './components/CheckoutProductList';
 import DueDatePicker from './components/DueDatePicker';
-import { Schema } from '../../../amplify/data/resource';
 import { Ionicons } from '@expo/vector-icons';
-
-// Define types for our route parameters
+import { usePrinter, PrintReceiptParams } from './hooks/usePrinter';
 
 // Define the CartItem interface for items in the order
 interface CartItem {
@@ -46,8 +40,9 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
   const route = useRoute<any>();
   const dispatch = useDispatch<AppDispatch>();
 
-  // Get processing state from Redux store
-  const { isLoading, error } = useSelector((state: RootState) => state.order);
+  // Local state for loading and errors
+  const [localLoading, setLocalLoading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   // Extract route params
   const {
@@ -60,15 +55,28 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
     customerPreferences
   } = route.params || {};
 
+  // Get business data from Redux
+  const { businesses } = useSelector((state: RootState) => state.business);
+  const business = businesses.find(b => b.id === businessId) || businesses[0];
+  const businessName = business?.name || "Dry Cleaning POS";
+
   // State variables
   const [additionalNotes, setAdditionalNotes] = useState<string>(customerPreferences || '');
-  const [dueDate, setDueDate] = useState<Date>(new Date(pickupDate || Date.now()));
+  const [dueDate, setDueDate] = useState<Date>(new Date(pickupDate || Date.now() + 86400000)); // Default to tomorrow
   const [tip, setTip] = useState<string>('0.00');
-  const [confirmationVisible, setConfirmationVisible] = useState<boolean>(false);
-
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
   const [selectedItems, setSelectedItems] = useState<CartItem[]>(items || []);
-  const [showCalendar, setShowCalendar] = useState(false);
+  const [receiptVisible, setReceiptVisible] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState<any>(null);
+  const [orderNumber, setOrderNumber] = useState<string>("");
+
+  // Use the printer hook
+  const { 
+    isPrinting, 
+    isPrintingError, 
+    handlePrint,
+    discoverPrinters
+  } = usePrinter();
 
   // Get categories and items from Redux store
   const { categories, isLoading: isLoadingCategories } = useSelector((state: RootState) => state.category);
@@ -86,6 +94,7 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
   const tipAmount = parseFloat(tip) || 0;
   const calculatedTaxAmount = calculatedSubtotal * taxRate;
   const grandTotal = calculatedSubtotal + calculatedTaxAmount + tipAmount;
+
   // Function to handle adding new items to the order
   const handleAddItem = (newItem: CartItem) => {
     // Check if item already exists in the order
@@ -124,38 +133,7 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
     }
   }, [dispatch, selectedServiceId]);
 
-
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  // Handle tip input changes
-  const handleTipChange = (value: string) => {
-    // Filter out non-numeric characters except for the decimal point
-    const numericValue = value.replace(/[^0-9.]/g, '');
-    setTip(numericValue);
-  };
-
-  // Apply quick tip percentages
-  const handleQuickTip = (percentage: number) => {
-    const tipValue = (calculatedSubtotal * percentage).toFixed(2);
-    setTip(tipValue);
-  };
-
-  // Process the order
-  const handleProcessOrder = async () => {
-    // Show confirmation first
-    setConfirmationVisible(true);
-  };
-
+  // Function to update item quantity
   const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
     // Prevent quantity from going below 1
     if (newQuantity < 1) return;
@@ -169,9 +147,16 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
     setSelectedItems(updatedItems);
   };
 
-  // Confirm and create the order
-  const confirmOrder = async () => {
+  // Process the order
+  const handleProcessOrder = async () => {
+    if (selectedItems.length === 0) {
+      Alert.alert("Error", "Please add at least one item to the order.");
+      return;
+    }
+
     try {
+      setLocalLoading(true);
+
       // Create order object from our selections
       const orderData = {
         customerId,
@@ -187,11 +172,11 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
         tax: calculatedTaxAmount,
         tip: tipAmount,
         total: grandTotal,
-        paymentMethod: 'CASH',
+        paymentMethod: 'CASH', // Default to cash - you could add payment method selection
         amountTendered: grandTotal,
         change: 0,
-        status: 'CREATED' as 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED',
-        pickupDate: dueDate.toISOString(), // Use the date from the date picker
+        status: 'CREATED' as const,
+        pickupDate: dueDate.toISOString(),
         notes: additionalNotes,
       };
 
@@ -201,27 +186,53 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
       if (createOrder.fulfilled.match(resultAction)) {
         // Order was created successfully
         const newOrder = resultAction.payload;
-
-        // Close confirmation modal
-        setConfirmationVisible(false);
-
-        // Navigate to success screen
-        navigation.navigate('OrderConfirmation', {
-          orderNumber: newOrder.orderNumber,
-          customerName,
-          total: grandTotal,
-          pickupDate: dueDate.toISOString()
-        });
+        setCreatedOrder(newOrder);
+        setOrderNumber(newOrder.orderNumber);
+        
+        // Show the receipt modal
+        setReceiptVisible(true);
       } else {
         // If we got here, there was an error
         Alert.alert('Error', 'Failed to create order. Please try again.');
-        setConfirmationVisible(false);
       }
     } catch (error) {
       console.error('Error creating order:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
-      setConfirmationVisible(false);
+    } finally {
+      setLocalLoading(false);
     }
+  };
+
+  // Handle printing the receipt
+  const handlePrintReceipt = async () => {
+    const receiptData: PrintReceiptParams = {
+      businessName,
+      orderNumber: orderNumber,
+      customerName,
+      pickupDate: dueDate.toLocaleDateString(),
+      items: selectedItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      subtotal: calculatedSubtotal,
+      tax: calculatedTaxAmount,
+      tip: tipAmount,
+      total: grandTotal,
+      paymentMethod: 'CASH'
+    };
+
+    // Initialize printer discovery
+    await discoverPrinters();
+    
+    // Handle printing
+    await handlePrint(receiptData);
+  };
+
+  // Complete the order and return to dashboard
+  const handleCompleteOrder = () => {
+    navigation.navigate('DASHBOARD');
+    setReceiptVisible(false);
   };
 
   return (
@@ -240,7 +251,6 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
             categories={categories}
             onSelectService={(category) => {
               setSelectedServiceId(category.id);
-              // No longer automatically adding service to the cart
             }}
             isLoading={isLoadingCategories}
           />
@@ -296,7 +306,7 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
         </View>
         {/* Right Column: Order Summary and Payment Section */}
         <View style={styles.rightColumn}>
-          {/* Fixed Header with Title and Notes */}
+          {/* Fixed Header with Title */}
           <View style={styles.fixedHeaderContainer}>
             <Text style={styles.sectionTitle}>Order Summary</Text>
           </View>
@@ -346,59 +356,40 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
             <TouchableOpacity
               style={[
                 styles.processButton,
-                (selectedItems.length === 0 || isLoading) && styles.disabledButton
+                (selectedItems.length === 0 || localLoading) && styles.disabledButton
               ]}
               onPress={handleProcessOrder}
-              disabled={selectedItems.length === 0 || isLoading}
+              disabled={selectedItems.length === 0 || localLoading}
             >
               <Text style={styles.processButtonText}>
-                {isLoading ? 'Processing...' : 'Process Order'}
+                {localLoading ? 'Processing...' : 'Process Order'}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
-
-
-      {/* Order Confirmation Modal */}
-      <Modal
-        visible={confirmationVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmationVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.confirmationModal}>
-            <Text style={styles.confirmationTitle}>Confirm Order</Text>
-            <Text style={styles.confirmationText}>
-              Total: ${grandTotal.toFixed(2)}
-            </Text>
-            <Text style={styles.confirmationText}>
-              Due Date: {dueDate.toLocaleDateString()}
-            </Text>
-            <Text style={styles.confirmationText}>
-              Pickup Date: {dueDate.toLocaleDateString()}
-            </Text>
-
-            <View style={styles.confirmationButtons}>
-              <TouchableOpacity
-                style={[styles.confirmButton, styles.cancelButton]}
-                onPress={() => setConfirmationVisible(false)}
-              >
-                <Text style={styles.confirmButtonText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.confirmButton, styles.confirmButtonPrimary]}
-                onPress={confirmOrder}
-              >
-                <Text style={styles.confirmButtonText}>Confirm</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Receipt Modal */}
+      <ReceiptModal
+        visible={receiptVisible}
+        onClose={handleCompleteOrder} /* Changed to use handleCompleteOrder for close button too */
+        onComplete={handleCompleteOrder}
+        onPrint={handlePrintReceipt}
+        isPrinting={isPrinting}
+        isPrintingError={isPrintingError}
+        orderDetails={{
+          orderNumber: orderNumber,
+          customerName,
+          items: selectedItems,
+          subtotal: calculatedSubtotal,
+          tax: calculatedTaxAmount,
+          tip: tipAmount,
+          total: grandTotal,
+          paymentMethod: 'CASH',
+          pickupDate: dueDate.toISOString()
+        }}
+        businessName={businessName}
+      />
     </View>
   );
 };
@@ -446,7 +437,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   rightColumn: {
-    width: '33%', // Takes 40% of the width
+    width: '33%', 
     backgroundColor: '#f8f8f8',
     height: '100%',
   },
@@ -477,55 +468,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-
-  // Tip section
-  tipSection: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingBottom: 15,
-    backgroundColor: '#fff',
-  },
-  tipInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 15,
-    marginVertical: 10,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 4,
-    padding: 10,
-  },
-  tipDollarSign: {
-    fontSize: 18,
-    color: '#555',
-    marginRight: 5,
-  },
-  tipAmountInput: {
-    flex: 1,
-    fontSize: 18,
-    color: '#333',
-    padding: 0,
-  },
-  quickTipButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginHorizontal: 15,
-  },
-  quickTipButton: {
-    flex: 1,
-    backgroundColor: '#f0f0f0',
-    padding: 10,
-    marginHorizontal: 4,
-    borderRadius: 4,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  quickTipText: {
-    fontSize: 14,
-    color: '#333',
-  },
   // Process button
   processButton: {
     backgroundColor: '#4CAF50',
@@ -541,70 +483,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  // Notes section
-  notesSection: {
-    backgroundColor: '#fff',
-    marginBottom: 15,
-  },
-  notesInput: {
-    margin: 15,
-    padding: 10,
-    height: 100,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 4,
-    textAlignVertical: 'top',
-  },
-  // Confirmation modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  confirmationModal: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 20,
-    width: '80%',
-    maxWidth: 400,
-  },
-  confirmationTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  confirmationText: {
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  confirmationButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  confirmButton: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 4,
-    alignItems: 'center',
-    marginHorizontal: 5,
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  confirmButtonPrimary: {
-    backgroundColor: '#4CAF50',
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
   },
   fixedButtonContainer: {
     position: 'absolute',
@@ -660,7 +538,7 @@ const styles = StyleSheet.create({
   scrollableItemsContainer: {
     flex: 1,
     marginTop: 5,
-    marginBottom: 5,
+    marginBottom: 130, // Add enough space to see all items above the fixed bottom container
   },
 });
 
