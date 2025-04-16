@@ -120,12 +120,34 @@ export const deleteCategory = createAsyncThunk(
   'category/deleteCategory',
   async (categoryId: string, { rejectWithValue }) => {
     try {
+      // First, delete the category
       const { errors } = await client.models.Category.delete({
         id: categoryId
       });
-
       if (errors) {
         return rejectWithValue(errors[0]?.message || 'Failed to delete category');
+      }
+
+      // Next, fetch all items with this categoryId
+      const { data: items, errors: itemListErrors } = await client.models.Item.list({
+        filter: { categoryId: { eq: categoryId } }
+      });
+      if (itemListErrors) {
+        // Not a blocker for deleting the category, but log for debugging
+        console.error('Failed to fetch items for deleted category:', itemListErrors);
+      }
+      // Delete each item associated with this category
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (item && item.id) {
+            try {
+              await client.models.Item.delete({ id: item.id });
+            } catch (itemDeleteError) {
+              // Log but do not block the rest
+              console.error(`Failed to delete item ${item.id} after category deletion:`, itemDeleteError);
+            }
+          }
+        }
       }
 
       return categoryId;

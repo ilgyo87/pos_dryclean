@@ -275,10 +275,11 @@ export const loadStockService = async (
       return;
     }
     
-    // Create each item
+    // Create each item, always assigning the correct categoryId
     for (const item of items) {
       await createProduct({
         ...item,
+        // Explicitly set categoryId to the new service's id, overriding any existing value
         categoryId: newService.id
       });
     }

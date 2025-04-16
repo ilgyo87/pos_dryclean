@@ -64,8 +64,12 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
 
     // Fetch items when selected category changes
     useEffect(() => {
-        if (categories.length === 0 && selectedCategory !== null) {
-            setSelectedCategory(null);
+        // If all categories are deleted, show StockLoader immediately
+        if (categories.length === 0) {
+            setShowStockLoader(true);
+            if (selectedCategory !== null) {
+                setSelectedCategory(null);
+            }
             dispatch(clearItems());
             return;
         }
@@ -207,7 +211,7 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
                     </View>
                 ) : (
                     <ProductList
-                        products={items}
+                        products={selectedCategory ? items.filter(item => item.categoryId === selectedCategory) : []}
                         selectedService={selectedCategory}
                         onAddProduct={handleAddItem}
                         onEditProduct={handleEditItem}

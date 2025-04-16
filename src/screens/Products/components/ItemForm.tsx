@@ -2,6 +2,18 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { StyleSheet, View, Text, TextInput, Alert, ScrollView, Switch } from "react-native";
 import ProductImagePicker from '../../../components/ImagePicker';
+import { Image } from 'react-native';
+import { getImageSource } from '../../../utils/productImages';
+
+function getEffectiveImageSource(imageSource: string, imageUrl: string) {
+  if (imageSource && imageSource !== 'placeholder') {
+    return getImageSource(imageSource);
+  } else if (imageUrl && imageUrl.trim() !== '') {
+    return { uri: imageUrl.trim() };
+  } else {
+    return getImageSource('placeholder');
+  }
+}
 import { useSelector } from 'react-redux';
 import { RootState } from '../../../store';
 
@@ -206,7 +218,7 @@ const ItemForm = forwardRef(({
             autoCorrect={false}
           />
           <Text style={styles.helperText}>
-            Enter a URL for an image if you don't have a local image. Local images will be prioritized if both are available.
+            If you pick an image, it will override the URL for preview and saving. If you remove the picked image, the URL will be used.
           </Text>
         </View>
       </View>

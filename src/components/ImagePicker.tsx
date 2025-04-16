@@ -51,9 +51,12 @@ const ProductImagePicker: React.FC<ProductImagePickerProps> = ({
         onPress={() => setModalVisible(true)}
       >
         <Image 
-          source={getImageSource(null, currentImage)}
+          source={getImageSource(currentImage)}
           style={styles.previewImage}
         />
+        {currentImage && (currentImage.startsWith('http') || currentImage.startsWith('file:')) && (
+          <Text style={styles.uriLabel}>From Gallery/Camera</Text>
+        )}
         <Text style={styles.changeText}>Change Image</Text>
       </TouchableOpacity>
 
@@ -92,7 +95,7 @@ const ProductImagePicker: React.FC<ProductImagePickerProps> = ({
                     }}
                   >
                     <Image
-                      source={getImageSource(null, imageName)}
+                      source={getImageSource(imageName)}
                       style={styles.assetImage}
                     />
                     <Text style={styles.assetName} numberOfLines={1}>
@@ -138,6 +141,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#007AFF',
     fontWeight: '600',
+  },
+  uriLabel: {
+    marginTop: 4,
+    color: '#FF9500',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   modalContainer: {
     flex: 1,

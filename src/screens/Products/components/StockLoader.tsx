@@ -57,12 +57,10 @@ export default function StockLoader({
         const items = DEFAULT_ITEMS[categoryName];
         if (items && items.length > 0) {
           // For each item in this category, create it
+          // Collect per-item results
+          const itemResults: { name: string; success: boolean; error?: string }[] = [];
           for (const item of items) {
-            // Log what we're trying to create
-            console.log(`Creating item ${item.name} for category ${categoryId}`);
-            
             try {
-              // Create a clean item object with only the fields that match the schema
               const itemToCreate: any = {
                 categoryId,
                 name: item.name,
@@ -71,36 +69,34 @@ export default function StockLoader({
                 duration: item.duration || 0,
                 starch: item.starch || 'NONE',
                 pressOnly: item.pressOnly !== undefined ? item.pressOnly : false,
-                taxable: false, // Default value as per schema
+                taxable: false,
               };
-              
-              // Handle image source mapping
               if (item.imageSource) {
-                // Store the image source name without the extension
                 itemToCreate.imageSource = item.imageSource.replace('.png', '');
               }
-              
-              // Handle legacy imageUrl (if present)
               if (item.imageUrl && (item.imageUrl.startsWith('http://') || item.imageUrl.startsWith('https://'))) {
                 itemToCreate.imageUrl = item.imageUrl;
               }
-              
-              console.log(`Creating item with imageSource: ${itemToCreate.imageSource}`, itemToCreate);
-              
-              // Dispatch the create action
               const result = await dispatch(createItem(itemToCreate)).unwrap();
-              console.log(`Successfully created item: ${result.id}`);
-            } catch (error) {
-              console.error(`Error creating item ${item.name}:`, error);
+              itemResults.push({ name: item.name, success: true });
+            } catch (error: any) {
+              itemResults.push({ name: item.name, success: false, error: error?.message || String(error) });
             }
+          }
+          // Summarize results
+          const failed = itemResults.filter(r => !r.success);
+          if (failed.length > 0) {
+            Alert.alert(
+              "Some items failed",
+              failed.map(f => `${f.name}: ${f.error}`).join('\n')
+            );
+          } else {
+
           }
         }
       }
       
-      Alert.alert(
-        "Success", 
-        `Successfully loaded "${categoryName}" and its products.`
-      );
+
       onDataLoaded();
     } catch (error) {
       console.error(`Error loading category "${categoryName}":`, error);
@@ -189,10 +185,7 @@ export default function StockLoader({
         }
       }
       
-      Alert.alert(
-        "Success", 
-        "Successfully loaded all categories and products."
-      );
+
       onDataLoaded();
     } catch (error) {
       console.error("Error loading all stock data:", error);

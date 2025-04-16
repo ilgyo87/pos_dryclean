@@ -381,7 +381,7 @@ export default function CreateFormModal({
                   const categoryResult = await dispatch(deleteCategory(categoryId));
                   
                   if (deleteCategory.fulfilled.match(categoryResult)) {
-                    Alert.alert("Success", "Service deleted successfully!");
+
                     onClose();
                   } else if (deleteCategory.rejected.match(categoryResult)) {
                     Alert.alert("Error", `Failed to delete service: ${categoryResult.payload}`);

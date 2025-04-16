@@ -184,21 +184,29 @@ export const updateItem = createAsyncThunk(
       // Store the original imageSource for adding to Redux state later
       const originalImageSource = itemData.imageSource;
       // Only remove 'valid' field; save all other fields as provided
-      const { valid, ...directData } = itemData;
-      console.log('Saving itemData directly to API (update):', directData);
+      const { valid, userId, ...rest } = itemData;
+      // Only include imageUrl if it's a non-empty string
+      // Build cleanedData with id included at creation to avoid readonly assignment
+      const cleanedData: Schema['Item']['type'] = {
+        id: itemData.id,
+        ...rest
+      };
+      // Remove 'valid' property if present
+      delete (cleanedData as any).valid;
+      console.log('Saving cleaned itemData to API (update):', cleanedData);
       
       // Use a simpler approach that bypasses the problematic code
       console.log('Attempting simplified update for item:', itemData.id);
       
       try {
-        if (!directData.id) {
+        if (!cleanedData.id) {
           return rejectWithValue('Item ID is required for update');
         }
         
-        console.log(`Updating item ID ${directData.id} with data:`, directData);
+        console.log(`Updating item ID ${cleanedData.id} with data:`, cleanedData);
         
-        // Use a straightforward update approach
-        const updateResult = await client.models.Item.update(directData);
+        // Use the Amplify Gen 2 update mutation
+        const updateResult = await client.models.Item.update(cleanedData as Schema['Item']['type']);
         
         console.log('Update result:', updateResult);
         
