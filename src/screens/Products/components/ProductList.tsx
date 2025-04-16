@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Schema } from '../../../../amplify/data/resource';
-import { getImageSource } from '../../../utils/productImages';
+import { getEffectiveImageSource } from './getEffectiveImageSource';
 
 interface ProductListProps {
   products: Schema["Item"]["type"][];
@@ -32,24 +32,10 @@ const ProductList: React.FC<ProductListProps> = ({
   });
   
   const getItemImage = (item: Schema["Item"]["type"]) => {
-    console.log('getItemImage called with:', item);
-    
-    // First priority: imageSource if available and not placeholder
-    if (item.imageSource && item.imageSource !== 'placeholder') {
-      console.log('Using imageSource:', item.imageSource);
-      return getImageSource(item.imageSource);
-    }
-    // Second priority: imageUrl if available
-    else if (item.imageUrl) {
-      console.log('Using imageUrl:', item.imageUrl);
-      return getImageSource(item.imageUrl);
-    }
-    // Fallback: placeholder
-    else {
-      console.log('Using placeholder image');
-      return getImageSource('placeholder');
-    }
+    // Always prefer imageUrl (S3) over imageSource
+    return getEffectiveImageSource(item.imageSource || '', item.imageUrl || '');
   };
+
 
   const renderItem = ({ item }: { item: Schema["Item"]["type"] }) => {
     // Log the item details to help with debugging
@@ -88,12 +74,7 @@ const ProductList: React.FC<ProductListProps> = ({
             <Text style={styles.productPrice}>${item.price?.toFixed(2) || "0.00"}</Text>
           </View>
           
-          {/* Small indicator showing the imageSource name */}
-          {item.imageSource && (
-            <View style={styles.imageSourceTag}>
-              <Text style={styles.imageSourceText}>{item.imageSource}</Text>
-            </View>
-          )}
+
         </View>
       </TouchableOpacity>
     );

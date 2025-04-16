@@ -12,8 +12,12 @@ import PredictiveSearch from "../../components/PredictiveSearch";
 
 const client = generateClient<Schema>();
 
+import BusinessForm from '../../components/BusinessForm';
+
 export default function Dashboard({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
   const [business, setBusiness] = useState<Schema['Business']['type'] | null>(null);
+  // Modal state for business creation
+  const [showBusinessModal, setShowBusinessModal] = useState(false); // deprecated, use business === null
   const [isLoading, setIsLoading] = useState(true);
   const [customers, setCustomers] = useState<Schema['Customer']['type'][]>([]);
 
@@ -137,6 +141,18 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
           <View style={styles.header}>
             <Text style={styles.businessName}>{business.name}</Text>
           </View>
+        )}
+
+        {/* Show BusinessForm modal only if no business exists */}
+        {business === null && (
+          <BusinessForm
+            onCloseModal={() => {}}
+            createOrEdit="create"
+            params={{}}
+            onBusinessCreated={() => {
+              fetchBusinessData();
+            }}
+          />
         )}
 
         <View style={styles.searchContainer}>

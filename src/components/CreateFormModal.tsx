@@ -107,7 +107,7 @@ export default function CreateFormModal({
     try {
       setLoading(true);
       console.log('About to validate form data');
-      const formData = formRef.current.validateAndGetFormData();
+      const formData = await formRef.current.validateAndGetFormData();
       console.log('Form data result:', formData);
 
       if (!formData) {

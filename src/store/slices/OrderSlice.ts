@@ -163,61 +163,73 @@ export const fetchOrderById = createAsyncThunk(
   }
 );
 
+import { createOrderWithItems } from '../../../amplify/data/orderData';
+
 export const createOrder = createAsyncThunk(
   'order/createOrder',
   async (orderData: OrderData, { rejectWithValue }) => {
     try {
-      // Generate a unique order number
+      // Prepare order input (only allowed fields)
       const orderNumber = generateOrderNumber();
-      
-      // Use a properly typed object according to the Schema type definition
-      // This uses the exact input type expected by Amplify Gen 2
+      // Utility to remove undefined fields
+      function cleanInput<T extends object>(input: T): Partial<T> {
+        return Object.fromEntries(
+          Object.entries(input).filter(([_, v]) => v !== undefined)
+        ) as Partial<T>;
+      }
+
+      if (!orderData.customerId) {
+        return rejectWithValue("customerId is required to create an order.");
+      }
+      // Construct orderInput directly, setting notes or null, and all required fields
       const orderInput = {
-        orderNumber: orderNumber,
+        orderNumber,
         orderDate: new Date().toISOString(),
         status: orderData.status,
         pickupDate: orderData.pickupDate,
-        notes: orderData.notes ? [orderData.notes] : null,
         customerId: orderData.customerId,
-        employeeId: orderData.employeeId
+        notes: orderData.notes ? [orderData.notes] : null,
+        employeeId: orderData.employeeId,
+        subtotal: orderData.subtotal,
+        tax: orderData.tax,
+        tip: orderData.tip,
+        total: orderData.total,
+        paymentMethod: orderData.paymentMethod,
+        amountTendered: orderData.amountTendered,
+        change: orderData.change
+        // Add more fields as needed from your schema, but do not include 'items'
       };
-      
-      const { data: orderResult, errors: orderErrors } = await client.models.Order.create(orderInput);
-      
-      console.log('Order creation result:', orderResult);
-      console.log('Order creation errors:', orderErrors);
-      
-      if (orderErrors) {
-        console.error('Error creating order:', orderErrors);
-        return rejectWithValue(orderErrors[0]?.message || 'Failed to create order');
-      }
-      
-      if (!orderResult) {
-        return rejectWithValue('Order creation failed - no data returned');
-      }
-      
-      // Create order items for each item
-      for (const item of orderData.items) {
-        const orderItemInput = {
-          orderId: orderResult.id, // lowercase 'orderId' to match schema
-          quantity: item.quantity,
-          price: item.price,
-          taxable: item.type === 'service' ? false : true,
-          duration: item.type === 'service' ? 30 : undefined, // default duration for services
-          notes: [],
-          specialInstructions: []
-        };
-        
-        const { errors: itemErrors } = await client.models.OrderItem.create(orderItemInput);
-        
-        if (itemErrors) {
-          console.error('Error creating order item:', itemErrors);
-          // Continue with other items - we still want to create as many as possible
-        }
-      }
-      
+
+
+      // Prepare order items input (exclude orderId)
+      const orderItemsInput = orderData.items.map(item => cleanInput({
+        itemId: item.itemId,
+        quantity: item.quantity,
+        price: item.price,
+        type: item.type,
+        serviceId: item.serviceId
+        // Add more fields as needed
+      }));
+
+      // Use the helper to create order and items
+      const { order, orderItems } = await createOrderWithItems(
+        async (data) => {
+          const { data: created, errors } = await client.models.Order.create(data as any);
+          if (errors) throw new Error(errors[0]?.message || 'Order creation failed');
+          return created;
+        },
+        async (data) => {
+          const { data: created, errors } = await client.models.OrderItem.create(data as any);
+          if (errors) throw new Error(errors[0]?.message || 'OrderItem creation failed');
+          return created;
+        },
+        orderInput,
+        orderItemsInput
+      );
+
       // Return the created order
-      return makeSerializable(orderResult);
+      return makeSerializable(order);
+
     } catch (error) {
       console.error('Error in createOrder thunk:', error);
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to create order');

@@ -3,6 +3,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { generateClient } from 'aws-amplify/data';
 import { Schema } from '../../../amplify/data/resource';
 import type { RootState } from '../index';
+import { deleteS3Image } from '../../utils/s3ImageUtils';
 
 const client = generateClient<Schema>();
 
@@ -116,6 +117,8 @@ export const createItem = createAsyncThunk(
       
       // Only remove 'valid' field; save all other fields as provided
       const { valid, ...directData } = itemData;
+      // Ensure imageUrlPreferred is set based on imageUrl
+      directData.imageUrlPreferred = !!(directData.imageUrl && /^https?:\/\//.test(directData.imageUrl));
       console.log('Saving itemData directly to API:', directData);
       
       try {
@@ -166,7 +169,7 @@ export const createItem = createAsyncThunk(
 
 export const updateItem = createAsyncThunk(
   'item/updateItem',
-  async (itemData: any, { rejectWithValue }) => {
+  async (itemData: any, { rejectWithValue, getState }) => {
     try {
       // Validate ID and required fields
       if (!itemData.id) {
@@ -183,6 +186,23 @@ export const updateItem = createAsyncThunk(
 
       // Store the original imageSource for adding to Redux state later
       const originalImageSource = itemData.imageSource;
+
+      // --- S3 IMAGE DELETE LOGIC ---
+      // Get previous item from state
+      const state: any = getState();
+      const prevItem = state.item.items.find((i: any) => i.id === itemData.id);
+      if (prevItem) {
+        const prevImageSource = prevItem.imageSource;
+        // If the previous imageSource is a S3 key, and the imageSource is being changed, delete the old S3 image
+        if (
+          typeof prevImageSource === 'string' &&
+          prevImageSource.startsWith('public/products/') &&
+          prevImageSource !== itemData.imageSource
+        ) {
+          // Fire and forget
+          deleteS3Image(prevImageSource);
+        }
+      }
       // Only remove 'valid' field; save all other fields as provided
       const { valid, userId, ...rest } = itemData;
       // Only include imageUrl if it's a non-empty string
@@ -191,6 +211,12 @@ export const updateItem = createAsyncThunk(
         id: itemData.id,
         ...rest
       };
+      // Ensure imageUrlPreferred is set based on imageUrl
+      cleanedData.imageUrlPreferred = !!(cleanedData.imageUrl && /^https?:\/\//.test(cleanedData.imageUrl));
+      // Remove imageUrl if it's undefined, null, or empty string
+      if (!cleanedData.imageUrl) {
+        delete (cleanedData as any).imageUrl;
+      }
       // Remove 'valid' property if present
       delete (cleanedData as any).valid;
       console.log('Saving cleaned itemData to API (update):', cleanedData);

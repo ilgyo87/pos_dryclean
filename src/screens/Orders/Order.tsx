@@ -16,6 +16,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../store";
 import { fetchOrders, updateOrderStatus, fetchOrderItemsCount } from "../../store/slices/OrderSlice";
 import OrderCard from "./components/OrderCard";
+import OrderCreatedModal from "./components/OrderCreatedModal";
 import FilterTabs from "./components/FilterTabs";
 import SearchBar from "../../components/SearchBar";
 
@@ -38,6 +39,11 @@ export default function Orders({ user, employee, navigation }: {
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [orderItemCounts, setOrderItemCounts] = useState<Record<string, number>>({});
+
+  // Modal state for CREATED order
+  const [createdModalVisible, setCreatedModalVisible] = useState(false);
+  const [modalOrder, setModalOrder] = useState<any | null>(null);
+  const [modalOrderItems, setModalOrderItems] = useState<any[]>([]);
 
   // Get the default business ID
   const defaultBusinessId = businesses.length > 0 ? businesses[0].id : "";
@@ -108,10 +114,17 @@ export default function Orders({ user, employee, navigation }: {
     }
   };
 
-  // Navigate to order details
+  // Handle order press: show modal if CREATED, else navigate
   const handleOrderPress = (orderId: string) => {
-    // Navigate to order details screen when implemented
-    navigator.navigate('OrderDetails', { orderId });
+    const order = orders.find((o: any) => o.id === orderId);
+    if (order && order.status === 'CREATED') {
+      // Assume order.orderItems holds the items; fallback to []
+      setModalOrder(order);
+      setModalOrderItems(Array.isArray(order.orderItems) ? order.orderItems : []);
+      setCreatedModalVisible(true);
+    } else {
+      navigator.navigate('OrderDetails', { orderId });
+    }
   };
 
   // Get total items count for an order
@@ -185,8 +198,34 @@ export default function Orders({ user, employee, navigation }: {
     { id: 'DELIVERED', label: 'Delivered', icon: 'home' },
   ];
 
+  // Remove item from modal order items
+  const handleRemoveModalItem = (itemId: string) => {
+    setModalOrderItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  // Print all handler (stub)
+  const handlePrintAll = () => {
+    // Implement print logic here
+    alert('Print All clicked!');
+  };
+
+  // Close modal
+  const handleCloseModal = () => {
+    setCreatedModalVisible(false);
+    setModalOrder(null);
+    setModalOrderItems([]);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
+      <OrderCreatedModal
+        visible={createdModalVisible}
+        orderNumber={modalOrder?.orderNumber || ''}
+        items={modalOrderItems}
+        onClose={handleCloseModal}
+        onRemoveItem={handleRemoveModalItem}
+        onPrintAll={handlePrintAll}
+      />
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Orders</Text>

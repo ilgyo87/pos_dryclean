@@ -4,12 +4,13 @@ import { StyleSheet, View, Text, TextInput, Alert, ScrollView, Switch } from "re
 import ProductImagePicker from '../../../components/ImagePicker';
 import { Image } from 'react-native';
 import { getImageSource } from '../../../utils/productImages';
+import { uploadData, getUrl } from '@aws-amplify/storage';
 
 function getEffectiveImageSource(imageSource: string, imageUrl: string) {
-  if (imageSource && imageSource !== 'placeholder') {
-    return getImageSource(imageSource);
-  } else if (imageUrl && imageUrl.trim() !== '') {
+  if (imageUrl && imageUrl.trim() !== '') {
     return { uri: imageUrl.trim() };
+  } else if (imageSource && imageSource !== 'placeholder') {
+    return getImageSource(imageSource);
   } else {
     return getImageSource('placeholder');
   }
@@ -76,7 +77,9 @@ const ItemForm = forwardRef(({
         setImageSource('placeholder');
       }
     },
-    validateAndGetFormData: () => {
+    validateAndGetFormData: async () => {
+      // imageUrlPreferred: true if imageUrl is a valid HTTP(S) URL, else false
+
       console.log('ItemForm.validateAndGetFormData called');
 
       // Basic validation
@@ -103,14 +106,48 @@ const ItemForm = forwardRef(({
         ? parseInt(duration, 10)
         : undefined;
 
+      // --- IMAGE UPLOAD LOGIC ---
+      let finalImageUrl: string | undefined = undefined;
+      // If a device image is selected, upload and use it
+      if (imageSource && imageSource.startsWith('file://')) {
+        // Use item name (slugified) as ID for new items, or item ID for edits
+        const itemId = (createOrEdit === 'edit' && existingItem?.id)
+          ? existingItem.id
+          : name.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+        try {
+          const extension = imageSource.split('.').pop() || 'jpg';
+          // Remove 'public/' prefix, Amplify handles it via accessLevel
+          const key = `products/${itemId}.${extension}`;
+          // Convert file URI to Blob
+          const response = await fetch(imageSource);
+          const blob = await response.blob();
+          await uploadData({ key, data: blob, options: { contentType: `image/${extension}`, accessLevel: 'guest' } }).result;
+          const { url } = await getUrl({ key, options: { accessLevel: 'guest' } });
+          finalImageUrl = String(url);
+        } catch (err) {
+          console.error('Image upload failed:', err);
+        }
+      } else if (imageSource && imageSource !== 'placeholder') {
+        // If imageSource is a remote URL (not file://), use it directly
+        finalImageUrl = imageSource.trim();
+      } else if (imageUrl && imageUrl.trim() !== '') {
+        // If imageSource is empty or 'placeholder', use the imageUrl field (user input)
+        finalImageUrl = imageUrl.trim();
+      }
+      // --- END IMAGE UPLOAD LOGIC ---
+
+      function isValidHttpUrl(str: string | undefined): str is string {
+        return typeof str === 'string' && /^https?:\/\//.test(str);
+      }
       const itemData = {
         name: name.trim(),
         description: description.trim() || undefined,
         price: formattedPrice,
         duration: formattedDuration,
         taxable,
-        imageUrl: imageUrl.trim() || undefined,
+        imageUrl: isValidHttpUrl(finalImageUrl) ? finalImageUrl : undefined,
         imageSource,
+        imageUrlPreferred: isValidHttpUrl(finalImageUrl),
         categoryId,
         valid: true // Add valid flag for successful validation
       };
@@ -204,7 +241,10 @@ const ItemForm = forwardRef(({
         <Text style={styles.label}>Product Image</Text>
         <ProductImagePicker
           currentImage={imageSource}
-          onImageSelected={setImageSource}
+          onImageSelected={(uri: string) => {
+            setImageSource(uri);
+            setImageUrl(''); // Clear imageUrl when picking a device image
+          }}
         />
 
         <View style={styles.inputContainer}>
@@ -213,7 +253,12 @@ const ItemForm = forwardRef(({
             style={styles.input}
             placeholder="https://example.com/image.jpg"
             value={imageUrl}
-            onChangeText={setImageUrl}
+            onChangeText={(text) => {
+              setImageUrl(text);
+              if (text.trim() !== '') {
+                setImageSource(''); // Clear imageSource when entering a URL
+              }
+            }}
             autoCapitalize="none"
             autoCorrect={false}
           />

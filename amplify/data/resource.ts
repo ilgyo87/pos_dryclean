@@ -60,6 +60,7 @@ const schema = a.schema({
       taxable: a.boolean().default(false),
       imageUrl: a.url(),
       imageSource: a.string(),
+      imageUrlPreferred: a.boolean().default(false),
       starch: a.enum(['NONE', 'LIGHT', 'MEDIUM', 'HEAVY']),
       pressOnly: a.boolean().default(false),
       // Relationships
@@ -196,13 +197,13 @@ const schema = a.schema({
       // Relationships
       customerId: a.id().required(),
       customer: a.belongsTo('Customer', 'customerId'),
-      // orderItemId: a.id(),
+      orderItemId: a.id(),
       // orderItem: a.belongsTo('OrderItem', 'orderItemId'),
-      // orderId: a.id(),
+      orderId: a.id(),
       // order: a.belongsTo('Order', 'orderId'),
-      // employeeId: a.id(),
+      employeeId: a.id(),
       // employee: a.belongsTo('Employee', 'employeeId'),
-      // garmentProcessingEvents: a.hasMany('GarmentProcessingEvent', 'garmentId')
+      garmentProcessingEvents: a.hasMany('GarmentProcessingEvent', 'garmentId')
     })
     .authorization((allow) => [
       allow.owner(),
@@ -226,8 +227,8 @@ const schema = a.schema({
       notes: a.string().array(),
       imageUrl: a.url(),
       // Relationships
-      // garmentId: a.id().required(),
-      // garment: a.belongsTo('Garment', 'garmentId'),
+      garmentId: a.id().required(),
+      garment: a.belongsTo('Garment', 'garmentId'),
       // employeeId: a.id(),
       // employee: a.belongsTo('Employee', 'employeeId'),
     })
@@ -241,6 +242,7 @@ const schema = a.schema({
       orderNumber: a.string().required(),
       orderDate: a.datetime().required(),
       dueDate: a.datetime(),
+      pickupDate: a.datetime(),
       status: a.enum([
         'CREATED',
         'PROCESSING',
@@ -253,11 +255,14 @@ const schema = a.schema({
         'FAILED'
       ]),
       notes: a.string().array(),
-      estimatedTotal: a.float(),
-      taxes: a.float(),
-      tips: a.float(),
-      actualTotal: a.float(),
+      subtotal: a.float(),
+      tax: a.float(),
+      tip: a.float(),
+      total: a.float(),
       discount: a.float().default(0),
+      amountTendered: a.float(),
+      change: a.float(),
+      paymentMethod: a.string(),
       additionalCharges: a.float().default(0),
       priority: a.integer().default(0),
       // Delivery specific fields

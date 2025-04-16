@@ -10,12 +10,14 @@ const BusinessForm = forwardRef(({
   onCloseModal, 
   createOrEdit, 
   params, 
-  onFormChange 
+  onFormChange,
+  onBusinessCreated
 }: { 
   onCloseModal: () => void, 
   createOrEdit: 'create' | 'edit', 
   params: Record<string, any>,
-  onFormChange?: () => void 
+  onFormChange?: () => void,
+  onBusinessCreated?: () => void
 }, ref) => {
     // Get existing business if in edit mode
     const existingBusiness = createOrEdit === 'edit' ? params?.business : null;
@@ -140,6 +142,20 @@ const BusinessForm = forwardRef(({
             onFormChange();
         }
     }, []);
+
+    // ... (rest of component logic)
+
+    // Example: Call this after successful business creation (pseudo-code)
+    const handleCreateBusiness = async () => {
+        // ... your creation logic (API call, Redux dispatch, etc.)
+        // Assume creation is successful:
+        if (onBusinessCreated) {
+            onBusinessCreated();
+        }
+        if (onCloseModal) {
+            onCloseModal();
+        }
+    };
 
     return (
         <View style={styles.container}>
