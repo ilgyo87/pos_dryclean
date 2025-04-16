@@ -8,6 +8,7 @@ import { ActivityIndicator } from "react-native";
 import Toast from 'react-native-toast-message';
 import { useAppDispatch, useAppSelector } from './store/hooks';
 import { fetchBusinesses } from './store/slices/BusinessSlice';
+import { Schema } from "../amplify/data/resource";
 
 export default function AuthenticatedApp() {
     const { user } = useAuthenticator((context) => [context.user]);
@@ -52,6 +53,12 @@ export default function AuthenticatedApp() {
                         params={{ userId }}
                         type="Business"
                         createOrEdit="create"
+                        onBusinessCreated={() => {
+                          // Refetch businesses so Dashboard can display the name
+                          dispatch(fetchBusinesses(userId)).then((result) => {
+                            setIsBusinessAvailable((result.payload as Schema['Business']['type'][]).length > 0);
+                          });
+                        }}
                     />
                 ) : (
                     isLoading && (

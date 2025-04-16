@@ -28,6 +28,7 @@ interface CreateFormModalProps {
   params: Record<string, any>;
   type: 'Business' | 'Customer' | 'Employee' | 'Category' | 'Item';
   createOrEdit: 'create' | 'edit';
+  onBusinessCreated?: () => void;
 }
 
 export default function CreateFormModal({
@@ -35,7 +36,8 @@ export default function CreateFormModal({
   onClose,
   params,
   type,
-  createOrEdit
+  createOrEdit,
+  onBusinessCreated
 }: CreateFormModalProps): JSX.Element {
   // Track form changes to enable/disable reset button
   const [formChanged, setFormChanged] = useState(false);
@@ -145,6 +147,7 @@ export default function CreateFormModal({
               if (createBusiness.fulfilled.match(resultAction)) {
                 console.log('Business creation succeeded');
                 Alert.alert("Success", "Business created successfully!");
+                if (onBusinessCreated) onBusinessCreated();
                 onClose();
               } else if (createBusiness.rejected.match(resultAction)) {
                 console.log('Business creation failed:', resultAction.payload);
@@ -596,16 +599,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: 24, // More padding for tablet
   },
   modalContent: {
+    flex: 1, // <--- Add this
     backgroundColor: 'white',
-    padding: 32,
+    paddingTop: 20,
     borderRadius: 18,
-    width: 480,
-    maxWidth: '95%',
+    width: '90%',
+    maxWidth: 500,
     minWidth: 320,
-    maxHeight: '80%',
+    maxHeight: '70%',
     alignSelf: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -620,20 +623,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    alignSelf: 'center',
   },
   formContainer: {
-    flexGrow: 0,
-    maxHeight: 320,
-    minHeight: 120,
+    flex: 1,
     width: '100%',
-    marginBottom: 24,
+    alignSelf: 'stretch',
+    padding: 20,
   },
   buttonContainer: {
-    marginTop: 35,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 5,
-    borderTopWidth: 1,
+    borderTopWidth: 6,
+    paddingBottom: 20,
+    alignSelf: 'center',
     borderTopColor: '#eee',
   },
   leftButtons: {
@@ -643,6 +646,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   buttonSpacing: {
-    marginHorizontal: 5,
+    marginHorizontal: 20,
   }
 });

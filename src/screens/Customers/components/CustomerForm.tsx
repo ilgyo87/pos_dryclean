@@ -259,11 +259,12 @@ const CustomerForm = forwardRef(({
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        padding: 10,
+        width: '100%',
     },
     formContainer: {
         flex: 1,
+        width: '100%',
+        alignSelf: 'stretch',
     },
     label: {
         marginBottom: 5,
@@ -275,6 +276,8 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         padding: 10,
         marginBottom: 15,
+        width: '100%',
+        alignSelf: 'stretch',
     },
     validInput: {
         borderColor: '#4CAF50',  // Green for valid

@@ -14,10 +14,9 @@ const client = generateClient<Schema>();
 
 import BusinessForm from '../../components/BusinessForm';
 
-export default function Dashboard({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
+export default function Dashboard({ user, navigation, isBusinessAvailable }: { user: AuthUser | null, navigation?: any, isBusinessAvailable: boolean }) {
   const [business, setBusiness] = useState<Schema['Business']['type'] | null>(null);
   // Modal state for business creation
-  const [showBusinessModal, setShowBusinessModal] = useState(false); // deprecated, use business === null
   const [isLoading, setIsLoading] = useState(true);
   const [customers, setCustomers] = useState<Schema['Customer']['type'][]>([]);
 
@@ -33,6 +32,12 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
       fetchBusinessData();
     }, [])
   );
+
+  useEffect(() => {
+    if (isBusinessAvailable) {
+      fetchBusinessData();
+    }
+  }, [isBusinessAvailable]);
   const fetchBusinessData = async () => {
     if (!user) {
       setIsLoading(false);
@@ -156,27 +161,7 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
           />
         </View>
       </View>
-      {/* Modal overlays dashboard when business === null */}
-      <Modal
-        visible={business === null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {}}
-      >
-        <View style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: 'rgba(0,0,0,0.35)'
-        }}>
-          <BusinessForm
-            onCloseModal={() => {}}
-            createOrEdit="create"
-            params={{}}
-            onBusinessCreated={fetchBusinessData}
-          />
-        </View>
-      </Modal>
+      {/* Removed duplicate Modal for business creation. This is now handled globally in AuthenticatedApp. */}
     </SafeAreaView>
   );
 }

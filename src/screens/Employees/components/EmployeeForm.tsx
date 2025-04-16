@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     sectionHeader: {
-        fontSize: 16,
+        fontSize: 25,
         fontWeight: 'bold',
         marginTop: 16,
         marginBottom: 8,
