@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { createOrder } from '../../store/slices/OrderSlice';
+import { createOrder, createOrderItem } from '../../store/slices/OrderSlice';
 import { fetchCategories } from '../../store/slices/CategorySlice';
 import { fetchItems } from '../../store/slices/ItemSlice';
 import { RootState, AppDispatch } from '../../store';
@@ -26,13 +26,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePrinter, PrintReceiptParams } from './hooks/usePrinter';
 
 // Define the CartItem interface for items in the order
+// Consider moving this to src/types/CartItem.ts and importing everywhere for type unification
 interface CartItem {
-  id: string;
+  id: string; // unique identifier for product or service
   name: string;
   price: number;
   quantity: number;
   type: 'service' | 'product';
-  serviceId?: string;
+  orderId: string;
+  orderNumber: string;
 }
 
 const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: string, name: string } | null }) => {
@@ -97,27 +99,27 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
 
   // Function to handle adding new items to the order
   const handleAddItem = (newItem: CartItem) => {
-    // Check if item already exists in the order
-    const existingItemIndex = selectedItems.findIndex(item =>
-      item.id === newItem.id && item.type === newItem.type
-    );
+  // Check if item already exists in the order by id and type
+  const existingItemIndex = selectedItems.findIndex(item =>
+    item.id === newItem.id && item.type === newItem.type
+  );
 
-    if (existingItemIndex !== -1) {
-      // Item exists, update its quantity
-      const updatedItems = [...selectedItems];
-      updatedItems[existingItemIndex].quantity += 1;
-      setSelectedItems(updatedItems);
-    } else {
-      // Item doesn't exist, add it
-      setSelectedItems([...selectedItems, newItem]);
-    }
-  };
+  if (existingItemIndex !== -1) {
+    // Item exists, update its quantity
+    const updatedItems = [...selectedItems];
+    updatedItems[existingItemIndex].quantity += 1;
+    setSelectedItems(updatedItems);
+  } else {
+    // Item doesn't exist, add it
+    setSelectedItems([...selectedItems, newItem]);
+  }
+};
 
   // Function to remove an item from the order
   const handleRemoveItem = (itemId: string) => {
-    const updatedItems = selectedItems.filter(item => item.id !== itemId);
-    setSelectedItems(updatedItems);
-  };
+  const updatedItems = selectedItems.filter(item => item.id !== itemId);
+  setSelectedItems(updatedItems);
+};
 
   // Fetch categories and items when component mounts or user changes
   useEffect(() => {
@@ -150,54 +152,63 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
   // Process the order
   const handleProcessOrder = async () => {
     if (selectedItems.length === 0) {
-      Alert.alert("Error", "Please add at least one item to the order.");
+      Alert.alert('No items selected', 'Please add at least one item to the order.');
       return;
     }
+    setLocalLoading(true);
+    setLocalError(null);
 
     try {
-      setLocalLoading(true);
-
-      // Create order object from our selections
-      const orderData = {
+      // 1. Create the order WITHOUT items (just parent order)
+      const orderPayload = {
         customerId,
         businessId,
-        items: selectedItems.map(item => ({
-          itemId: item.id,
-          quantity: item.quantity,
-          price: item.price,
-          type: item.type,
-          serviceId: item.serviceId
-        })),
         subtotal: calculatedSubtotal,
         tax: calculatedTaxAmount,
         tip: tipAmount,
         total: grandTotal,
-        paymentMethod: 'CASH', // Default to cash - you could add payment method selection
+        paymentMethod: 'CASH',
         amountTendered: grandTotal,
         change: 0,
-        status: 'CREATED' as const,
+        status: "CREATED" as const,
         pickupDate: dueDate.toISOString(),
-        employeeId: employee?.id,
         notes: additionalNotes,
+        employeeId: employee?.id,
       };
-
-      // Dispatch create order action
-      const resultAction = await dispatch(createOrder(orderData));
-
-      if (createOrder.fulfilled.match(resultAction)) {
-        // Order was created successfully
-        const newOrder = resultAction.payload;
-        setCreatedOrder(newOrder);
-        setOrderNumber(newOrder.orderNumber);
-        
-        // Show the receipt modal
-        setReceiptVisible(true);
-      } else {
-        // If we got here, there was an error
-        Alert.alert('Error', 'Failed to create order. Please try again.');
+      const resultAction = await dispatch(createOrder(orderPayload));
+      if (!createOrder.fulfilled.match(resultAction)) {
+        setLocalError('Failed to create order.');
+        setLocalLoading(false);
+        return;
       }
+      if (!resultAction.payload) {
+        setLocalError('Order creation failed: No payload returned.');
+        setLocalLoading(false);
+        return {id: "1", orderNumber: "1"};
+      }
+      const createdOrder = resultAction.payload.order;
+      const orderId = createdOrder.id;
+      const orderNumber = createdOrder.orderNumber;
+      setCreatedOrder(createdOrder);
+      setOrderNumber(orderNumber);
+
+      // 2. Create all order items, each referencing the new orderId/orderNumber
+      await Promise.all(selectedItems.map(item =>
+        dispatch(
+          createOrderItem({
+            orderId,
+            orderNumber,
+            itemId: item.id,
+            quantity: item.quantity,
+            price: item.price,
+            type: item.type,
+          })
+        )
+      ));
+
+      setReceiptVisible(true);
     } catch (error) {
-      console.error('Error creating order:', error);
+      setLocalError(error instanceof Error ? error.message : 'Failed to process order.');
       Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setLocalLoading(false);
@@ -265,11 +276,13 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
                   const service = categories.find(cat => cat.id === selectedServiceId);
                   if (service) {
                     handleAddItem({
-                      id: service.id,
+                      id: service.id, // <-- set id for CartItem
                       name: service.name,
                       price: service.price || 0,
                       quantity: 1,
-                      type: 'service'
+                      type: 'service',
+                      orderId: createdOrder?.id,
+                      orderNumber: orderNumber
                     });
                   }
                 }}
@@ -287,12 +300,13 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
               selectedServiceId={selectedServiceId}
               onSelectProduct={(product) => {
                 handleAddItem({
-                  id: product.id,
+                  id: product.id, // <-- set id for CartItem
                   name: product.name,
                   price: product.price || 0,
                   quantity: 1,
                   type: 'product',
-                  serviceId: product.categoryId
+                  orderId: createdOrder?.id,
+                  orderNumber: orderNumber
                 });
               }}
               isLoading={isLoadingItems}

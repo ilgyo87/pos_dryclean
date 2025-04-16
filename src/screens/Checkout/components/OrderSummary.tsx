@@ -2,14 +2,15 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+// Unified CartItem type (consider importing from a shared types file)
 type CartItem = {
   id: string;
   name: string;
   price: number;
   quantity: number;
   type: 'service' | 'product';
-  serviceId?: string;
-  imageUrl?: string | null;
+  orderId: string;
+  orderNumber: string;
 };
 
 interface OrderSummaryProps {

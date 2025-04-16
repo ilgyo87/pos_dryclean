@@ -14,7 +14,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../../store';
-import { fetchOrderById, updateOrderStatus } from '../../../store/slices/OrderSlice';
+import { fetchOrderById, updateOrderStatus, fetchOrderItems } from '../../../store/slices/OrderSlice';
 import OrderSummary from '../../Checkout/components/OrderSummary';
 
 // Order status types
@@ -29,15 +29,23 @@ export default function OrderDetails() {
   const { orderId } = route.params || {};
   
   // Redux state
-  const { currentOrder, isLoading, error } = useSelector((state: RootState) => state.order);
+  const {
+    currentOrder,
+    isLoading: orderLoading,
+    error: orderError,
+    orderItems,
+    orderItemsLoading,
+    orderItemsError
+  } = useSelector((state: RootState) => state.order);
   
   // Local state
   const [refreshing, setRefreshing] = useState(false);
   
-  // Fetch order details when component mounts
+  // Fetch order details and order items when component mounts
   useEffect(() => {
     if (orderId) {
       dispatch(fetchOrderById(orderId));
+      dispatch(fetchOrderItems(orderId));
     }
   }, [dispatch, orderId]);
   
@@ -155,33 +163,27 @@ export default function OrderDetails() {
     }
   };
   
-  // Extract order items for display
-  // Handle orderItems which may be a LazyLoader type
-  const orderItemsArray = Array.isArray(currentOrder?.orderItems) 
-    ? currentOrder?.orderItems 
-    : (typeof currentOrder?.orderItems === 'function' 
-        ? [] // If it's a function (LazyLoader), we can't use it directly
-        : (currentOrder?.orderItems as any)?.items || []); // Try to access items array if it exists
-        
-  // Map the array to our display format
-  const orderItems = (orderItemsArray || []).map((item: any) => ({
+  // Use order items from the Redux orderItem slice
+  const displayOrderItems = (orderItems || []).map((item: any) => ({
     id: item.id,
-    name: item.name || `Item #${item.id.substring(0, 6)}`, // Use ID if name not available
+    name: item.name || `Item #${item.id?.substring(0, 6)}`,
     price: item.price || 0,
     quantity: item.quantity || 1,
-    type: 'product' // Default type
+    type: item.type || 'product',
+    orderId: item.orderId,
+    orderNumber: item.orderNumber
   }));
   
   // Calculate financial totals
-  const subtotal = currentOrder?.estimatedTotal || 0;
-  const tax = currentOrder?.taxes || 0;
-  const tip = currentOrder?.tips || 0;
-  const total = currentOrder?.actualTotal || subtotal + tax + tip;
+  const subtotal = currentOrder?.subtotal || 0;
+  const tax = currentOrder?.tax || 0;
+  const tip = currentOrder?.tip || 0;
+  const total = currentOrder?.total || subtotal + tax + tip;
   
   // Next status options for current order
   const nextStatusOptions = getNextStatusOptions(currentOrder?.status || 'FAILED');
   
-  if (isLoading && !refreshing) {
+  if ((orderLoading || orderItemsLoading) && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loading}>
@@ -192,12 +194,12 @@ export default function OrderDetails() {
     );
   }
   
-  if (error) {
+  if (orderError || orderItemsError) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#E53935" />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>{orderError || orderItemsError}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
@@ -283,10 +285,11 @@ export default function OrderDetails() {
         {/* Order Items */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Items</Text>
-          
-          {orderItems.length > 0 ? (
+          {orderItemsLoading ? (
+            <ActivityIndicator size="small" color="#4285F4" />
+          ) : displayOrderItems.length > 0 ? (
             <OrderSummary
-              items={orderItems}
+              items={displayOrderItems}
               subtotal={subtotal}
               tax={tax}
               tip={tip}

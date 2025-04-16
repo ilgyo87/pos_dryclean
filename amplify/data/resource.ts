@@ -294,6 +294,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.owner(),
+      allow.authenticated(),
     ]),
 
   // Order Items
@@ -305,6 +306,7 @@ const schema = a.schema({
       taxable: a.boolean().default(false),
       notes: a.string().array(),
       specialInstructions: a.string().array(),
+      orderNumber: a.string().required(),
       // Relationships
       orderId: a.id().required(),
       order: a.belongsTo('Order', 'orderId'),

@@ -3,7 +3,8 @@ import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Schema } from '../../../../amplify/data/resource';
-import { getEffectiveImageSource } from './getEffectiveImageSource';
+import { getImageSource } from '../../../utils/productImages';
+import { getS3ImageUrl } from '../../../utils/s3ImageUtils';
 
 interface ProductListProps {
   products: Schema["Item"]["type"][];
@@ -31,20 +32,54 @@ const ProductList: React.FC<ProductListProps> = ({
     return a.name.localeCompare(b.name);
   });
   
-  const getItemImage = (item: Schema["Item"]["type"]) => {
-    // Always prefer imageUrl (S3) over imageSource
-    return getEffectiveImageSource(item.imageSource || '', item.imageUrl || '');
+  // Subcomponent to handle async S3 image URL loading and device fallback
+  const ProductImage = ({ item }: { item: Schema["Item"]["type"] }) => {
+    const [imageUri, setImageUri] = React.useState<string | undefined>(undefined);
+    React.useEffect(() => {
+      let isMounted = true;
+      async function resolveImage() {
+        if (item.imageUrlPreferred && item.imageUrl) {
+          const url = await getS3ImageUrl(item.imageUrl);
+          if (isMounted) setImageUri(url || undefined);
+        } else {
+          setImageUri(undefined); // will use device image below
+        }
+      }
+      resolveImage();
+      return () => { isMounted = false; };
+    }, [item.imageUrlPreferred, item.imageUrl, item.imageSource]);
+
+    if (item.imageUrlPreferred && imageUri) {
+      return (
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.productImage}
+          onLoad={() => console.log(`Image loaded for ${item.name}`)}
+          onError={(e) => console.error(`Image load error for ${item.name}:`, e.nativeEvent)}
+        />
+      );
+    } else if (item.imageSource) {
+      return (
+        <Image
+          source={getImageSource(item.imageSource)}
+          style={styles.productImage}
+          onLoad={() => console.log(`Device image loaded for ${item.name}`)}
+          onError={(e) => console.error(`Device image load error for ${item.name}:`, e.nativeEvent)}
+        />
+      );
+    } else {
+      // fallback
+      return (
+        <Image
+          source={getImageSource('tshirt')}
+          style={styles.productImage}
+        />
+      );
+    }
   };
 
-
   const renderItem = ({ item }: { item: Schema["Item"]["type"] }) => {
-    // Log the item details to help with debugging
-    console.log(`Rendering item ${item.id} with name: ${item.name}, imageSource: ${item.imageSource}`);
-    
-    // Get the image for this item
-    const imageSourceObj = getItemImage(item);
-    console.log(`Image source for ${item.name}:`, item.imageSource, imageSourceObj);
-      
+    console.log(`Rendering item ${item.id} with name: ${item.name}, imageSource: ${item.imageSource}, imageUrlPreferred: ${item.imageUrlPreferred}`);
     return (
       <TouchableOpacity 
         style={styles.productCard}
@@ -54,31 +89,17 @@ const ProductList: React.FC<ProductListProps> = ({
         }}
       >
         <View style={styles.imageContainer}>
-          {imageSourceObj ? (
-            <Image 
-              source={imageSourceObj} 
-              style={styles.productImage}
-              onLoad={() => console.log(`Image loaded for ${item.name}`)}
-              onError={(e) => console.error(`Image load error for ${item.name}:`, e.nativeEvent)}
-            />
-          ) : (
-            <View style={styles.placeholderContainer}>
-              <Ionicons name="shirt-outline" size={48} color="#ccc" />
-              <Text style={{fontSize: 10, textAlign: 'center', marginTop: 5}}>No image</Text>
-            </View>
-          )}
-          
+          <ProductImage item={item} />
           {/* Overlay text on the image */}
           <View style={styles.textOverlay}>
             <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
             <Text style={styles.productPrice}>${item.price?.toFixed(2) || "0.00"}</Text>
           </View>
-          
-
         </View>
       </TouchableOpacity>
     );
   };
+
 
   return (
     <View style={styles.container}>

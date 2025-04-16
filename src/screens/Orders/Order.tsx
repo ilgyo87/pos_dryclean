@@ -39,6 +39,7 @@ export default function Orders({ user, employee, navigation }: {
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [orderItemCounts, setOrderItemCounts] = useState<Record<string, number>>({});
+  const [orderItemCountErrors, setOrderItemCountErrors] = useState<Record<string, string>>({}); // Track errors fetching counts
 
   // Modal state for CREATED order
   const [createdModalVisible, setCreatedModalVisible] = useState(false);
@@ -52,16 +53,20 @@ export default function Orders({ user, employee, navigation }: {
   useFocusEffect(
     useCallback(() => {
       if (user?.userId && defaultBusinessId) {
-        dispatch(fetchOrders(defaultBusinessId));
+        dispatch(fetchOrders());
       }
     }, [user?.userId, dispatch, defaultBusinessId])
   );
+
+  // useEffect(() => {
+  //   console.log('Fetched orders:', orders);
+  // }, [orders]);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
     if (user?.userId && defaultBusinessId) {
       setRefreshing(true);
-      await dispatch(fetchOrders(defaultBusinessId));
+      await dispatch(fetchOrders());
       setRefreshing(false);
     }
   }, [user?.userId, dispatch, defaultBusinessId]);
@@ -104,11 +109,6 @@ export default function Orders({ user, employee, navigation }: {
         status: newStatus,
         employeeId: employee?.id
       }));
-      
-      // Re-fetch orders to update the list
-      if (defaultBusinessId) {
-        dispatch(fetchOrders(defaultBusinessId));
-      }
     } catch (error) {
       console.error("Error updating order status:", error);
     }
@@ -164,9 +164,17 @@ export default function Orders({ user, employee, navigation }: {
                 ...prev,
                 [order.id]: count
               }));
+              setOrderItemCountErrors(prev => {
+                const { [order.id]: _, ...rest } = prev;
+                return rest;
+              }); // Remove any previous error for this order
             })
             .catch(error => {
               console.error('Error fetching order items count:', error);
+              setOrderItemCountErrors(prev => ({
+                ...prev,
+                [order.id]: 'Failed to fetch item count'
+              }));
             });
         }
       });

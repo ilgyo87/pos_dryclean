@@ -1,6 +1,6 @@
 // src/screens/Dashboard/Dashboard.tsx
 import React, { useState, useCallback, useEffect } from "react";
-import { View, Text, ActivityIndicator, SafeAreaView, Alert } from "react-native";
+import { View, Text, ActivityIndicator, SafeAreaView, Alert, Modal } from "react-native";
 import { AuthUser } from "aws-amplify/auth";
 import { useFocusEffect } from "@react-navigation/native";
 import { generateClient } from 'aws-amplify/data';
@@ -142,19 +142,6 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
             <Text style={styles.businessName}>{business.name}</Text>
           </View>
         )}
-
-        {/* Show BusinessForm modal only if no business exists */}
-        {business === null && (
-          <BusinessForm
-            onCloseModal={() => {}}
-            createOrEdit="create"
-            params={{}}
-            onBusinessCreated={() => {
-              fetchBusinessData();
-            }}
-          />
-        )}
-
         <View style={styles.searchContainer}>
           <PredictiveSearch
             customers={customers}
@@ -162,7 +149,6 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
             placeholder="Search customers..."
           />
         </View>
-
         <View style={styles.gridContainer}>
           <DashboardGrid
             categories={categories}
@@ -170,6 +156,27 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
           />
         </View>
       </View>
+      {/* Modal overlays dashboard when business === null */}
+      <Modal
+        visible={business === null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.35)'
+        }}>
+          <BusinessForm
+            onCloseModal={() => {}}
+            createOrEdit="create"
+            params={{}}
+            onBusinessCreated={fetchBusinessData}
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

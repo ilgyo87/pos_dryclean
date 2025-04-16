@@ -20,11 +20,12 @@ interface ReceiptModalProps {
     orderNumber: string;
     customerName: string;
     items: Array<{
-      id: string;
       name: string;
       price: number;
       quantity: number;
       type: 'service' | 'product';
+      orderId: string;
+      orderNumber: string;
     }>;
     subtotal: number;
     tax: number;
@@ -112,7 +113,7 @@ const ReceiptModal = ({
               </View>
 
               {orderDetails.items.map((item, index) => (
-                <View key={`${item.id}-${index}`} style={styles.itemRow}>
+                <View key={`${item.orderNumber}-${index}`} style={styles.itemRow}>
                   <Text style={[styles.itemText, styles.itemName]}>{item.name}</Text>
                   <Text style={[styles.itemText, styles.itemQty]}>{item.quantity}</Text>
                   <Text style={[styles.itemText, styles.itemPrice]}>
