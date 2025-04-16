@@ -483,7 +483,16 @@ export default function CreateFormModal({
             {createOrEdit === 'create' ? `Create ${getEntityTitle()}` : `Edit ${getEntityTitle()}`}
           </Text>
 
-          <ScrollView style={styles.formContainer}>
+          <ScrollView
+            style={styles.formContainer}
+            contentContainerStyle={{
+              paddingBottom: 24,
+              alignItems: 'center',
+              justifyContent: 'center',
+              display: 'flex',
+            }}
+            keyboardShouldPersistTaps="handled"
+          >
             {type === 'Business' && (
               <BusinessForm
                 ref={formRef}
@@ -587,24 +596,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingBottom: 10,
+    padding: 24, // More padding for tablet
   },
   modalContent: {
     backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
-    width: '90%',
+    padding: 32,
+    borderRadius: 18,
+    width: 480,
+    maxWidth: '95%',
+    minWidth: 320,
     maxHeight: '80%',
-    paddingBottom: 0,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+    justifyContent: 'flex-start',
+    display: 'flex',
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 20,
     textAlign: 'center',
   },
   formContainer: {
-    maxHeight: '75%',
+    flexGrow: 0,
+    maxHeight: 320,
+    minHeight: 120,
+    width: '100%',
+    marginBottom: 24,
   },
   buttonContainer: {
     marginTop: 35,

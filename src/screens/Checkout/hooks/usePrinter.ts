@@ -12,6 +12,7 @@ import {
 export interface PrintReceiptParams {
   businessName: string;
   orderNumber: string;
+  employeeName: string;
   customerName: string;
   pickupDate: string;
   items: Array<{

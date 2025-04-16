@@ -1,5 +1,5 @@
-// src/screens/Orders/Orders.tsx
-import React, { useState, useCallback, useEffect } from "react";
+// src/screens/Orders/Order.tsx
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { 
   View, 
   Text, 
@@ -10,15 +10,17 @@ import {
   SafeAreaView
 } from "react-native";
 import { AuthUser } from "aws-amplify/auth";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../store";
-import { fetchOrders, updateOrderStatus, fetchOrderItemsCount } from "../../store/slices/OrderSlice";
+import { clearOrderError } from "../../store/slices/OrderSlice";
 import OrderCard from "./components/OrderCard";
 import OrderCreatedModal from "./components/OrderCreatedModal";
 import FilterTabs from "./components/FilterTabs";
 import SearchBar from "../../components/SearchBar";
+import { generateClient } from "aws-amplify/api";
+import type { Schema } from "../../../amplify/data/resource";
 
 type OrderStatus = 'ALL' | 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED';
 
@@ -29,203 +31,337 @@ export default function Orders({ user, employee, navigation }: {
 }) {
   const dispatch = useDispatch<AppDispatch>();
   const navigator = useNavigation<any>();
+  const client = generateClient<Schema>();
+  
+  // Create a stable client reference to avoid re-subscriptions
+  const clientRef = useRef(client);
+  const subscriptionRef = useRef<any>(null);
   
   // Redux state
-  const { orders, isLoading, error } = useSelector((state: RootState) => state.order);
-  const { businesses } = useSelector((state: RootState) => state.business);
+  const { error: orderError } = useSelector((state: RootState) => state.order);
   
   // Local state
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(orderError);
   const [activeTab, setActiveTab] = useState<OrderStatus>('ALL');
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [orderItemCounts, setOrderItemCounts] = useState<Record<string, number>>({});
-  const [orderItemCountErrors, setOrderItemCountErrors] = useState<Record<string, string>>({}); // Track errors fetching counts
 
   // Modal state for CREATED order
   const [createdModalVisible, setCreatedModalVisible] = useState(false);
   const [modalOrder, setModalOrder] = useState<any | null>(null);
   const [modalOrderItems, setModalOrderItems] = useState<any[]>([]);
 
-  // Get the default business ID
-  const defaultBusinessId = businesses.length > 0 ? businesses[0].id : "";
-
-  // Fetch orders when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      if (user?.userId && defaultBusinessId) {
-        dispatch(fetchOrders());
+  // Helper function to make objects serializable by removing function properties
+  const makeSerializable = useCallback((item: any) => {
+    if (!item) return item;
+    
+    // Create a new object with just the data properties
+    const serialized: any = {};
+    
+    // Copy all non-function properties
+    Object.keys(item).forEach(key => {
+      if (typeof item[key] !== 'function') {
+        serialized[key] = item[key];
       }
-    }, [user?.userId, dispatch, defaultBusinessId])
-  );
+    });
+    
+    return serialized;
+  }, []);
 
-  // useEffect(() => {
-  //   console.log('Fetched orders:', orders);
-  // }, [orders]);
+  // Set up subscription to orders - only once on component mount
+  useEffect(() => {
+    setIsLoading(true);
+    dispatch(clearOrderError());
+    setError(null);
+    
+    console.log('Setting up order subscription - INITIAL');
+    
+    // Define subscription function
+    const setupSubscription = () => {
+      // Only set up if not already subscribed
+      if (subscriptionRef.current) {
+        return;
+      }
+      
+      const subscription = clientRef.current.models.Order.observeQuery().subscribe({
+        next: ({ items, isSynced }) => {
+          console.log(`Received ${items.length} orders, synced: ${isSynced}`);
+          
+          // Process and store the orders - make sure they're serializable
+          const processedItems = items.map(item => makeSerializable(item));
+          
+          setOrders(processedItems);
+          
+          // Only set loading to false after we're synced
+          if (isSynced) {
+            setIsLoading(false);
+          }
+        },
+        error: (err) => {
+          console.error('Error in order subscription:', err);
+          setError(err.message || 'Failed to subscribe to orders');
+          setIsLoading(false);
+        }
+      });
+      
+      // Store the subscription reference
+      subscriptionRef.current = subscription;
+    };
+    
+    // Set up the subscription
+    setupSubscription();
+    
+    // Clean up subscription only on unmount
+    return () => {
+      console.log('Cleaning up order subscription - FINAL');
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array = only on mount/unmount
 
-  // Handle refresh
+  // Handle refresh - gets fresh data without re-subscribing
   const handleRefresh = useCallback(async () => {
-    if (user?.userId && defaultBusinessId) {
-      setRefreshing(true);
-      await dispatch(fetchOrders());
+    setRefreshing(true);
+    // Get fresh data from API
+    try {
+      const { data, errors } = await clientRef.current.models.Order.list();
+      if (errors) {
+        setError(errors[0]?.message || 'Failed to refresh orders');
+      } else {
+        // Process and store the orders - make sure they're serializable
+        const processedItems = data.map(item => makeSerializable(item));
+        setOrders(processedItems);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Unknown error refreshing orders');
+      }
+    } finally {
       setRefreshing(false);
     }
-  }, [user?.userId, dispatch, defaultBusinessId]);
+  }, [makeSerializable]);
 
   // Filter orders based on selected tab and search query
-  const filteredOrders = orders.filter(order => {
-    // First filter by status tab
-    if (activeTab !== 'ALL' && order.status !== activeTab) {
-      return false;
-    }
-
-    // Then filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      
-      // Check order number
-      if (order.orderNumber.toLowerCase().includes(query)) {
-        return true;
+  const filteredOrders = React.useMemo(() => {
+    return orders.filter(order => {
+      // First filter by status tab
+      if (activeTab !== 'ALL' && order.status !== activeTab) {
+        return false;
+      }
+  
+      // Then filter by search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        
+        // Check order number
+        if (order.orderNumber?.toLowerCase().includes(query)) {
+          return true;
+        }
+        
+        // Get customer name directly from order if available
+        let customerName = '';
+        if (order.firstName && order.lastName) {
+          customerName = `${order.firstName} ${order.lastName}`;
+        } else if (order.customerName) {
+          customerName = order.customerName;
+        }
+        
+        if (customerName.toLowerCase().includes(query)) {
+          return true;
+        }
+        
+        return false;
       }
       
-      // Check customer name if exists
-      const customerName = (order as any).customerName || ""; // Using any since customerName might be added via mapping
-      if (customerName.toLowerCase().includes(query)) {
-        return true;
-      }
-      
-      return false;
-    }
-    
-    return true;
-  });
+      return true;
+    });
+  }, [orders, activeTab, searchQuery]);
 
   // Handle status change
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     try {
       if (newStatus === 'ALL') return; // ALL is not a valid status for an order
       
-      await dispatch(updateOrderStatus({ 
-        orderId, 
+      console.log(`Updating order ${orderId} status to ${newStatus}`);
+      
+      // Create update input with required fields
+      const updateInput: any = {
+        id: orderId,
         status: newStatus,
-        employeeId: employee?.id
-      }));
+      };
+      
+      // Add employeeId if available
+      if (employee?.id) {
+        updateInput.employeeId = employee.id;
+      }
+      
+      // Update using direct client call to ensure immediate update
+      const { data, errors } = await clientRef.current.models.Order.update(updateInput);
+      
+      if (errors) {
+        console.error('Errors updating order status:', errors);
+        setError(errors[0]?.message || 'Failed to update order status');
+      } else {
+        console.log('Order status updated successfully');
+        // The subscription will handle updating the UI
+      }
     } catch (error) {
       console.error("Error updating order status:", error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Unknown error updating order status');
+      }
     }
   };
 
   // Handle order press: show modal if CREATED, else navigate
-  const handleOrderPress = (orderId: string) => {
+  const handleOrderPress = useCallback((orderId: string) => {
+    if (!orderId) {
+      console.error('Invalid order ID');
+      return;
+    }
+    
     const order = orders.find((o: any) => o.id === orderId);
-    if (order && order.status === 'CREATED') {
-      // Assume order.orderItems holds the items; fallback to []
+    if (!order) {
+      console.error('Order not found:', orderId);
+      return;
+    }
+    
+    if (order.status === 'CREATED') {
+      // Set modal data for CREATED orders
       setModalOrder(order);
-      setModalOrderItems(Array.isArray(order.orderItems) ? order.orderItems : []);
+      // Fetch order items
+      fetchOrderItemsForModal(orderId);
       setCreatedModalVisible(true);
     } else {
+      // Navigate to details for other orders
       navigator.navigate('OrderDetails', { orderId });
     }
-  };
+  }, [orders, navigator]);
+
+  // Fetch order items for the modal
+  const fetchOrderItemsForModal = useCallback(async (orderId: string) => {
+    try {
+      const { data, errors } = await clientRef.current.models.OrderItem.list({
+        filter: { orderId: { eq: orderId } }
+      });
+      
+      if (errors) {
+        console.error('Errors fetching order items:', errors);
+        return;
+      }
+      
+      // Process items for display - make sure they're serializable
+      const processedItems = data.map(item => makeSerializable(item));
+      setModalOrderItems(processedItems || []);
+    } catch (error) {
+      console.error('Error fetching order items for modal:', error);
+    }
+  }, [makeSerializable]);
 
   // Get total items count for an order
-  const getOrderItemsCount = (order: any) => {
+  const getOrderItemsCount = useCallback(async (orderId: string) => {
     // If we already have the count in state, use it
-    if (orderItemCounts[order.id]) {
-      return orderItemCounts[order.id];
+    if (orderItemCounts[orderId]) {
+      return orderItemCounts[orderId];
     }
     
-    // Otherwise, fetch the count
-    dispatch(fetchOrderItemsCount(order.id))
-      .unwrap()
-      .then((count) => {
-        setOrderItemCounts(prev => ({
-          ...prev,
-          [order.id]: count
-        }));
-      })
-      .catch(error => {
-        console.error('Error fetching order items count:', error);
+    try {
+      // Fetch order items count directly
+      const { data, errors } = await clientRef.current.models.OrderItem.list({
+        filter: { orderId: { eq: orderId } }
       });
-    
-    // Return 0 or the existing count while loading
-    return orderItemCounts[order.id] || 0;
-  };
+      
+      if (errors) {
+        console.error('Errors fetching order items count:', errors);
+        return 0;
+      }
+      
+      const count = data?.length || 0;
+      
+      // Update counts state
+      setOrderItemCounts(prev => ({
+        ...prev,
+        [orderId]: count
+      }));
+      
+      return count;
+    } catch (error) {
+      console.error('Error fetching order items count:', error);
+      return 0;
+    }
+  }, [orderItemCounts]);
 
   // Prefetch order item counts when orders are loaded
   useEffect(() => {
-    if (orders && orders.length > 0) {
+    if (orders && orders.length > 0 && !isLoading) {
       // Fetch counts for all orders
       orders.forEach(order => {
-        if (!orderItemCounts[order.id]) {
-          dispatch(fetchOrderItemsCount(order.id))
-            .unwrap()
-            .then((count) => {
-              setOrderItemCounts(prev => ({
-                ...prev,
-                [order.id]: count
-              }));
-              setOrderItemCountErrors(prev => {
-                const { [order.id]: _, ...rest } = prev;
-                return rest;
-              }); // Remove any previous error for this order
-            })
-            .catch(error => {
-              console.error('Error fetching order items count:', error);
-              setOrderItemCountErrors(prev => ({
-                ...prev,
-                [order.id]: 'Failed to fetch item count'
-              }));
-            });
+        if (order.id && !orderItemCounts[order.id]) {
+          getOrderItemsCount(order.id);
         }
       });
     }
-  }, [orders, dispatch]);
+  }, [orders, getOrderItemsCount, isLoading, orderItemCounts]);
 
   // Render order card
-  const renderOrderCard = ({ item }: { item: any }) => {
+  const renderOrderCard = useCallback(({ item }: { item: any }) => {
+    if (!item || !item.id) {
+      return null;
+    }
+    
     return (
       <OrderCard
         order={item}
         itemsCount={orderItemCounts[item.id] || 0}
         onPress={() => handleOrderPress(item.id)}
-        onStatusChange={(newStatus) => handleStatusChange(item.id, newStatus as 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED')}
+        onStatusChange={(newStatus) => handleStatusChange(item.id, newStatus as OrderStatus)}
       />
     );
-  };
+  }, [handleOrderPress, orderItemCounts, handleStatusChange]);
 
   // Define status tabs
-  const statusTabs: { id: OrderStatus; label: string; icon: string }[] = [
-    { id: 'ALL', label: 'All Orders', icon: 'list' },
-    { id: 'CREATED', label: 'New', icon: 'create' },
-    { id: 'PROCESSING', label: 'Processing', icon: 'refresh' },
-    { id: 'READY', label: 'Ready', icon: 'checkmark-circle' },
-    { id: 'COMPLETED', label: 'Completed', icon: 'checkbox' },
-    { id: 'CANCELLED', label: 'Cancelled', icon: 'close-circle' },
-    { id: 'DELIVERY_SCHEDULED', label: 'Delivery Scheduled', icon: 'calendar' },
-    { id: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', icon: 'car' },
-    { id: 'DELIVERED', label: 'Delivered', icon: 'home' },
+  const statusTabs = [
+    { id: 'ALL' as OrderStatus, label: 'All Orders', icon: 'list' },
+    { id: 'CREATED' as OrderStatus, label: 'New', icon: 'create' },
+    { id: 'PROCESSING' as OrderStatus, label: 'Processing', icon: 'refresh' },
+    { id: 'READY' as OrderStatus, label: 'Ready', icon: 'checkmark-circle' },
+    { id: 'COMPLETED' as OrderStatus, label: 'Completed', icon: 'checkbox' },
+    { id: 'CANCELLED' as OrderStatus, label: 'Cancelled', icon: 'close-circle' },
+    { id: 'DELIVERY_SCHEDULED' as OrderStatus, label: 'Delivery Scheduled', icon: 'calendar' },
+    { id: 'OUT_FOR_DELIVERY' as OrderStatus, label: 'Out for Delivery', icon: 'car' },
+    { id: 'DELIVERED' as OrderStatus, label: 'Delivered', icon: 'home' },
   ];
 
   // Remove item from modal order items
-  const handleRemoveModalItem = (itemId: string) => {
+  const handleRemoveModalItem = useCallback((itemId: string) => {
     setModalOrderItems(prev => prev.filter(item => item.id !== itemId));
-  };
+  }, []);
 
   // Print all handler (stub)
-  const handlePrintAll = () => {
+  const handlePrintAll = useCallback(() => {
     // Implement print logic here
     alert('Print All clicked!');
-  };
+  }, []);
 
   // Close modal
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setCreatedModalVisible(false);
     setModalOrder(null);
     setModalOrderItems([]);
-  };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Modal for CREATED orders */}
       <OrderCreatedModal
         visible={createdModalVisible}
         orderNumber={modalOrder?.orderNumber || ''}
@@ -264,7 +400,7 @@ export default function Orders({ user, employee, navigation }: {
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
           </View>
-        ) : filteredOrders.length === 0 ? (
+        ) : orders.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="document-text-outline" size={64} color="#ccc" />
             <Text style={styles.emptyText}>
@@ -278,6 +414,22 @@ export default function Orders({ user, employee, navigation }: {
               <Text style={styles.refreshButtonText}>Refresh</Text>
             </TouchableOpacity>
           </View>
+        ) : filteredOrders.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="filter-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyText}>
+              No orders match your current filter
+            </Text>
+            <TouchableOpacity 
+              style={styles.refreshButton} 
+              onPress={() => {
+                setActiveTab('ALL');
+                setSearchQuery('');
+              }}
+            >
+              <Text style={styles.refreshButtonText}>Clear Filters</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <FlatList
             data={filteredOrders}
@@ -286,6 +438,11 @@ export default function Orders({ user, employee, navigation }: {
             contentContainerStyle={styles.listContent}
             refreshing={refreshing}
             onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No orders available</Text>
+              </View>
+            }
           />
         )}
       </View>

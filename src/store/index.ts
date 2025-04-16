@@ -14,7 +14,7 @@ export const store = configureStore({
     category: categoryReducer,
     item: itemReducer,
     business: businessReducer,
-    order: orderReducer, // Add this
+    order: orderReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -40,7 +40,12 @@ export const store = configureStore({
           'order/createOrder/fulfilled',
           'order/updateOrderStatus/fulfilled',
           'order/fetchOrderById/fulfilled',
-          'order/fetchOrdersByCustomer/fulfilled'
+          'order/fetchOrdersByCustomer/fulfilled',
+          'orderItem/createOrderItem/fulfilled' // Add this line to ignore serialization checks
+        ],
+        // You can also ignore specific paths that might contain functions
+        ignoredPaths: [
+          'payload.order'
         ],
       },
     }),

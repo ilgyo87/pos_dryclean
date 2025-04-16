@@ -26,7 +26,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePrinter, PrintReceiptParams } from './hooks/usePrinter';
 
 // Define the CartItem interface for items in the order
-// Consider moving this to src/types/CartItem.ts and importing everywhere for type unification
 interface CartItem {
   id: string; // unique identifier for product or service
   name: string;
@@ -54,7 +53,9 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     items,
     total,
     pickupDate,
-    customerPreferences
+    customerPreferences,
+    customerFirstName,
+    customerLastName
   } = route.params || {};
 
   // Get business data from Redux
@@ -73,9 +74,9 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
   const [orderNumber, setOrderNumber] = useState<string>("");
 
   // Use the printer hook
-  const { 
-    isPrinting, 
-    isPrintingError, 
+  const {
+    isPrinting,
+    isPrintingError,
     handlePrint,
     discoverPrinters
   } = usePrinter();
@@ -99,27 +100,27 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
 
   // Function to handle adding new items to the order
   const handleAddItem = (newItem: CartItem) => {
-  // Check if item already exists in the order by id and type
-  const existingItemIndex = selectedItems.findIndex(item =>
-    item.id === newItem.id && item.type === newItem.type
-  );
+    // Check if item already exists in the order by id and type
+    const existingItemIndex = selectedItems.findIndex(item =>
+      item.id === newItem.id && item.type === newItem.type
+    );
 
-  if (existingItemIndex !== -1) {
-    // Item exists, update its quantity
-    const updatedItems = [...selectedItems];
-    updatedItems[existingItemIndex].quantity += 1;
-    setSelectedItems(updatedItems);
-  } else {
-    // Item doesn't exist, add it
-    setSelectedItems([...selectedItems, newItem]);
-  }
-};
+    if (existingItemIndex !== -1) {
+      // Item exists, update its quantity
+      const updatedItems = [...selectedItems];
+      updatedItems[existingItemIndex].quantity += 1;
+      setSelectedItems(updatedItems);
+    } else {
+      // Item doesn't exist, add it
+      setSelectedItems([...selectedItems, newItem]);
+    }
+  };
 
   // Function to remove an item from the order
   const handleRemoveItem = (itemId: string) => {
-  const updatedItems = selectedItems.filter(item => item.id !== itemId);
-  setSelectedItems(updatedItems);
-};
+    const updatedItems = selectedItems.filter(item => item.id !== itemId);
+    setSelectedItems(updatedItems);
+  };
 
   // Fetch categories and items when component mounts or user changes
   useEffect(() => {
@@ -139,14 +140,28 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
   const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
     // Prevent quantity from going below 1
     if (newQuantity < 1) return;
-    
+
     // Update the item quantity
-    const updatedItems = selectedItems.map(item => 
+    const updatedItems = selectedItems.map(item =>
       item.id === itemId ? { ...item, quantity: newQuantity } : item
     );
-    
+
     // Update state with the new items array
     setSelectedItems(updatedItems);
+  };
+
+  // Generate order notes including employee information
+  const generateOrderNotes = (): string => {
+    let notes = additionalNotes ? additionalNotes + '\n\n' : '';
+
+    // Add employee information if available
+    if (employee) {
+      notes += `Order created by: ${employee.name}`;
+    } else {
+      notes += 'Order created via self-service';
+    }
+
+    return notes;
   };
 
   // Process the order
@@ -159,9 +174,18 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     setLocalError(null);
 
     try {
-      // 1. Create the order WITHOUT items (just parent order)
+      // Get customer names - use from route params or fallback to splitting full name
+      const firstName = customerFirstName || customerName?.split(' ')[0] || '';
+      const lastName = customerLastName || customerName?.split(' ').slice(1).join(' ') || '';
+
+      // Generate order notes with employee information
+      const notes = generateOrderNotes();
+
+      // 1. Create the order WITH customer details and employee notes
       const orderPayload = {
         customerId,
+        customerFirstName: firstName,
+        customerLastName: lastName,
         businessId,
         subtotal: calculatedSubtotal,
         tax: calculatedTaxAmount,
@@ -172,39 +196,63 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
         change: 0,
         status: "CREATED" as const,
         pickupDate: dueDate.toISOString(),
-        notes: additionalNotes,
+        notes: notes,
         employeeId: employee?.id,
       };
+      // Log payload for debugging
+      console.log('Creating order with payload:', JSON.stringify(orderPayload, null, 2));
+
       const resultAction = await dispatch(createOrder(orderPayload));
+
+      // Check if the action was fulfilled (success)
       if (!createOrder.fulfilled.match(resultAction)) {
         setLocalError('Failed to create order.');
         setLocalLoading(false);
         return;
       }
-      if (!resultAction.payload) {
+
+      // Check if payload exists and contains the expected data
+      if (!resultAction.payload || !resultAction.payload.order) {
         setLocalError('Order creation failed: No payload returned.');
         setLocalLoading(false);
-        return {id: "1", orderNumber: "1"};
+        return;
       }
-      const createdOrder = resultAction.payload.order;
-      const orderId = createdOrder.id;
-      const orderNumber = createdOrder.orderNumber;
-      setCreatedOrder(createdOrder);
-      setOrderNumber(orderNumber);
+
+      const newOrder = resultAction.payload.order;
+      const orderId = newOrder.id;
+      const orderNum = newOrder.orderNumber;
+
+      // Store the created order details in state
+      setCreatedOrder(newOrder);
+      setOrderNumber(orderNum);
 
       // 2. Create all order items, each referencing the new orderId/orderNumber
-      await Promise.all(selectedItems.map(item =>
-        dispatch(
-          createOrderItem({
+      if (orderId && orderNum) {
+        await Promise.all(selectedItems.map(async item => {
+          // Create a cleaned order item object with only the fields defined in the schema
+          const orderItemInput = {
             orderId,
-            orderNumber,
-            itemId: item.id,
+            orderNumber: orderNum,
             quantity: item.quantity,
-            price: item.price,
-            type: item.type,
-          })
-        )
-      ));
+            price: item.price
+          };
+
+          console.log('Creating order item with input:', JSON.stringify(orderItemInput, null, 2));
+
+          try {
+            const result = await dispatch(createOrderItem(orderItemInput));
+            if (!createOrderItem.fulfilled.match(result)) {
+              console.error('Failed to create order item:', result.payload);
+            }
+          } catch (error) {
+            console.error('Error creating order item:', error);
+          }
+        }));
+      } else {
+        setLocalError('Missing orderId or orderNumber.');
+        setLocalLoading(false);
+        return;
+      }
 
       setReceiptVisible(true);
     } catch (error) {
@@ -217,6 +265,15 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
 
   // Handle printing the receipt
   const handlePrintReceipt = async () => {
+    // Only proceed if we have a valid order number
+    if (!orderNumber) {
+      Alert.alert("Error", "Order number is missing. Cannot print receipt.");
+      return;
+    }
+
+    // Get employee name for receipt
+    const employeeName = employee ? employee.name : 'Self-Service';
+
     const receiptData: PrintReceiptParams = {
       businessName,
       orderNumber: orderNumber,
@@ -231,21 +288,36 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
       tax: calculatedTaxAmount,
       tip: tipAmount,
       total: grandTotal,
-      paymentMethod: 'CASH'
+      paymentMethod: 'CASH',
+      employeeName: employeeName  // Add employee name to the receipt
     };
 
     // Initialize printer discovery
     await discoverPrinters();
-    
+
     // Handle printing
     await handlePrint(receiptData);
   };
 
   // Complete the order and return to dashboard
   const handleCompleteOrder = () => {
-    navigation.navigate('DASHBOARD');
+    // Close the receipt modal first
     setReceiptVisible(false);
+
+    // Reset the checkout form state
+    setSelectedItems([]);
+    setOrderNumber("");
+    setCreatedOrder(null);
+
+    // Navigate to dashboard with REPLACE instead of NAVIGATE
+    // This removes the current screen from the navigation stack,
+    // preventing the user from going back to the checkout screen
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'DASHBOARD' }],
+    });
   };
+
 
   return (
     <View style={styles.container}>
@@ -254,6 +326,9 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
           <Text style={styles.customerName}>Customer: {customerName}</Text>
           <Text style={styles.notes}>NOTES: {additionalNotes}</Text>
         </View>
+        {employee && (
+          <Text style={styles.employeeInfo}>Employee: {employee.name}</Text>
+        )}
       </View>
 
       <View style={styles.mainContent}>
@@ -276,13 +351,13 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
                   const service = categories.find(cat => cat.id === selectedServiceId);
                   if (service) {
                     handleAddItem({
-                      id: service.id, // <-- set id for CartItem
+                      id: service.id,
                       name: service.name,
                       price: service.price || 0,
                       quantity: 1,
                       type: 'service',
-                      orderId: createdOrder?.id,
-                      orderNumber: orderNumber
+                      orderId: createdOrder?.id || '',
+                      orderNumber: orderNumber || ''
                     });
                   }
                 }}
@@ -300,13 +375,13 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
               selectedServiceId={selectedServiceId}
               onSelectProduct={(product) => {
                 handleAddItem({
-                  id: product.id, // <-- set id for CartItem
+                  id: product.id,
                   name: product.name,
                   price: product.price || 0,
                   quantity: 1,
                   type: 'product',
-                  orderId: createdOrder?.id,
-                  orderNumber: orderNumber
+                  orderId: createdOrder?.id || '',
+                  orderNumber: orderNumber || ''
                 });
               }}
               isLoading={isLoadingItems}
@@ -380,31 +455,39 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
                 {localLoading ? 'Processing...' : 'Process Order'}
               </Text>
             </TouchableOpacity>
+
+            {localError && (
+              <Text style={styles.errorText}>{localError}</Text>
+            )}
           </View>
         </View>
       </View>
 
       {/* Receipt Modal */}
-      <ReceiptModal
-        visible={receiptVisible}
-        onClose={handleCompleteOrder} /* Changed to use handleCompleteOrder for close button too */
-        onComplete={handleCompleteOrder}
-        onPrint={handlePrintReceipt}
-        isPrinting={isPrinting}
-        isPrintingError={isPrintingError}
-        orderDetails={{
-          orderNumber: orderNumber,
-          customerName,
-          items: selectedItems,
-          subtotal: calculatedSubtotal,
-          tax: calculatedTaxAmount,
-          tip: tipAmount,
-          total: grandTotal,
-          paymentMethod: 'CASH',
-          pickupDate: dueDate.toISOString()
-        }}
-        businessName={businessName}
-      />
+      {orderNumber && (
+        <ReceiptModal
+          visible={receiptVisible}
+          onClose={handleCompleteOrder}
+          onComplete={handleCompleteOrder}
+          onPrint={handlePrintReceipt}
+          isPrinting={isPrinting}
+          isPrintingError={isPrintingError}
+          employeeName={employee?.name || 'Self-Service'} // Now as a direct prop
+          orderDetails={{
+            orderNumber: orderNumber,
+            customerName,
+            items: selectedItems,
+            subtotal: calculatedSubtotal,
+            tax: calculatedTaxAmount,
+            tip: tipAmount,
+            total: grandTotal,
+            paymentMethod: 'CASH',
+            pickupDate: dueDate.toISOString(),
+            employeeName: employee?.name || 'Self-Service'
+          }}
+          businessName={businessName}
+        />
+      )}
     </View>
   );
 };
@@ -434,6 +517,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
   },
+  employeeInfo: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '500',
+    marginTop: 5,
+  },
   mainContent: {
     flex: 1,
     flexDirection: 'row',
@@ -452,7 +541,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   rightColumn: {
-    width: '33%', 
+    width: '33%',
     backgroundColor: '#f8f8f8',
     height: '100%',
   },
@@ -555,6 +644,11 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 130, // Add enough space to see all items above the fixed bottom container
   },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 5,
+  }
 });
 
 export default Checkout;

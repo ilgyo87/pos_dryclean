@@ -279,6 +279,9 @@ const schema = a.schema({
       deliveryNotes: a.string().array(),
       // Relationships
       customerId: a.id().required(),
+      employeeName: a.string(),
+      firstName: a.string(),
+      lastName: a.string(),
       // customer: a.belongsTo('Customer', 'customerId'),
       employeeId: a.id(),
       // employee: a.belongsTo('Employee', 'employeeId'),

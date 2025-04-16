@@ -221,19 +221,27 @@ const BusinessForm = forwardRef(({
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
+        width: '100%',
         padding: 10,
+        alignSelf: 'center',
+        alignItems: 'center',
     },
     label: {
-        marginBottom: 5,
+        marginBottom: 7,
         fontWeight: '500',
+        fontSize: 15,
     },
     input: {
         borderWidth: 1,
         borderColor: '#ccc',
-        borderRadius: 5,
-        padding: 10,
-        marginBottom: 15,
+        borderRadius: 6,
+        padding: 14,
+        marginBottom: 22,
+        fontSize: 16,
+        backgroundColor: '#fafbfc',
+        width: 340,
+        maxWidth: '90%',
+        alignSelf: 'center',
     },
     validInput: {
         borderColor: '#4CAF50',  // Green for valid

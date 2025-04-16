@@ -1,4 +1,5 @@
-// src/screens/Orders/components/OrderCard.tsx
+// Update in src/screens/Orders/components/OrderCard.tsx
+
 import React, { useState } from 'react';
 import { 
   View, 
@@ -24,7 +25,9 @@ interface OrderCardProps {
     tips?: number;
     actualTotal?: number;
     customerId?: string;
-    customerName?: string; // This might be added via mapping
+    firstName?: string; // Use these fields directly from the order model
+    lastName?: string;
+    customerName?: string; // Fallback
   };
   itemsCount: number;
   onPress: () => void;
@@ -148,17 +151,25 @@ const OrderCard = ({ order, itemsCount, onPress, onStatusChange }: OrderCardProp
     }
   };
 
-  // Calculate total items in the order
-  const getTotal = (): string => {
-    if (order.actualTotal !== undefined && order.actualTotal !== null) {
-      return `${parseFloat(order.actualTotal.toString()).toFixed(2)}`;
-    } else if (order.estimatedTotal !== undefined && order.estimatedTotal !== null) {
-      return `${parseFloat(order.estimatedTotal.toString()).toFixed(2)}`;
+  // Get customer name - using firstName & lastName from the order
+  const getCustomerName = (): string => {
+    console.log('Order:', order);
+    // Check for firstName and lastName fields directly from order object
+    if (order.firstName && order.lastName) {
+      return `${order.firstName} ${order.lastName}`;
     }
-    return 'N/A';
+    // If we have just one of them
+    else if (order.firstName) {
+      return order.firstName;
+    }
+    else if (order.lastName) {
+      return order.lastName;
+    }
+    // Last resort
+    return 'Customer';
   };
 
-  // Get next status options
+  // Next status options
   const nextStatusOptions = getNextStatusOptions(order.status);
 
   return (
@@ -170,13 +181,15 @@ const OrderCard = ({ order, itemsCount, onPress, onStatusChange }: OrderCardProp
 
       <View style={styles.details}>
         <View style={styles.infoRow}>
+          {/* Customer name - using direct firstName & lastName fields */}
           <View style={styles.infoItem}>
             <Ionicons name="person-outline" size={20} color="#666" />
             <Text style={styles.infoText}>
-              {order.customerName || 'Customer not found'}
+              {getCustomerName()}
             </Text>
           </View>
           
+          {/* Items count */}
           <View style={styles.infoItem}>
             <Ionicons name="shirt-outline" size={20} color="#666" />
             <Text style={styles.infoText}>
@@ -184,10 +197,7 @@ const OrderCard = ({ order, itemsCount, onPress, onStatusChange }: OrderCardProp
             </Text>
           </View>
           
-          <View style={styles.infoItem}>
-            <Ionicons name="cash-outline" size={20} color="#666" />
-            <Text style={styles.infoText}>{getTotal()}</Text>
-          </View>
+          {/* Removed price icon and info section */}
         </View>
       </View>
 
@@ -281,7 +291,7 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start', // Changed from space-between to flex-start
     flexWrap: 'wrap',
   },
   infoItem: {

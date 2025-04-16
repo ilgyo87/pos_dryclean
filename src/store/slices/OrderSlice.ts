@@ -8,27 +8,14 @@ const client = generateClient<Schema>();
 
 // Define order state interface
 interface OrderState {
-  orders: Schema['Order']['type'][];
-  currentOrder: Schema['Order']['type'] | null;
+  orders: any[]; // Using 'any' to avoid type conflicts with Amplify client
+  currentOrder: any | null;
   isLoading: boolean;
   error: string | null;
-  orderItems: Schema['OrderItem']['type'][];
+  orderItems: any[];
   orderItemsLoading: boolean;
   orderItemsError: string | null;
 }
-
-// Define order item state interface
-interface OrderItemState {
-  orderItems: Schema['OrderItem']['type'][];
-  isLoading: boolean;
-  error: string | null;
-}
-
-const orderItemInitialState: OrderItemState = {
-  orderItems: [],
-  isLoading: false,
-  error: null,
-};
 
 // Initial state
 const initialState: OrderState = {
@@ -68,7 +55,7 @@ export interface OrderData {
 }
 
 // Helper function to make order objects serializable
-const makeSerializable = (order: Partial<Schema['Order']['type']> | null) => {
+const makeSerializable = (order: any) => {
   if (!order) return order;
   
   // Create a new object without the function properties
@@ -78,8 +65,8 @@ const makeSerializable = (order: Partial<Schema['Order']['type']> | null) => {
   const functionProperties = ['orderItems', 'customer', 'business', 'service', 'employee'];
   
   for (const prop of functionProperties) {
-    if (Object.prototype.hasOwnProperty.call(serializedOrder, prop) && typeof (serializedOrder as Record<string, unknown>)[prop] === 'function') {
-      delete (serializedOrder as Record<string, unknown>)[prop];
+    if (Object.prototype.hasOwnProperty.call(serializedOrder, prop) && typeof serializedOrder[prop] === 'function') {
+      delete serializedOrder[prop];
     }
   }
   
@@ -97,82 +84,91 @@ const generateOrderNumber = (): string => {
 // ----- ORDERS -----
 export const fetchOrders = createAsyncThunk(
   'order/fetchOrders',
-  async () => {
+  async (_, { rejectWithValue }) => {
     try {
-      // Fetch all orders since businessId isn't available as a filter field
+      console.log('Fetching all orders...');
+      // Fetch all orders
       const { data, errors } = await client.models.Order.list();
-      console.log('Fetched orders:', data);
+      
       if (errors) {
-        return { error: errors[0]?.message || 'Failed to fetch orders' };
+        console.error('Errors fetching orders:', errors);
+        return rejectWithValue(errors[0]?.message || 'Failed to fetch orders');
       }
       
-      return data;
+      if (!data || data.length === 0) {
+        console.log('No orders found');
+        return [];
+      }
+      
+      console.log(`Successfully fetched ${data.length} orders`);
+      
+      // Make orders serializable
+      const serializedOrders = data.map(makeSerializable) || [];
+      return serializedOrders;
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Failed to fetch orders' };
+      console.error('Error in fetchOrders:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch orders');
     }
   }
 );
 
 export const fetchOrdersByCustomer = createAsyncThunk(
   'order/fetchOrdersByCustomer',
-  async (customerId: string) => {
+  async (customerId: string, { rejectWithValue }) => {
     try {
-      // Fetch all orders since customerId isn't available as a filter field
+      // Fetch all orders - we filter on the client side because customerId isn't available as a filter field
       const { data, errors } = await client.models.Order.list();
 
       if (errors) {
-        return { error: errors[0]?.message || 'Failed to fetch customer orders' };
+        return rejectWithValue(errors[0]?.message || 'Failed to fetch customer orders');
       }
       
-      // Filter orders by customerId if available
-      const filteredData = data?.filter((order: Schema['Order']['type']) => {
-        if ((order as any).customerId) {
-          return (order as any).customerId === customerId;
-        }
-        return false;
+      // Filter orders by customerId 
+      const filteredData = data?.filter((order: any) => {
+        return order.customerId === customerId;
       });
       
       // Make orders serializable before returning
       const serializedOrders = filteredData?.map(makeSerializable) || [];
       return serializedOrders;
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Failed to fetch customer orders' };
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch customer orders');
     }
   }
 );
 
 export const fetchOrderById = createAsyncThunk(
   'order/fetchOrderById',
-  async (orderId: string) => {
+  async (orderId: string, { rejectWithValue }) => {
     try {
       const { data, errors } = await client.models.Order.get({ id: orderId });
 
       if (errors) {
-        return { error: errors[0]?.message || 'Failed to fetch order' };
+        return rejectWithValue(errors[0]?.message || 'Failed to fetch order');
       }
       
       // Make order serializable before returning
       return makeSerializable(data);
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Failed to fetch order' };
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch order');
     }
   }
 );
 
-import { createOrderWithItems } from '../../../amplify/data/orderData';
-
 export const createOrder = createAsyncThunk(
   'order/createOrder',
-  async (orderData: OrderData) => {
+  async (orderData: OrderData, { rejectWithValue }) => {
     try {
-      // Prepare order input (only allowed fields)
+      // Generate a unique order number
       const orderNumber = generateOrderNumber();
+      console.log('Creating new order with number:', orderNumber);
 
       if (!orderData.customerId) {
-        return { error: "customerId is required to create an order." };
+        return rejectWithValue("customerId is required to create an order.");
       }
-      // Construct orderInput directly, setting notes or null, and all required fields
-      const orderInput = {
+      
+      // Create order input object with required fields
+      const orderInput: any = {
         customerId: orderData.customerId,
         orderNumber: orderNumber,
         orderDate: new Date().toISOString(),
@@ -186,62 +182,66 @@ export const createOrder = createAsyncThunk(
         amountTendered: orderData.amountTendered,
         change: orderData.change,
         notes: orderData.notes ? [orderData.notes] : [],
-        employeeId: orderData.employeeId,
       };
+      
+      // Add employeeId if provided
+      if (orderData.employeeId) {
+        orderInput.employeeId = orderData.employeeId;
+      }
 
-      // 1. Create Order
+      // Create Order using the client API
       const { data: createdOrder, errors: orderErrors } = await client.models.Order.create(orderInput);
+      
       if (orderErrors) {
-        return { error: orderErrors[0]?.message || 'Failed to create order' };
+        console.error('Order creation errors:', orderErrors);
+        return rejectWithValue(orderErrors[0]?.message || 'Failed to create order');
       }
+      
       if (!createdOrder?.id) {
-        return { error: 'Order creation failed: missing id' };
+        console.error('Order created but missing ID');
+        return rejectWithValue('Order creation failed: missing id');
       }
-
-      // 2. Create OrderItems (one for each item)
-      const createdOrderItems = [];
-      if (orderData.items) {
-        for (const item of orderData.items) {
-        const orderItemInput = {
-          orderId: createdOrder.id,
-          orderNumber: orderNumber,
-          quantity: item.quantity,
-          price: item.price,
-          itemId: item.itemId,
-        };
-        const { data: createdOrderItem, errors: orderItemErrors } = await client.models.OrderItem.create(orderItemInput);
-        if (orderItemErrors) {
-          return { error: orderItemErrors[0]?.message || 'Failed to create order item' };
-        }
-        createdOrderItems.push(createdOrderItem);
-      }
-    }
-
-      return { order: createdOrder, orderItems: createdOrderItems };
+      
+      console.log('Order created successfully:', createdOrder.id);
+      
+      // Return the created order
+      return { 
+        order: makeSerializable(createdOrder), 
+        orderItems: [] // Initially empty, items will be added separately
+      };
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Failed to create order' };
+      console.error('Error in createOrder:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to create order');
     }
   }
 );
 
 export const fetchOrderItemsCount = createAsyncThunk(
   'order/fetchOrderItemsCount',
-  async (orderId: string) => {
+  async (orderId: string, { rejectWithValue }) => {
+    if (!orderId) {
+      return rejectWithValue('OrderId is required');
+    }
+    
     try {
+      console.log('Fetching order items for:', orderId);
       // Fetch order items for the given order ID
       const { data, errors } = await client.models.OrderItem.list({
         filter: { orderId: { eq: orderId } }
       });
 
       if (errors) {
-        return { error: errors[0]?.message || 'Failed to fetch order items' };
+        console.error('Errors fetching order items:', errors);
+        return rejectWithValue(errors[0]?.message || 'Failed to fetch order items');
       }
       
       // Return the count of items
-      return data?.length || 0;
+      const count = data?.length || 0;
+      console.log(`Found ${count} items for order ${orderId}`);
+      return count;
     } catch (error) {
       console.error('Error fetching order items count:', error);
-      return { error: error instanceof Error ? error.message : 'Failed to fetch order items count' };
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch order items count');
     }
   }
 );
@@ -256,23 +256,33 @@ export const updateOrderStatus = createAsyncThunk(
     orderId: string, 
     status: 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED',
     employeeId?: string
-  }) => {
+  }, { rejectWithValue }) => {
     try {
-      const updateInput = {
+      console.log(`Updating order ${orderId} status to ${status}`);
+      
+      // Create update input with required fields
+      const updateInput: any = {
         id: orderId,
-        status: status as 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED',
-        employeeId
+        status: status,
       };
+      
+      // Add employeeId if provided
+      if (employeeId) {
+        updateInput.employeeId = employeeId;
+      }
       
       const { data, errors } = await client.models.Order.update(updateInput);
       
       if (errors) {
-        return { error: errors[0]?.message || 'Failed to update order status' };
+        console.error('Errors updating order status:', errors);
+        return rejectWithValue(errors[0]?.message || 'Failed to update order status');
       }
       
+      console.log('Order status updated successfully');
       return makeSerializable(data);
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Failed to update order status' };
+      console.error('Error in updateOrderStatus:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update order status');
     }
   }
 );
@@ -280,15 +290,23 @@ export const updateOrderStatus = createAsyncThunk(
 // ----- ORDER ITEMS -----
 export const fetchOrderItems = createAsyncThunk(
   'orderItem/fetchOrderItems',
-  async (orderId: string) => {
+  async (orderId: string, { rejectWithValue }) => {
     try {
-      const { data, errors } = await client.models.OrderItem.list({ filter: { orderId: { eq: orderId } } });
+      console.log('Fetching items for order:', orderId);
+      const { data, errors } = await client.models.OrderItem.list({ 
+        filter: { orderId: { eq: orderId } } 
+      });
+      
       if (errors) {
-        return { error: errors[0]?.message || 'Failed to fetch order items' };
+        console.error('Errors fetching order items:', errors);
+        return rejectWithValue(errors[0]?.message || 'Failed to fetch order items');
       }
+      
+      console.log(`Found ${data?.length || 0} items for order ${orderId}`);
       return data || [];
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Failed to fetch order items' };
+      console.error('Error in fetchOrderItems:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch order items');
     }
   }
 );
@@ -297,9 +315,88 @@ export const fetchOrderItems = createAsyncThunk(
 const orderSlice = createSlice({
   name: 'order',
   initialState,
-  reducers: {},
+  reducers: {
+    clearOrderError: (state) => {
+      state.error = null;
+    },
+    clearCurrentOrder: (state) => {
+      state.currentOrder = null;
+    }
+  },
   extraReducers: (builder) => {
-    // ...other order thunks
+    // Fetch Orders
+    builder
+      .addCase(fetchOrders.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchOrders.fulfilled, (state, action) => {
+        state.orders = action.payload || [];
+        state.isLoading = false;
+      })
+      .addCase(fetchOrders.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || action.error.message || 'Failed to fetch orders';
+      })
+    
+    // Fetch Order By ID
+    builder
+      .addCase(fetchOrderById.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchOrderById.fulfilled, (state, action) => {
+        state.currentOrder = action.payload;
+        state.isLoading = false;
+      })
+      .addCase(fetchOrderById.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || action.error.message || 'Failed to fetch order';
+      })
+    
+    // Create Order
+    builder
+      .addCase(createOrder.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(createOrder.fulfilled, (state, action) => {
+        if (action.payload?.order) {
+          state.orders.push(action.payload.order);
+          state.currentOrder = action.payload.order;
+        }
+        state.isLoading = false;
+      })
+      .addCase(createOrder.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || action.error.message || 'Failed to create order';
+      })
+    
+    // Update Order Status
+    builder
+      .addCase(updateOrderStatus.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateOrderStatus.fulfilled, (state, action) => {
+        if (action.payload) {
+          // Update in orders array
+          const index = state.orders.findIndex(order => order.id === action.payload?.id);
+          if (index !== -1) {
+            state.orders[index] = action.payload;
+          }
+          
+          // Update current order if it's the same one
+          if (state.currentOrder?.id === action.payload.id) {
+            state.currentOrder = action.payload;
+          }
+        }
+        state.isLoading = false;
+      })
+      .addCase(updateOrderStatus.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string || action.error.message || 'Failed to update order status';
+      })
 
     // Fetch Order Items
     builder
@@ -308,88 +405,114 @@ const orderSlice = createSlice({
         state.orderItemsError = null;
       })
       .addCase(fetchOrderItems.fulfilled, (state, action) => {
-        // If the payload is an error object, do not assign to orderItems
-        if (Array.isArray(action.payload)) {
-          state.orderItems = action.payload;
-          state.orderItemsError = null;
-        } else if (action.payload && typeof action.payload === 'object' && 'error' in action.payload) {
-          state.orderItemsError = action.payload.error;
-          state.orderItems = [];
-        } else {
-          state.orderItems = [];
-          state.orderItemsError = 'Unknown error fetching order items';
-        }
+        state.orderItems = Array.isArray(action.payload) ? action.payload : [];
         state.orderItemsLoading = false;
       })
       .addCase(fetchOrderItems.rejected, (state, action) => {
         state.orderItemsLoading = false;
-        state.orderItemsError = action.error.message || 'Failed to fetch order items';
-        state.orderItems = [];
+        state.orderItemsError = action.payload as string || action.error.message || 'Failed to fetch order items';
       });
-    // Optionally handle create/update/deleteOrderItem thunks here as well
-  },
+  }
 });
 
+export const { clearOrderError, clearCurrentOrder } = orderSlice.actions;
 export default orderSlice.reducer;
 
 // Use explicit required fields for OrderItem creation, matching Amplify schema
-type CreateOrderItemInput = {
+interface CreateOrderItemInput {
   orderId: string;
   orderNumber: string;
   price: number;
   quantity: number;
-  // Add any other required fields from your schema here
-  [key: string]: any;
-};
+  // Remove itemId and type if they're not in your schema
+}
+
+// Update the createOrderItem function in OrderSlice.ts to properly serialize the response:
 
 export const createOrderItem = createAsyncThunk(
   'orderItem/createOrderItem',
-  async (orderItemData: CreateOrderItemInput) => {
+  async (orderItemData: any, { rejectWithValue }) => {
     try {
-      const { data, errors } = await client.models.OrderItem.create(orderItemData);
-      if (errors) {
-        return { error: errors[0]?.message || 'Failed to create order item' };
+      console.log('Creating order item:', JSON.stringify(orderItemData, null, 2));
+      
+      // Validate required fields for the schema
+      if (!orderItemData.orderId || !orderItemData.orderNumber || 
+          orderItemData.quantity === undefined || orderItemData.price === undefined) {
+        return rejectWithValue('Missing required fields for OrderItem');
       }
-      return data;
+      
+      // Only include fields defined in your schema
+      const cleanedData = {
+        orderId: orderItemData.orderId,
+        orderNumber: orderItemData.orderNumber,
+        quantity: orderItemData.quantity,
+        price: orderItemData.price
+      };
+      
+      const { data, errors } = await client.models.OrderItem.create(cleanedData);
+      
+      if (errors) {
+        console.error('Errors creating order item:', errors);
+        return rejectWithValue(errors[0]?.message || 'Failed to create order item');
+      }
+      
+      // Create a serializable version of the response
+      // This prevents the [Function anonymous] serialization error
+      const serializableData = { ...data };
+      
+      // Remove any function properties
+      for (const key in serializableData) {
+        if (typeof serializableData[key as keyof typeof serializableData] === 'function') {
+          delete serializableData[key as keyof typeof serializableData];
+        }
+      }
+      
+      console.log('Order item created successfully:', serializableData.id);
+      return serializableData;
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Failed to create order item' };
+      console.error('Error in createOrderItem:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to create order item');
     }
   }
 );
-
 // Use explicit required fields for OrderItem update, matching Amplify schema
-type UpdateOrderItemInput = {
+interface UpdateOrderItemInput {
   id: string;
-  // Optionally, price, quantity, etc. (but id is always required for update)
+  orderId: string;
+  orderNumber: string;
+  price: number;
+  quantity: number;
+  itemId?: string;
+  __typename: "OrderItem";
   [key: string]: any;
-};
+}
 
 export const updateOrderItem = createAsyncThunk(
   'orderItem/updateOrderItem',
-  async (orderItemData: UpdateOrderItemInput) => {
+  async (orderItemData: UpdateOrderItemInput, { rejectWithValue }) => {
     try {
       const { data, errors } = await client.models.OrderItem.update(orderItemData);
       if (errors) {
-        return { error: errors[0]?.message || 'Failed to update order item' };
+        return rejectWithValue(errors[0]?.message || 'Failed to update order item');
       }
       return data;
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Failed to update order item' };
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update order item');
     }
   }
 );
 
 export const deleteOrderItem = createAsyncThunk(
   'orderItem/deleteOrderItem',
-  async (orderItemId: string) => {
+  async (orderItemId: string, { rejectWithValue }) => {
     try {
       const { errors } = await client.models.OrderItem.delete({ id: orderItemId });
       if (errors) {
-        return { error: errors[0]?.message || 'Failed to delete order item' };
+        return rejectWithValue(errors[0]?.message || 'Failed to delete order item');
       }
       return orderItemId;
     } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Failed to delete order item' };
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to delete order item');
     }
   }
 );

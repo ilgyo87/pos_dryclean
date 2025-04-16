@@ -10,7 +10,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { formatCurrency, formatDate } from '../../../utils/formatters';
+import { formatDate } from '../../../utils/formatters';
 
 interface ReceiptModalProps {
   visible: boolean;
@@ -33,11 +33,13 @@ interface ReceiptModalProps {
     total: number;
     paymentMethod: string;
     pickupDate: string;
+    employeeName: string;
   };
   businessName: string;
   isPrinting: boolean;
   isPrintingError: boolean;
   onPrint: () => void;
+  employeeName: string;
 }
 
 const ReceiptModal = ({
@@ -48,6 +50,7 @@ const ReceiptModal = ({
   businessName,
   isPrinting,
   isPrintingError,
+  employeeName,
   onPrint
 }: ReceiptModalProps) => {
   const scrollViewRef = useRef<ScrollView>(null);
@@ -89,6 +92,7 @@ const ReceiptModal = ({
               <Text style={styles.receiptTitle}>RECEIPT</Text>
               <Text style={styles.orderNumber}>Order #: {orderDetails.orderNumber}</Text>
               <Text style={styles.receiptDate}>Date: {new Date().toLocaleDateString()}</Text>
+              <Text style={styles.employeeName}>Employee: {employeeName}</Text>
             </View>
 
             {/* Customer Info */}
@@ -394,7 +398,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 10,
     fontSize: 14,
-  }
+  },
+  employeeName: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '500',
+    marginTop: 5,
+  },
 });
 
 export default ReceiptModal;
