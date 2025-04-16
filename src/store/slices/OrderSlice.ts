@@ -42,9 +42,10 @@ interface OrderData {
   paymentMethod: string;
   amountTendered: number;
   change: number;
-  status: 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
+  status: 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED';
   pickupDate: string;
   notes?: string;
+  employeeId?: string;
 }
 
 // Helper function to make order objects serializable
@@ -171,11 +172,17 @@ export const createOrder = createAsyncThunk(
       
       // Use a properly typed object according to the Schema type definition
       // This uses the exact input type expected by Amplify Gen 2
-      const { data: orderResult, errors: orderErrors } = await client.models.Order.create({
+      const orderInput = {
         orderNumber: orderNumber,
         orderDate: new Date().toISOString(),
-        status: orderData.status
-      });
+        status: orderData.status,
+        pickupDate: orderData.pickupDate,
+        notes: orderData.notes ? [orderData.notes] : null,
+        customerId: orderData.customerId,
+        employeeId: orderData.employeeId
+      };
+      
+      const { data: orderResult, errors: orderErrors } = await client.models.Order.create(orderInput);
       
       console.log('Order creation result:', orderResult);
       console.log('Order creation errors:', orderErrors);
@@ -218,15 +225,48 @@ export const createOrder = createAsyncThunk(
   }
 );
 
-export const updateOrderStatus = createAsyncThunk(
-  'order/updateOrderStatus',
-  async ({ orderId, status }: { orderId: string, status: 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' }, { rejectWithValue }) => {
+export const fetchOrderItemsCount = createAsyncThunk(
+  'order/fetchOrderItemsCount',
+  async (orderId: string, { rejectWithValue }) => {
     try {
-      const { data, errors } = await client.models.Order.update({
-        id: orderId,
-        status: status as 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED'
+      // Fetch order items for the given order ID
+      const { data, errors } = await client.models.OrderItem.list({
+        filter: { orderId: { eq: orderId } }
       });
 
+      if (errors) {
+        return rejectWithValue(errors[0]?.message || 'Failed to fetch order items');
+      }
+      
+      // Return the count of items
+      return data?.length || 0;
+    } catch (error) {
+      console.error('Error fetching order items count:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch order items count');
+    }
+  }
+);
+
+export const updateOrderStatus = createAsyncThunk(
+  'order/updateOrderStatus',
+  async ({ 
+    orderId, 
+    status,
+    employeeId
+  }: { 
+    orderId: string, 
+    status: 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED',
+    employeeId?: string
+  }, { rejectWithValue }) => {
+    try {
+      const updateInput = {
+        id: orderId,
+        status: status as 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED',
+        employeeId
+      };
+      
+      const { data, errors } = await client.models.Order.update(updateInput);
+      
       if (errors) {
         return rejectWithValue(errors[0]?.message || 'Failed to update order status');
       }

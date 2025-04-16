@@ -43,7 +43,7 @@ export default function AuthenticatedApp() {
                 <Navigation
                     user={user}
                     employee={currentEmployee}
-                    onSwitchEmployee={() => {}}
+                    onSwitchEmployee={setCurrentEmployee}
                 />
                 {!isBusinessAvailable && !isLoading ? (
                     <CreateFormModal

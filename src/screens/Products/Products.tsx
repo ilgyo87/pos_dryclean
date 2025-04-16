@@ -42,7 +42,6 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
         useCallback(() => {
             if (user?.userId) {
                 dispatch(fetchCategories(user.userId));
-                
                 // Check if we should show the stock loader (when no categories exist)
                 const checkForEmptyCategories = async () => {
                     try {
@@ -51,12 +50,13 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
                             setShowStockLoader(true);
                         } else {
                             setShowStockLoader(false);
+                            // Auto-select the first category if none is selected
+                            setSelectedCategory(current => current || (result[0]?.id ?? null));
                         }
                     } catch (error) {
                         console.error("Error fetching categories:", error);
                     }
                 };
-                
                 checkForEmptyCategories();
             }
         }, [user?.userId, dispatch])
@@ -64,12 +64,17 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
 
     // Fetch items when selected category changes
     useEffect(() => {
+        if (categories.length === 0 && selectedCategory !== null) {
+            setSelectedCategory(null);
+            dispatch(clearItems());
+            return;
+        }
         if (selectedCategory) {
             dispatch(fetchItems(selectedCategory));
         } else {
             dispatch(clearItems());
         }
-    }, [selectedCategory, dispatch]);
+    }, [selectedCategory, categories.length, dispatch]);
 
     // Update loading state
     useEffect(() => {

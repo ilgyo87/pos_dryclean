@@ -3,13 +3,12 @@ import { ImageSourcePropType } from 'react-native';
 
 // Create a mapping of all available image assets
 const imageAssets: Record<string, ImageSourcePropType> = {
-  // Define all images from assets/items folder
-  'blazer': require('../../assets/items/blazer.png'),
   'blanket': require('../../assets/items/blanket.png'),
+  'blazer': require('../../assets/items/blazer.png'),
   'box_clothes': require('../../assets/items/box_clothes.png'),
   'curtain': require('../../assets/items/curtain.png'),
-  'dress': require('../../assets/items/dress.png'),
   'dress-shirt': require('../../assets/items/dress-shirt.png'),
+  'dress': require('../../assets/items/dress.png'),
   'groom-suit': require('../../assets/items/groom-suit.png'),
   'hem_cut': require('../../assets/items/hem_cut.png'),
   'jacket': require('../../assets/items/jacket.png'),
@@ -28,13 +27,12 @@ const imageAssets: Record<string, ImageSourcePropType> = {
   'trousers': require('../../assets/items/trousers.png'),
   'tshirt': require('../../assets/items/tshirt.png'),
   'waist': require('../../assets/items/waist.png'),
-  'woman_suit': require('../../assets/items/woman_suit.png'),
-  'winter_coat': require('../../assets/items/winter_coat.png'),
-  'winter-hat': require('../../assets/items/winter-hat.png'),
+  'washing-clothes': require('../../assets/items/washing-clothes.png'),
   'wedding-dress': require('../../assets/items/wedding-dress.png'),
-  'zipper': require('../../assets/items/zipper.png'),
-  // Add any placeholder for missing images
-  'placeholder': require('../../assets/items/tshirt.png')
+  'winter-hat': require('../../assets/items/winter-hat.png'),
+  'winter_coat': require('../../assets/items/winter_coat.png'),
+  'woman_suit': require('../../assets/items/woman_suit.png'),
+  'zipper': require('../../assets/items/zipper.png')
 };
 
 // Function to get all available image names (useful for image pickers)
@@ -43,32 +41,22 @@ export const getAssetImageNames = (): string[] => {
 };
 
 // Helper function to get image source that supports both remote URLs and local assets
-export const getImageSource = (imageSourceOrUrl?: string | null, fallbackSource?: string | null) => {
-  console.log('getImageSource called with:', imageSourceOrUrl, fallbackSource);
-  
+export const getImageSource = (imageSourceOrUrl?: string | null) => {
   // First check if it's a URL
   if (imageSourceOrUrl && (imageSourceOrUrl.startsWith('http://') || imageSourceOrUrl.startsWith('https://'))) {
-    console.log('Using URL:', imageSourceOrUrl);
     return { uri: imageSourceOrUrl };
   }
-  
-  // Then check if it's a valid image asset name
   if (imageSourceOrUrl) {
-    const normalizedName = imageSourceOrUrl.toLowerCase();
-    if (imageAssets[normalizedName]) {
-      console.log('Found matching asset for:', normalizedName);
-      return imageAssets[normalizedName];
+    const original = imageSourceOrUrl.trim().toLowerCase();
+    const dashToUnderscore = original.replace(/-/g, '_');
+    const underscoreToDash = original.replace(/_/g, '-');
+    const possibleKeys = [original, dashToUnderscore, underscoreToDash];
+    for (const key of possibleKeys) {
+      if (imageAssets[key]) {
+        return imageAssets[key];
+      }
     }
-    console.log('No matching asset found for:', normalizedName);
   }
-  
-  // Try fallback if provided
-  if (fallbackSource && imageAssets[fallbackSource.toLowerCase()]) {
-    console.log('Using fallback source:', fallbackSource);
-    return imageAssets[fallbackSource.toLowerCase()];
-  }
-  
-  // Default fallback
-  console.log('Using default placeholder');
-  return imageAssets['placeholder'];
+  // Always fallback to tshirt
+  return imageAssets['tshirt'];
 };

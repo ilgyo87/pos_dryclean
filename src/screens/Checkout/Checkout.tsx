@@ -35,7 +35,7 @@ interface CartItem {
   serviceId?: string;
 }
 
-const Checkout = ({ user }: { user: AuthUser | null }) => {
+const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: string, name: string } | null }) => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const dispatch = useDispatch<AppDispatch>();
@@ -177,6 +177,7 @@ const Checkout = ({ user }: { user: AuthUser | null }) => {
         change: 0,
         status: 'CREATED' as const,
         pickupDate: dueDate.toISOString(),
+        employeeId: employee?.id,
         notes: additionalNotes,
       };
 

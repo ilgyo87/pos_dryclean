@@ -24,6 +24,11 @@ export default function Dashboard({ user, navigation }: { user: AuthUser | null,
     products: 0
   });
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchBusinessData();
+    }, [])
+  );
   const fetchBusinessData = async () => {
     if (!user) {
       setIsLoading(false);

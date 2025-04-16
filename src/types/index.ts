@@ -6,7 +6,7 @@ export type EntityType = 'Business' | 'Employee' | 'Customer' | 'Garment' | 'Rac
 export interface NavigationProps {
   user: AuthUser | null;
   employee: { id: string, name: string } | null;
-  onSwitchEmployee: () => void;
+  onSwitchEmployee: (employee: { id: string, name: string } | null) => void;
 }
 
 export interface CreateFormModalProps {

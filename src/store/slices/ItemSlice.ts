@@ -68,33 +68,17 @@ export const fetchItems = createAsyncThunk(
         // Item name for analysis
         const itemName = item.name?.toLowerCase() || '';
         
-        // Use a lookup table for common product types
-        const imageSourceMap: Record<string, string[]> = {
-          'blanket': ['blanket', 'comforter', 'duvet', 'bedding'],
-          'tshirt': ['shirt', 'tshirt', 't-shirt', 'top', 'blouse'],
-          'shoes': ['shoe', 'footwear', 'boot', 'sneaker'],
-          'dress': ['dress', 'gown'],
-          'jacket': ['jacket', 'coat', 'blazer', 'sweater'],
-          'jeans': ['jeans', 'pants', 'trousers', 'slacks'],
-          'curtain': ['curtain', 'drape', 'blind'],
-          'suit': ['suit', 'tuxedo'],
-        };
-        
-        // Find a matching image source based on the item name
-        let suggestedImageSource = 'placeholder';
-        Object.entries(imageSourceMap).forEach(([source, keywords]) => {
-          if (keywords.some(keyword => itemName.includes(keyword))) {
-            suggestedImageSource = source;
-          }
-        });
-        
-        console.log(`Assigning imageSource ${suggestedImageSource} to item ${item.id} (${item.name})`);
-        
-        // Add the imageSource to the item
+        // Directly assign imageSource based on slugified item name, fallback to 'tshirt' if not found
+        const slugify = (str: string) => str.toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '');
+        const candidate = slugify(item.name || '');
+        // imageAssets is only available in utils, so just assign the key; fallback logic is handled in getImageSource
         return {
           ...baseItem,
-          imageSource: suggestedImageSource
+          imageSource: candidate || 'tshirt',
         };
+
       });
       
       // Log a summary instead of the full items array (which could be large)
@@ -130,24 +114,13 @@ export const createItem = createAsyncThunk(
       const originalImageSource = itemData.imageSource;
       console.log('Original imageSource for UI:', originalImageSource);
       
-      // Remove fields that are not in the schema
-      const { valid, imageSource, userId, ...cleanItemData } = itemData;
-      
-      // Clean up undefined values to null for GraphQL
-      const createData = {
-        ...cleanItemData,
-        // Convert undefined to null for optional fields
-        description: cleanItemData.description || null,
-        imageUrl: cleanItemData.imageUrl || null,
-        duration: cleanItemData.duration || null
-      };
-      
-      console.log('Removed userId and imageSource fields for GraphQL compatibility');
-      console.log('Sending to API for create (cleaned):', createData);
+      // Only remove 'valid' field; save all other fields as provided
+      const { valid, ...directData } = itemData;
+      console.log('Saving itemData directly to API:', directData);
       
       try {
         // Use a straightforward create approach
-        const createResult = await client.models.Item.create(createData);
+        const createResult = await client.models.Item.create(directData);
         
         console.log('Create result:', createResult);
         
@@ -210,47 +183,22 @@ export const updateItem = createAsyncThunk(
 
       // Store the original imageSource for adding to Redux state later
       const originalImageSource = itemData.imageSource;
-      console.log('Original imageSource for UI:', originalImageSource);
-      
-      // Remove fields that are not in the schema
-      const { valid, imageSource, userId, ...cleanItemData } = itemData;
-      console.log('Removed userId and imageSource fields for GraphQL compatibility');
-
-      // We must have an ID for updates
-      if (!cleanItemData.id) {
-        console.error('Missing ID for item update');
-        return rejectWithValue('Item ID is required for update');
-      }
-      
-      // Clean up undefined values to null for GraphQL
-      const cleanedData = {
-        ...cleanItemData,
-        // Convert undefined to null for optional fields
-        description: cleanItemData.description || null,
-        imageUrl: cleanItemData.imageUrl || null,
-        duration: cleanItemData.duration || null
-      };
-      
-      console.log('Sending to API for update (cleaned):', cleanedData);
+      // Only remove 'valid' field; save all other fields as provided
+      const { valid, ...directData } = itemData;
+      console.log('Saving itemData directly to API (update):', directData);
       
       // Use a simpler approach that bypasses the problematic code
-      console.log('Attempting simplified update for item:', cleanItemData.id);
+      console.log('Attempting simplified update for item:', itemData.id);
       
       try {
-        // Split the update data properly - ID is handled differently
-        const { id, ...updateData } = cleanItemData;
-        
-        if (!id) {
+        if (!directData.id) {
           return rejectWithValue('Item ID is required for update');
         }
         
-        console.log(`Updating item ID ${id} with data:`, updateData);
+        console.log(`Updating item ID ${directData.id} with data:`, directData);
         
         // Use a straightforward update approach
-        const updateResult = await client.models.Item.update({
-          id,
-          ...updateData
-        });
+        const updateResult = await client.models.Item.update(directData);
         
         console.log('Update result:', updateResult);
         
