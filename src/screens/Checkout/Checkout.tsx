@@ -54,8 +54,8 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     total,
     pickupDate,
     customerPreferences,
-    customerFirstName,
-    customerLastName
+    firstName,
+    lastName
   } = route.params || {};
 
   // Get business data from Redux
@@ -174,9 +174,6 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     setLocalError(null);
 
     try {
-      // Get customer names - use from route params or fallback to splitting full name
-      const firstName = customerFirstName || customerName?.split(' ')[0] || '';
-      const lastName = customerLastName || customerName?.split(' ').slice(1).join(' ') || '';
 
       // Generate order notes with employee information
       const notes = generateOrderNotes();
@@ -184,8 +181,8 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
       // 1. Create the order WITH customer details and employee notes
       const orderPayload = {
         customerId,
-        customerFirstName: firstName,
-        customerLastName: lastName,
+        firstName,
+        lastName,
         businessId,
         subtotal: calculatedSubtotal,
         tax: calculatedTaxAmount,

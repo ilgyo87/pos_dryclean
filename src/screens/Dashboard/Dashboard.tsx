@@ -86,7 +86,9 @@ export default function Dashboard({ user, navigation, isBusinessAvailable }: { u
         items: [], // Empty cart to start with
         total: 0,   // No total yet
         pickupDate: new Date(Date.now() + 86400000).toISOString(), // Default to tomorrow
-        customerPreferences: customer.preferences || ''
+        customerPreferences: customer.preferences || '',
+        firstName: customer.firstName,
+        lastName: customer.lastName
       });
     } else {
       // Fallback to customer edit if no business found

@@ -540,11 +540,12 @@ const EmployeeForm = forwardRef(({
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        padding: 10,
+        width: '100%',
     },
     scrollContainer: {
         flex: 1,
+        width: '100%',
+        alignSelf: 'stretch',
     },
     label: {
         marginBottom: 5,

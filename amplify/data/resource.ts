@@ -278,7 +278,8 @@ const schema = a.schema({
       ]),
       deliveryNotes: a.string().array(),
       // Relationships
-      customerId: a.id().required(),
+      businessId: a.id(),
+      customerId: a.id(),
       employeeName: a.string(),
       firstName: a.string(),
       lastName: a.string(),

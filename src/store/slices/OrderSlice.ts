@@ -40,6 +40,8 @@ interface OrderItem {
 export interface OrderData {
   customerId: string;
   businessId: string;
+  firstName: string;
+  lastName: string;
   items?: OrderItem[]; // Made optional for two-step creation
   subtotal: number;
   tax: number;
@@ -182,13 +184,11 @@ export const createOrder = createAsyncThunk(
         amountTendered: orderData.amountTendered,
         change: orderData.change,
         notes: orderData.notes ? [orderData.notes] : [],
+        firstName: orderData.firstName,
+        lastName: orderData.lastName,
+        employeeId: orderData.employeeId
       };
       
-      // Add employeeId if provided
-      if (orderData.employeeId) {
-        orderInput.employeeId = orderData.employeeId;
-      }
-
       // Create Order using the client API
       const { data: createdOrder, errors: orderErrors } = await client.models.Order.create(orderInput);
       
