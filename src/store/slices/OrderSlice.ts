@@ -31,7 +31,6 @@ const initialState: OrderState = {
 // Types for order creation
 interface OrderItem {
   itemId: string;
-  quantity: number;
   price: number;
   type: 'service' | 'product';
   orderId: string;
@@ -423,7 +422,6 @@ interface CreateOrderItemInput {
   orderId: string;
   orderNumber: string;
   price: number;
-  quantity: number;
   itemName?: string;
   starch?: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
   pressOnly?: boolean;
@@ -439,7 +437,7 @@ export const createOrderItem = createAsyncThunk(
       
       // Validate required fields for the schema
       if (!orderItemData.orderId || !orderItemData.orderNumber || 
-          orderItemData.quantity === undefined || orderItemData.price === undefined) {
+          orderItemData.price === undefined) {
         return rejectWithValue('Missing required fields for OrderItem');
       }
       
@@ -447,7 +445,6 @@ export const createOrderItem = createAsyncThunk(
       const cleanedData: CreateOrderItemInput = {
         orderId: orderItemData.orderId,
         orderNumber: orderItemData.orderNumber,
-        quantity: orderItemData.quantity,
         price: orderItemData.price,
         itemName: orderItemData.itemName,
         starch: orderItemData.starch,
@@ -486,7 +483,6 @@ interface UpdateOrderItemInput {
   orderId: string;
   orderNumber: string;
   price: number;
-  quantity: number;
   itemId?: string;
   __typename: "OrderItem";
   [key: string]: any;

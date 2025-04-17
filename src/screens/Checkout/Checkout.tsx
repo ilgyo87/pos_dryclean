@@ -1,4 +1,4 @@
-// src/screens/Checkout/Checkout.tsx
+// First, fix these imports to ensure we have everything we need
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
@@ -8,7 +8,9 @@ import {
   ScrollView,
   Alert,
   Platform,
-  Switch
+  Switch,
+  ActivityIndicator,
+  Modal
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -18,28 +20,24 @@ import { fetchItems } from '../../store/slices/ItemSlice';
 import { RootState, AppDispatch } from '../../store';
 
 import OrderSummary from './components/OrderSummary';
+import type { CartItem } from './components/OrderSummary';
 import ReceiptModal from './components/ReceiptModal';
-import { AuthUser } from "aws-amplify/auth";
+import { AuthUser } from 'aws-amplify/auth';
 import CheckoutServiceList from './components/CheckoutServiceList';
 import CheckoutProductList from './components/CheckoutProductList';
 import DueDatePicker from './components/DueDatePicker';
 import { Ionicons } from '@expo/vector-icons';
 import { usePrinter, PrintReceiptParams } from './hooks/usePrinter';
+import PaymentMethodSelector from './components/PaymentMethodSelector';
+import type { PaymentMethodType } from './components/PaymentMethodSelector';
 
-// Define the CartItem interface for items in the order
-interface CartItem {
-  id: string; // unique identifier for product or service
-  name: string;
-  price: number;
-  quantity: number;
-  type: 'service' | 'product';
-  orderId: string;
-  orderNumber: string;
-  starch: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
-  pressOnly: boolean;
+// Component props interface
+interface CheckoutProps {
+  user: AuthUser | null;
+  employee: { id: string; name: string } | null;
 }
 
-const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: string, name: string } | null }) => {
+const Checkout: React.FC<CheckoutProps> = ({ user, employee }) => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const dispatch = useDispatch<AppDispatch>();
@@ -53,7 +51,7 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     businessId,
     customerId,
     customerName,
-    items,
+    items: routeItems,
     total,
     pickupDate,
     customerPreferences,
@@ -71,12 +69,20 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
   const [dueDate, setDueDate] = useState<Date>(new Date(pickupDate || Date.now() + 86400000)); // Default to tomorrow
   const [tip, setTip] = useState<string>('0.00');
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
-  const [selectedItems, setSelectedItems] = useState<CartItem[]>(items || []);
-  const [currentStarch, setCurrentStarch] = useState<'NONE'|'LIGHT'|'MEDIUM'|'HEAVY'>('NONE');
+  const [selectedItems, setSelectedItems] = useState<CartItem[]>(
+    // Initialize with proper default values for orderId and orderNumber
+    (routeItems || []).map((item: CartItem) => ({
+      ...item,
+      orderId: item.orderId || '',
+      orderNumber: item.orderNumber || ''
+    }))
+  ); const [currentStarch, setCurrentStarch] = useState<'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY'>('NONE');
   const [currentPressOnly, setCurrentPressOnly] = useState<boolean>(false);
   const [receiptVisible, setReceiptVisible] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [orderNumber, setOrderNumber] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('CASH');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Use the printer hook
   const {
@@ -105,12 +111,12 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
 
   // Function to handle adding new items to the order
   const handleAddItem = (newItem: CartItem) => {
-    // Check if item already exists in the order by id and type
+    // Check if item already exists in the order by id, type, and properties
     const existingItemIndex = selectedItems.findIndex(item =>
       item.id === newItem.id &&
-    item.type === newItem.type &&
-    item.starch === newItem.starch &&
-    item.pressOnly === newItem.pressOnly
+      item.type === newItem.type &&
+      item.starch === newItem.starch &&
+      item.pressOnly === newItem.pressOnly
     );
 
     if (existingItemIndex !== -1) {
@@ -166,7 +172,7 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
   };
 
   // Function to update starch
-  const handleUpdateStarch = (index: number, value: 'NONE'|'LIGHT'|'MEDIUM'|'HEAVY') => {
+  const handleUpdateStarch = (index: number, value: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY') => {
     const updated = [...selectedItems];
     updated[index].starch = value;
     setSelectedItems(updated);
@@ -180,14 +186,22 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
   };
 
   // Sync toggles to existing service item whenever toggles or service change
+  // Only update if there's at least one matching item
   useEffect(() => {
-    setSelectedItems(prev =>
-      prev.map(item =>
-        item.type === 'service' && item.id === selectedServiceId
-          ? { ...item, starch: currentStarch, pressOnly: currentPressOnly }
-          : item
-      )
+    // Check if we have any items of the selected service type
+    const hasServiceItems = selectedItems.some(
+      item => item.type === 'service' && item.id === selectedServiceId
     );
+
+    if (hasServiceItems) {
+      setSelectedItems(prev =>
+        prev.map(item =>
+          item.type === 'service' && item.id === selectedServiceId
+            ? { ...item, starch: currentStarch, pressOnly: currentPressOnly }
+            : item
+        )
+      );
+    }
   }, [currentStarch, currentPressOnly, selectedServiceId]);
 
   // Generate order notes including employee information
@@ -204,17 +218,23 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     return notes;
   };
 
-  // Process the order
-  const handleProcessOrder = async () => {
+  // Show the confirmation modal before processing
+  const handleConfirmOrder = () => {
     if (selectedItems.length === 0) {
       Alert.alert('No items selected', 'Please add at least one item to the order.');
       return;
     }
+
+    setShowConfirmModal(true);
+  };
+
+  // Process the order after confirmation
+  const handleProcessOrder = async () => {
+    setShowConfirmModal(false);
     setLocalLoading(true);
     setLocalError(null);
 
     try {
-
       // Generate order notes with employee information
       const notes = generateOrderNotes();
 
@@ -228,7 +248,7 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
         tax: calculatedTaxAmount,
         tip: tipAmount,
         total: grandTotal,
-        paymentMethod: 'CASH',
+        paymentMethod,
         amountTendered: grandTotal,
         change: 0,
         status: "CREATED" as const,
@@ -236,6 +256,7 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
         notes: notes,
         employeeId: employee?.id,
       };
+
       // Log payload for debugging
       console.log('Creating order with payload:', JSON.stringify(orderPayload, null, 2));
 
@@ -263,31 +284,30 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
       setCreatedOrder(newOrder);
       setOrderNumber(orderNum);
 
-      // 2. Create all order items, each referencing the new orderId/orderNumber
+      // 2. Expand items by quantity and create each order item separately
       if (orderId && orderNum) {
-        await Promise.all(selectedItems.map(async item => {
-          // Create a cleaned order item object with only the fields defined in the schema
-          const orderItemInput = {
+        // Prepare individual inputs without quantity
+        // Expand each item by its quantity (default to 1 if missing)
+        const inputs = selectedItems.flatMap(item =>
+          Array.from({ length: item.quantity ?? 1 }, () => ({
             orderId,
             orderNumber: orderNum,
-            quantity: item.quantity,
             price: item.price,
             itemName: item.name,
-            starch: item.starch,
-            pressOnly: item.pressOnly
-          };
-
-          console.log('Creating order item with input:', JSON.stringify(orderItemInput, null, 2));
-
-          try {
-            const result = await dispatch(createOrderItem(orderItemInput));
-            if (!createOrderItem.fulfilled.match(result)) {
-              console.error('Failed to create order item:', result.payload);
+            starch: item.starch || 'NONE',
+            pressOnly: Boolean(item.pressOnly),
+          }))
+        );
+        // Dispatch creation for each
+        await Promise.all(
+          inputs.map(async input => {
+            console.log('Creating order item with input:', JSON.stringify(input));
+            const res = await dispatch(createOrderItem(input));
+            if (!createOrderItem.fulfilled.match(res)) {
+              console.error('Failed to create order item:', res.payload);
             }
-          } catch (error) {
-            console.error('Error creating order item:', error);
-          }
-        }));
+          })
+        );
       } else {
         setLocalError('Missing orderId or orderNumber.');
         setLocalLoading(false);
@@ -328,8 +348,8 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
       tax: calculatedTaxAmount,
       tip: tipAmount,
       total: grandTotal,
-      paymentMethod: 'CASH',
-      employeeName: employeeName  // Add employee name to the receipt
+      paymentMethod,
+      employeeName: employeeName
     };
 
     // Initialize printer discovery
@@ -358,8 +378,53 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     });
   };
 
+  // Render confirmation modal
+  const renderConfirmModal = () => (
+    <Modal
+      visible={showConfirmModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowConfirmModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.confirmModal}>
+          <Text style={styles.confirmTitle}>Confirm Order</Text>
+
+          <Text style={styles.confirmText}>
+            Customer: {customerName}
+          </Text>
+          <Text style={styles.confirmText}>
+            Items: {selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0)}
+          </Text>
+          <Text style={styles.confirmText}>
+            Total: ${grandTotal.toFixed(2)}
+          </Text>
+
+          <View style={styles.confirmButtons}>
+            <TouchableOpacity
+              style={[styles.confirmButton, styles.cancelButton]}
+              onPress={() => setShowConfirmModal(false)}
+            >
+              <Text style={styles.buttonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.confirmButton, styles.proceedButton]}
+              onPress={handleProcessOrder}
+            >
+              <Text style={styles.buttonText}>Create Order</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <View style={styles.container}>
+      {/* Confirmation Modal */}
+      {renderConfirmModal()}
+
       <View style={styles.headerBar}>
         <View style={styles.customerInfo}>
           <Text style={styles.customerName}>Customer: {customerName}</Text>
@@ -384,38 +449,29 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
             }}
             isLoading={isLoadingCategories}
           />
+
           {/* Service-level toggles row */}
           {selectedServiceId && (
-            <View style={styles.optionsRow}>
+            <View style={styles.togglesContainer}>
               <Text style={styles.toggleLabel}>Starch:</Text>
-              <View style={styles.starchRadioGroup}>
-                {(['NONE','LIGHT','MEDIUM','HEAVY'] as Array<'NONE'|'LIGHT'|'MEDIUM'|'HEAVY'>).map(option => (
+              <View style={styles.starchOptions}>
+                {(['NONE', 'LIGHT', 'MEDIUM', 'HEAVY'] as const).map(level => (
                   <TouchableOpacity
-                    key={option}
-                    style={[
-                      styles.radioButton,
-                      currentStarch === option && styles.radioButtonSelected
-                    ]}
-                    onPress={() => setCurrentStarch(option)}
+                    key={level}
+                    style={[styles.starchOption, currentStarch === level && styles.selectedStarchOption]}
+                    onPress={() => setCurrentStarch(level)}
                   >
-                    <Text style={[
-                      styles.radioLabel,
-                      currentStarch === option && styles.radioLabelSelected
-                    ]}>
-                      {option === 'NONE' ? 'N' : option[0]}
-                    </Text>
+                    <Text style={[styles.starchOptionText, currentStarch === level && styles.selectedStarchOptionText]}> {level} </Text>
                   </TouchableOpacity>
                 ))}
               </View>
-              <View style={styles.pressOnlyToggle}>
-                <Text>Press Only:</Text>
-                <Switch
-                  value={currentPressOnly}
-                  onValueChange={setCurrentPressOnly}
-                />
+              <View style={styles.pressOnlyContainer}>
+                <Text style={styles.toggleLabel}>Press Only</Text>
+                <Switch value={currentPressOnly} onValueChange={setCurrentPressOnly} />
               </View>
             </View>
           )}
+
           {/* Add Service Button */}
           {selectedServiceId && (
             <View style={styles.addServiceButtonContainer}>
@@ -430,10 +486,10 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
                       price: service.price || 0,
                       quantity: 1,
                       type: 'service',
-                      orderId: createdOrder?.id || '',
-                      orderNumber: orderNumber || '',
                       starch: currentStarch,
-                      pressOnly: currentPressOnly
+                      pressOnly: currentPressOnly,
+                      orderId: createdOrder?.id || '',
+                      orderNumber: orderNumber || ''
                     });
                   }
                 }}
@@ -443,13 +499,15 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
               </TouchableOpacity>
             </View>
           )}
+
           {/* Products in a grid layout */}
           <View style={styles.productsSection}>
             <CheckoutProductList
               products={productItems}
               selectedServiceId={selectedServiceId}
               onSelectProduct={(product) => {
-                handleAddItem({
+                // Create a valid CartItem with non-optional orderId and orderNumber
+                const productItem: CartItem = {
                   id: product.id,
                   name: product.name,
                   price: product.price || 0,
@@ -459,7 +517,8 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
                   orderNumber: orderNumber || '',
                   starch: 'NONE',
                   pressOnly: product.pressOnly || false
-                });
+                };
+                handleAddItem(productItem);
               }}
               isLoading={isLoadingItems}
             />
@@ -471,6 +530,7 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
             />
           </View>
         </View>
+
         {/* Right Column: Order Summary and Payment Section */}
         <View style={styles.rightColumn}>
           {/* Fixed Header with Title */}
@@ -491,6 +551,12 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
               showTotals={false}
               showTitle={false}
               dueDate={dueDate}
+            />
+
+            {/* Payment Method Selection */}
+            <PaymentMethodSelector
+              selectedMethod={paymentMethod}
+              onSelectMethod={setPaymentMethod}
             />
           </ScrollView>
 
@@ -525,12 +591,16 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
                 styles.processButton,
                 (selectedItems.length === 0 || localLoading) && styles.disabledButton
               ]}
-              onPress={handleProcessOrder}
+              onPress={handleConfirmOrder}
               disabled={selectedItems.length === 0 || localLoading}
             >
-              <Text style={styles.processButtonText}>
-                {localLoading ? 'Processing...' : 'Process Order'}
-              </Text>
+              {localLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.processButtonText}>
+                  Process Order
+                </Text>
+              )}
             </TouchableOpacity>
 
             {localError && (
@@ -549,16 +619,17 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
           onPrint={handlePrintReceipt}
           isPrinting={isPrinting}
           isPrintingError={isPrintingError}
-          employeeName={employee?.name || 'Self-Service'} // Now as a direct prop
+          employeeName={employee?.name || 'Self-Service'}
           orderDetails={{
             orderNumber: orderNumber,
             customerName,
+            // Use selectedItems directly since we've ensured all items have orderId and orderNumber
             items: selectedItems,
             subtotal: calculatedSubtotal,
             tax: calculatedTaxAmount,
             tip: tipAmount,
             total: grandTotal,
-            paymentMethod: 'CASH',
+            paymentMethod,
             pickupDate: dueDate.toISOString(),
             employeeName: employee?.name || 'Self-Service'
           }}
@@ -725,50 +796,118 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
+    padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
   toggleLabel: {
     fontSize: 14,
+    fontWeight: '500',
     color: '#555',
+    marginBottom: 5,
+  },
+  starchSection: {
+    flex: 3,
   },
   pressOnlyToggle: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 15,
   },
   starchRadioGroup: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 10,
   },
   radioButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
+    padding: 8,
+    borderRadius: 4,
+    borderWidth: 1,
     borderColor: '#ccc',
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginHorizontal: 4,
   },
   radioButtonSelected: {
     borderColor: '#4CAF50',
     backgroundColor: '#4CAF50',
   },
   radioLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#555',
-    marginLeft: 5,
   },
   radioLabelSelected: {
     color: '#fff',
+    fontWeight: 'bold',
   },
   errorText: {
     color: 'red',
     textAlign: 'center',
     marginTop: 5,
   },
+  // Confirmation modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmModal: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    width: '80%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  confirmText: {
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  confirmButton: {
+    padding: 12,
+    borderRadius: 6,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#E53935',
+  },
+  proceedButton: {
+    backgroundColor: '#4CAF50',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  togglesContainer: { flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: '#fff', marginVertical: 5 },
+  starchOptions: { flexDirection: 'row', flexWrap: 'wrap' },
+  starchOption: { padding: 6, borderWidth: 1, borderColor: '#ccc', borderRadius: 4, marginRight: 5, marginBottom: 5 },
+  selectedStarchOption: { backgroundColor: '#2196F3', borderColor: '#2196F3' },
+  starchOptionText: { fontSize: 12, color: '#333' },
+  selectedStarchOptionText: { color: '#fff' },
+  pressOnlyContainer: { flexDirection: 'row', alignItems: 'center', marginLeft: 20 },
 });
 
 export default Checkout;

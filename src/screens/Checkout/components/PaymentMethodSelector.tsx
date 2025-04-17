@@ -1,22 +1,30 @@
 // src/screens/Checkout/components/PaymentMethodSelector.tsx
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-type PaymentMethod = 'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'STORE_CREDIT' | 'MOBILE_PAYMENT';
+export type PaymentMethodType = 'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'STORE_CREDIT' | 'MOBILE_PAYMENT';
 
 interface PaymentMethodSelectorProps {
-  selectedMethod: PaymentMethod;
-  onSelectMethod: (method: PaymentMethod) => void;
+  selectedMethod: PaymentMethodType;
+  onSelectMethod: (method: PaymentMethodType) => void;
 }
 
-const PaymentMethodSelector = ({ selectedMethod, onSelectMethod }: PaymentMethodSelectorProps) => {
+const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ 
+  selectedMethod, 
+  onSelectMethod 
+}) => {
   const paymentMethods = [
-    { id: 'CASH', label: 'Cash', icon: 'cash-outline' },
-    { id: 'CREDIT_CARD', label: 'Credit Card', icon: 'card-outline' },
-    { id: 'DEBIT_CARD', label: 'Debit Card', icon: 'card-outline' },
-    { id: 'MOBILE_PAYMENT', label: 'Mobile Payment', icon: 'phone-portrait-outline' },
-    { id: 'STORE_CREDIT', label: 'Store Credit', icon: 'wallet-outline' },
+    { id: 'CASH' as PaymentMethodType, label: 'Cash', icon: 'cash-outline' },
+    { id: 'CREDIT_CARD' as PaymentMethodType, label: 'Credit Card', icon: 'card-outline' },
+    { id: 'DEBIT_CARD' as PaymentMethodType, label: 'Debit Card', icon: 'card-outline' },
+    { id: 'MOBILE_PAYMENT' as PaymentMethodType, label: 'Mobile Payment', icon: 'phone-portrait-outline' },
+    { id: 'STORE_CREDIT' as PaymentMethodType, label: 'Store Credit', icon: 'wallet-outline' },
   ];
 
   return (
@@ -31,18 +39,19 @@ const PaymentMethodSelector = ({ selectedMethod, onSelectMethod }: PaymentMethod
               styles.methodButton,
               selectedMethod === method.id && styles.selectedMethod
             ]}
-            onPress={() => onSelectMethod(method.id as PaymentMethod)}
+            onPress={() => onSelectMethod(method.id)}
           >
             <Ionicons 
               name={method.icon as any} 
               size={24} 
-              color={selectedMethod === method.id ? '#fff' : '#333'} 
+              color={selectedMethod === method.id ? '#fff' : '#555'} 
             />
             <Text 
               style={[
                 styles.methodText,
                 selectedMethod === method.id && styles.selectedMethodText
               ]}
+              numberOfLines={1}
             >
               {method.label}
             </Text>
@@ -56,13 +65,22 @@ const PaymentMethodSelector = ({ selectedMethod, onSelectMethod }: PaymentMethod
 const styles = StyleSheet.create({
   container: {
     padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginTop: 15,
+    marginBottom: 20,
+    marginHorizontal: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 15,
+    color: '#333',
   },
   methodsContainer: {
     flexDirection: 'row',
@@ -82,9 +100,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#2196F3',
   },
   methodText: {
-    marginLeft: 8,
     fontSize: 14,
-    color: '#333',
+    marginLeft: 8,
+    color: '#555',
   },
   selectedMethodText: {
     color: '#fff',

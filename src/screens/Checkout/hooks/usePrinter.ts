@@ -5,7 +5,6 @@ import {
   usePrintersDiscovery, 
   Printer, 
   DiscoveryPortType, 
-  DiscoveryFilterOption,
   PrinterStatus
 } from 'react-native-esc-pos-printer';
 
@@ -25,6 +24,7 @@ export interface PrintReceiptParams {
   tip: number;
   total: number;
   paymentMethod: string;
+  qrCode?: string;
 }
 
 export const usePrinter = () => {

@@ -47,6 +47,24 @@ export function QRCodeDisplay({
 
   // Determine display title based on props
   const displayTitle = title || `${entityType} QR Code`;
+  
+  // Update the component to show more information for garments
+  let displayInfo = null;
+  if (entityType === 'Garment' && qrValue) {
+    try {
+      const data = JSON.parse(qrValue);
+      displayInfo = (
+        <View style={styles.infoContainer}>
+          <Text style={styles.infoText}>Item: {data.itemName}</Text>
+          {data.orderNumber && (
+            <Text style={styles.infoText}>Order: {data.orderNumber}</Text>
+          )}
+        </View>
+      );
+    } catch (e) {
+      console.error('Error parsing QR data:', e);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -134,5 +152,16 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#666',
-  }
+  },
+  infoContainer: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 5,
+    width: '100%',
+  },
+  infoText: {
+    fontSize: 14,
+    marginBottom: 5,
+  },
 });

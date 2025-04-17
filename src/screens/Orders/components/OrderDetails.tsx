@@ -168,10 +168,12 @@ export default function OrderDetails() {
     id: item.id,
     name: item.name || `Item #${item.id?.substring(0, 6)}`,
     price: item.price || 0,
-    quantity: item.quantity || 1,
+    quantity: item.quantity ?? 1,
     type: item.type || 'product',
     orderId: item.orderId,
-    orderNumber: item.orderNumber
+    orderNumber: item.orderNumber,
+    starch: item.starch ?? 'NONE',
+    pressOnly: item.pressOnly ?? false
   }));
   
   // Calculate financial totals

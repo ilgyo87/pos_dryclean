@@ -12,21 +12,22 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate } from '../../../utils/formatters';
 
-interface ReceiptModalProps {
+export interface ReceiptModalProps {
   visible: boolean;
   onClose: () => void;
   onComplete: () => void;
+  onPrint: () => void;
   orderDetails: {
     orderNumber: string;
     customerName: string;
-    items: Array<{
+    items: {
       name: string;
       price: number;
       quantity: number;
       type: 'service' | 'product';
       orderId: string;
       orderNumber: string;
-    }>;
+    }[];
     subtotal: number;
     tax: number;
     tip: number;
@@ -38,7 +39,6 @@ interface ReceiptModalProps {
   businessName: string;
   isPrinting: boolean;
   isPrintingError: boolean;
-  onPrint: () => void;
   employeeName: string;
 }
 

@@ -1,19 +1,20 @@
+// src/screens/Checkout/components/OrderSummary.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-// Unified CartItem type (consider importing from a shared types file)
-type CartItem = {
+// CartItem type definition
+export interface CartItem {
   id: string;
   name: string;
   price: number;
   quantity: number;
   type: 'service' | 'product';
-  orderId: string;
-  orderNumber: string;
-  starch?: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
-  pressOnly?: boolean;
-};
+  orderId: string; // No longer optional
+  orderNumber: string; // No longer optional
+  starch: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
+  pressOnly: boolean;
+}
 
 interface OrderSummaryProps {
   items?: CartItem[];
@@ -28,7 +29,7 @@ interface OrderSummaryProps {
   onUpdateQuantity?: (itemId: string, newQuantity: number) => void;
 }
 
-const OrderSummary = ({
+const OrderSummary: React.FC<OrderSummaryProps> = ({
   items = [],
   subtotal,
   tax,
@@ -39,7 +40,24 @@ const OrderSummary = ({
   showTitle = true,
   dueDate,
   onUpdateQuantity
-}: OrderSummaryProps) => {
+}) => {
+
+  // Function to format the item name with starch and pressOnly indicators
+  const formatItemName = (item: CartItem): string => {
+    let formattedName = item.name;
+    
+    // Add starch indicator if applicable
+    if (item.starch && item.starch !== 'NONE') {
+      formattedName += ` (${item.starch})`;
+    }
+    
+    // Add press-only indicator
+    if (item.pressOnly) {
+      formattedName += ' (Press Only)';
+    }
+    
+    return formattedName;
+  };
 
   return (
     <View style={styles.container}>
@@ -58,30 +76,34 @@ const OrderSummary = ({
           {items.map((item, index) => (
             <View key={`${item.id}-${index}`} style={styles.itemRow}>
               {/* Item name column */}
-              <Text style={[styles.itemName, styles.nameColumn]} numberOfLines={1}>
-                {item.name}
-                {item.starch && item.starch !== 'NONE' ? ` (${item.starch[0]})` : ''}
-                {item.pressOnly ? ' (PO)' : ''}
+              <Text style={[styles.itemName, styles.nameColumn]} numberOfLines={2}>
+                {formatItemName(item)}
               </Text>
 
               {/* Quantity column */}
               <View style={[styles.quantityControls, styles.quantityColumn]}>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => onUpdateQuantity && onUpdateQuantity(item.id, item.quantity - 1)}
-                  disabled={item.quantity <= 1}
-                >
-                  <Text style={[styles.quantityButtonText, item.quantity <= 1 && styles.disabledText]}>-</Text>
-                </TouchableOpacity>
+                {onUpdateQuantity ? (
+                  <>
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                      disabled={item.quantity <= 1}
+                    >
+                      <Text style={[styles.quantityButtonText, item.quantity <= 1 && styles.disabledText]}>-</Text>
+                    </TouchableOpacity>
 
-                <Text style={styles.quantityText}>{item.quantity}</Text>
+                    <Text style={styles.quantityText}>{item.quantity}</Text>
 
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => onUpdateQuantity && onUpdateQuantity(item.id, item.quantity + 1)}
-                >
-                  <Text style={styles.quantityButtonText}>+</Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.quantityButton}
+                      onPress={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                    >
+                      <Text style={styles.quantityButtonText}>+</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <Text style={styles.quantityText}>{item.quantity}</Text>
+                )}
               </View>
 
               {/* Price column */}
@@ -167,6 +189,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   nameColumn: {
     flex: 4,

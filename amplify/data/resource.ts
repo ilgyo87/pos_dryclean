@@ -200,6 +200,8 @@ const schema = a.schema({
       actualReadyDate: a.datetime(),
       claimedDate: a.datetime(),
       specialInstructions: a.string().array(),
+      starch: a.enum(['NONE', 'LIGHT', 'MEDIUM', 'HEAVY']),
+      pressOnly: a.boolean().default(false),
       // Relationships
       customerId: a.id().required(),
       customer: a.belongsTo('Customer', 'customerId'),
@@ -310,7 +312,6 @@ const schema = a.schema({
   // Order Items
   OrderItem: a
     .model({
-      quantity: a.integer().required(),
       price: a.float().required(),
       duration: a.integer(),
       taxable: a.boolean().default(false),
