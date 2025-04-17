@@ -424,7 +424,9 @@ interface CreateOrderItemInput {
   orderNumber: string;
   price: number;
   quantity: number;
-  // Remove itemId and type if they're not in your schema
+  itemName?: string;
+  starch?: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
+  pressOnly?: boolean;
 }
 
 // Update the createOrderItem function in OrderSlice.ts to properly serialize the response:
@@ -441,12 +443,15 @@ export const createOrderItem = createAsyncThunk(
         return rejectWithValue('Missing required fields for OrderItem');
       }
       
-      // Only include fields defined in your schema
-      const cleanedData = {
+      // Only include fields defined in your schema, including itemName, starch, pressOnly
+      const cleanedData: CreateOrderItemInput = {
         orderId: orderItemData.orderId,
         orderNumber: orderItemData.orderNumber,
         quantity: orderItemData.quantity,
-        price: orderItemData.price
+        price: orderItemData.price,
+        itemName: orderItemData.itemName,
+        starch: orderItemData.starch,
+        pressOnly: orderItemData.pressOnly
       };
       
       const { data, errors } = await client.models.OrderItem.create(cleanedData);

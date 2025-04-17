@@ -15,17 +15,17 @@ import { Schema } from '../../../../amplify/data/resource';
 
 interface CheckoutServiceListProps {
   categories: Schema["Category"]["type"][];
+  selectedServiceId?: string;
   onSelectService: (service: Schema["Category"]["type"]) => void;
   isLoading?: boolean;
 }
 
 export default function CheckoutServiceList({
   categories,
+  selectedServiceId,
   onSelectService,
   isLoading = false
 }: CheckoutServiceListProps) {
-  // Keep track of selected category for highlighting
-  const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   // Sort categories by name for easy browsing
   const sortedCategories = [...categories].sort((b, a) => {
     // If both have createdAt, sort by that (newest first)
@@ -67,7 +67,7 @@ export default function CheckoutServiceList({
           contentContainerStyle={styles.tabsContent}
         >
           {sortedCategories.map((category) => {
-            const isSelected = selectedCategory === category.id;
+            const isSelected = selectedServiceId === category.id;
             return (
               <TouchableOpacity
                 key={category.id}
@@ -76,10 +76,7 @@ export default function CheckoutServiceList({
                   { width: tabWidth },
                   isSelected && styles.selectedTabItem
                 ]}
-                onPress={() => {
-                  setSelectedCategory(category.id);
-                  onSelectService(category);
-                }}
+                onPress={() => onSelectService(category)}
               >
                 <Ionicons 
                   name={getCategoryIcon(category.name)} 
@@ -99,21 +96,21 @@ export default function CheckoutServiceList({
 }
 
 // Function to get an appropriate icon for a category
-  const getCategoryIcon = (name: string = "") => {
-    const nameLower = name.toLowerCase();
-    
-    if (nameLower.includes("shirt") || nameLower.includes("cloth")) return "shirt-outline";
-    if (nameLower.includes("household") || nameLower.includes("home")) return "home-outline"; 
-    if (nameLower.includes("special") || nameLower.includes("delicate")) return "sparkles-outline";
-    if (nameLower.includes("wash")) return "water-outline";
-    if (nameLower.includes("press") || nameLower.includes("iron")) return "square-outline";
-    if (nameLower.includes("leather")) return "briefcase-outline";
-    if (nameLower.includes("repair")) return "construct-outline";
-    if (nameLower.includes("clean")) return "sparkles-outline";
-    
-    // Default icon
-    return "cube-outline";
-  };
+const getCategoryIcon = (name: string = "") => {
+  const nameLower = name.toLowerCase();
+  
+  if (nameLower.includes("shirt") || nameLower.includes("cloth")) return "shirt-outline";
+  if (nameLower.includes("household") || nameLower.includes("home")) return "home-outline"; 
+  if (nameLower.includes("special") || nameLower.includes("delicate")) return "sparkles-outline";
+  if (nameLower.includes("wash")) return "water-outline";
+  if (nameLower.includes("press") || nameLower.includes("iron")) return "square-outline";
+  if (nameLower.includes("leather")) return "briefcase-outline";
+  if (nameLower.includes("repair")) return "construct-outline";
+  if (nameLower.includes("clean")) return "sparkles-outline";
+  
+  // Default icon
+  return "cube-outline";
+};
 
 const styles = StyleSheet.create({
   container: {

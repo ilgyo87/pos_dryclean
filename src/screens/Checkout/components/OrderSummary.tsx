@@ -11,6 +11,8 @@ type CartItem = {
   type: 'service' | 'product';
   orderId: string;
   orderNumber: string;
+  starch?: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
+  pressOnly?: boolean;
 };
 
 interface OrderSummaryProps {
@@ -58,6 +60,8 @@ const OrderSummary = ({
               {/* Item name column */}
               <Text style={[styles.itemName, styles.nameColumn]} numberOfLines={1}>
                 {item.name}
+                {item.starch && item.starch !== 'NONE' ? ` (${item.starch[0]})` : ''}
+                {item.pressOnly ? ' (PO)' : ''}
               </Text>
 
               {/* Quantity column */}

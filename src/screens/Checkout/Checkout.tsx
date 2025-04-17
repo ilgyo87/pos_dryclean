@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Platform
+  Platform,
+  Switch
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
@@ -34,6 +35,8 @@ interface CartItem {
   type: 'service' | 'product';
   orderId: string;
   orderNumber: string;
+  starch: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
+  pressOnly: boolean;
 }
 
 const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: string, name: string } | null }) => {
@@ -69,6 +72,8 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
   const [tip, setTip] = useState<string>('0.00');
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
   const [selectedItems, setSelectedItems] = useState<CartItem[]>(items || []);
+  const [currentStarch, setCurrentStarch] = useState<'NONE'|'LIGHT'|'MEDIUM'|'HEAVY'>('NONE');
+  const [currentPressOnly, setCurrentPressOnly] = useState<boolean>(false);
   const [receiptVisible, setReceiptVisible] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [orderNumber, setOrderNumber] = useState<string>("");
@@ -102,7 +107,10 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
   const handleAddItem = (newItem: CartItem) => {
     // Check if item already exists in the order by id and type
     const existingItemIndex = selectedItems.findIndex(item =>
-      item.id === newItem.id && item.type === newItem.type
+      item.id === newItem.id &&
+    item.type === newItem.type &&
+    item.starch === newItem.starch &&
+    item.pressOnly === newItem.pressOnly
     );
 
     if (existingItemIndex !== -1) {
@@ -129,6 +137,13 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     }
   }, [dispatch, user?.userId]);
 
+  // Auto-select first service when categories load
+  useEffect(() => {
+    if (!selectedServiceId && categories.length > 0) {
+      setSelectedServiceId(categories[0].id);
+    }
+  }, [categories, selectedServiceId]);
+
   // Fetch items when selectedServiceId changes
   useEffect(() => {
     if (selectedServiceId) {
@@ -149,6 +164,31 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     // Update state with the new items array
     setSelectedItems(updatedItems);
   };
+
+  // Function to update starch
+  const handleUpdateStarch = (index: number, value: 'NONE'|'LIGHT'|'MEDIUM'|'HEAVY') => {
+    const updated = [...selectedItems];
+    updated[index].starch = value;
+    setSelectedItems(updated);
+  };
+
+  // Function to toggle pressOnly
+  const handleTogglePressOnly = (index: number, value: boolean) => {
+    const updated = [...selectedItems];
+    updated[index].pressOnly = value;
+    setSelectedItems(updated);
+  };
+
+  // Sync toggles to existing service item whenever toggles or service change
+  useEffect(() => {
+    setSelectedItems(prev =>
+      prev.map(item =>
+        item.type === 'service' && item.id === selectedServiceId
+          ? { ...item, starch: currentStarch, pressOnly: currentPressOnly }
+          : item
+      )
+    );
+  }, [currentStarch, currentPressOnly, selectedServiceId]);
 
   // Generate order notes including employee information
   const generateOrderNotes = (): string => {
@@ -231,7 +271,10 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
             orderId,
             orderNumber: orderNum,
             quantity: item.quantity,
-            price: item.price
+            price: item.price,
+            itemName: item.name,
+            starch: item.starch,
+            pressOnly: item.pressOnly
           };
 
           console.log('Creating order item with input:', JSON.stringify(orderItemInput, null, 2));
@@ -315,7 +358,6 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
     });
   };
 
-
   return (
     <View style={styles.container}>
       <View style={styles.headerBar}>
@@ -333,12 +375,47 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
           {/* Categories at the top as tabs */}
           <CheckoutServiceList
             categories={categories}
+            selectedServiceId={selectedServiceId}
             onSelectService={(category) => {
               setSelectedServiceId(category.id);
+              // Reset toggles when changing service
+              setCurrentStarch('NONE');
+              setCurrentPressOnly(false);
             }}
             isLoading={isLoadingCategories}
           />
-
+          {/* Service-level toggles row */}
+          {selectedServiceId && (
+            <View style={styles.optionsRow}>
+              <Text style={styles.toggleLabel}>Starch:</Text>
+              <View style={styles.starchRadioGroup}>
+                {(['NONE','LIGHT','MEDIUM','HEAVY'] as Array<'NONE'|'LIGHT'|'MEDIUM'|'HEAVY'>).map(option => (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.radioButton,
+                      currentStarch === option && styles.radioButtonSelected
+                    ]}
+                    onPress={() => setCurrentStarch(option)}
+                  >
+                    <Text style={[
+                      styles.radioLabel,
+                      currentStarch === option && styles.radioLabelSelected
+                    ]}>
+                      {option === 'NONE' ? 'N' : option[0]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.pressOnlyToggle}>
+                <Text>Press Only:</Text>
+                <Switch
+                  value={currentPressOnly}
+                  onValueChange={setCurrentPressOnly}
+                />
+              </View>
+            </View>
+          )}
           {/* Add Service Button */}
           {selectedServiceId && (
             <View style={styles.addServiceButtonContainer}>
@@ -354,7 +431,9 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
                       quantity: 1,
                       type: 'service',
                       orderId: createdOrder?.id || '',
-                      orderNumber: orderNumber || ''
+                      orderNumber: orderNumber || '',
+                      starch: currentStarch,
+                      pressOnly: currentPressOnly
                     });
                   }
                 }}
@@ -364,7 +443,6 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
               </TouchableOpacity>
             </View>
           )}
-
           {/* Products in a grid layout */}
           <View style={styles.productsSection}>
             <CheckoutProductList
@@ -378,7 +456,9 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
                   quantity: 1,
                   type: 'product',
                   orderId: createdOrder?.id || '',
-                  orderNumber: orderNumber || ''
+                  orderNumber: orderNumber || '',
+                  starch: 'NONE',
+                  pressOnly: product.pressOnly || false
                 });
               }}
               isLoading={isLoadingItems}
@@ -398,7 +478,7 @@ const Checkout = ({ user, employee }: { user: AuthUser | null, employee: { id: s
             <Text style={styles.sectionTitle}>Order Summary</Text>
           </View>
 
-          {/* Order Summary Section - only showing items list */}
+          {/* Order Summary Section */}
           <ScrollView style={styles.scrollableItemsContainer}>
             <OrderSummary
               items={selectedItems}
@@ -641,11 +721,54 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 130, // Add enough space to see all items above the fixed bottom container
   },
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  toggleLabel: {
+    fontSize: 14,
+    color: '#555',
+  },
+  pressOnlyToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  starchRadioGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  radioButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioButtonSelected: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#4CAF50',
+  },
+  radioLabel: {
+    fontSize: 14,
+    color: '#555',
+    marginLeft: 5,
+  },
+  radioLabelSelected: {
+    color: '#fff',
+  },
   errorText: {
     color: 'red',
     textAlign: 'center',
     marginTop: 5,
-  }
+  },
 });
 
 export default Checkout;

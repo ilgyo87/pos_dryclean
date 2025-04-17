@@ -43,6 +43,11 @@ const schema = a.schema({
       price: a.float(),
       imageUrl: a.string(),
       userId: a.id().required(),
+      pressOnlyPrice: a.float().default(0),
+      pressOnly: a.boolean().default(false),
+      pressOnlyPercent: a.float().default(0),
+      discount: a.boolean().default(false),
+      discountPercent: a.float().default(0),
       // Relationships
       items: a.hasMany('Item', 'categoryId')
     })
@@ -63,6 +68,7 @@ const schema = a.schema({
       imageUrlPreferred: a.boolean().default(false),
       starch: a.enum(['NONE', 'LIGHT', 'MEDIUM', 'HEAVY']),
       pressOnly: a.boolean().default(false),
+      discountPrice: a.float().default(0),
       // Relationships
       categoryId: a.id().required(),
       category: a.belongsTo('Category', 'categoryId'),
@@ -311,6 +317,9 @@ const schema = a.schema({
       notes: a.string().array(),
       specialInstructions: a.string().array(),
       orderNumber: a.string().required(),
+      itemName: a.string(),
+      starch: a.enum(['NONE', 'LIGHT', 'MEDIUM', 'HEAVY']),
+      pressOnly: a.boolean().default(false),
       // Relationships
       orderId: a.id().required(),
       order: a.belongsTo('Order', 'orderId'),
