@@ -42,7 +42,8 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-view-shot": "^4.0.3",
     "react-native-web": "^0.19.13",
-    "react-native-webview": "^13.13.5"
+    "react-native-webview": "^13.13.5",
+    "realm": "^12.14.2"
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.14.3",
@@ -50,7 +51,6 @@
     "@babel/core": "^7.25.2",
     "@types/qrcode": "^1.5.5",
     "@types/react": "~18.3.12",
-    "@types/react-native-vector-icons": "^6.4.18",
     "@types/uuid": "^10.0.0",
     "aws-cdk": "^2.1003.0",
     "aws-cdk-lib": "^2.180.0",

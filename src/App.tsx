@@ -5,10 +5,10 @@ import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import Toast from 'react-native-toast-message';
 import Navigation from './components/Navigation';
-import BusinessCreateModal from './components/BusinessCreateModal';
 import SignOutButton from './components/SignOutButton';
 import outputs from '../amplify_outputs.json';
 import type { Schema } from '../amplify/data/resource';
+import BusinessForm from './components/BusinessForm';
 
 Amplify.configure(outputs);
 const client = generateClient<Schema>();
@@ -26,17 +26,21 @@ function AuthenticatedApp() {
       try {
         setIsLoading(true);
         
-        const { data, errors } = await client.queries.fetchBusiness({
-          userId: userId
+        const { data, errors } = await client.models.Business.list({
+          filter: {
+            userId: {
+              eq: userId
+            }
+          }
         });
         
         if (data && !errors) {
-          setIsBusinessAvailable(true);
+          setIsBusinessAvailable(data.length > 0);
         } else {
           setIsBusinessAvailable(false);
         }
       } catch (error) {
-        console.error("Error checking business:", error);
+        console.info("Error checking business:", error);
         setIsBusinessAvailable(false);
       } finally {
         setIsLoading(false);
@@ -52,11 +56,10 @@ function AuthenticatedApp() {
       <View style={{ flex: 1 }}>
         <Navigation user={user} />
         {!isBusinessAvailable && !isLoading && (
-          <BusinessCreateModal
-            userId={userId}
-            onCloseModal={() => {
-              setIsBusinessAvailable(true);
-            }}
+          <BusinessForm
+            visible={!isBusinessAvailable}
+            onClose={() => setIsBusinessAvailable(true)}
+            onSuccess={() => setIsBusinessAvailable(true)}
           />
         )}
       </View>
