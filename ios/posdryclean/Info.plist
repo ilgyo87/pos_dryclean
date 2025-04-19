@@ -50,6 +50,10 @@
     <string>We need access to your microphone for camera operations</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>We need access to your photo library to select product images</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>We need Bluetooth access to connect to receipt printers and other devices.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>This app uses Bluetooth to discover and connect to receipt printers for printing receipts.</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

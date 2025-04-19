@@ -30,7 +30,6 @@ export const dashboardStyles = StyleSheet.create({
     alignItems: 'center',
   },
   searchContainer: {
-    marginVertical: 25,
     width: '100%',
     zIndex: 100,
   },

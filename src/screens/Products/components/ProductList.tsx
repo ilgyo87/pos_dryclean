@@ -31,7 +31,7 @@ const ProductList: React.FC<ProductListProps> = ({
     // Fall back to name comparison if no createdAt available
     return a.name.localeCompare(b.name);
   });
-  
+
   // Subcomponent to handle async S3 image URL loading and device fallback
   const ProductImage = ({ item }: { item: Schema["Item"]["type"] }) => {
     const [imageUri, setImageUri] = React.useState<string | undefined>(undefined);
@@ -81,7 +81,7 @@ const ProductList: React.FC<ProductListProps> = ({
   const renderItem = ({ item }: { item: Schema["Item"]["type"] }) => {
     console.log(`Rendering item ${item.id} with name: ${item.name}, imageSource: ${item.imageSource}, imageUrlPreferred: ${item.imageUrlPreferred}`);
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.productCard}
         onPress={() => {
           console.log('Editing item:', item);
@@ -115,7 +115,7 @@ const ProductList: React.FC<ProductListProps> = ({
           </TouchableOpacity>
         )}
       </View>
-      
+
       {!selectedService ? (
         <View style={styles.emptyState}>
           <Ionicons name="shirt-outline" size={48} color="#ccc" />
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
   // Product card for grid layout
   productCard: {
-flex:1,
+    flex: 1,
     height: 120, // Smaller fixed height
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -230,7 +230,7 @@ flex:1,
     alignItems: 'center'
   },
   productName: {
-    fontSize: 28, // Even smaller
+    fontSize: 21, // Even smaller
     fontWeight: '600',
     color: '#ffffff',
     width: '60%', // Fixed width
@@ -238,7 +238,7 @@ flex:1,
     overflow: 'hidden' // Hide overflow text
   },
   productPrice: {
-    fontSize: 30, // Even smaller
+    fontSize: 24, // Even smaller
     fontWeight: 'bold',
     color: '#34C759',
     width: '40%', // Fixed width

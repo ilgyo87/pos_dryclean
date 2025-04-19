@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     paddingVertical: 4, 
-    marginTop: 130,      
+    marginTop: 30,      
     gap: 9, 
     paddingHorizontal: 10,
   }
