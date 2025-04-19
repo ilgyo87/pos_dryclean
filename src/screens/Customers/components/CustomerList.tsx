@@ -1,7 +1,7 @@
 // src/screens/Customers/components/CustomerList.tsx
-import React from 'react';
-import { FlatList, StyleSheet, RefreshControl, Text, View } from 'react-native';
-import CustomerCard from './CustomerCard';
+import React from "react";
+import { FlatList, StyleSheet, RefreshControl, Text, View } from "react-native";
+import CustomerCard from "./CustomerCard";
 
 interface CustomerListProps {
   customers: any[];
@@ -44,19 +44,19 @@ export default function CustomerList({
 const styles = StyleSheet.create({
   list: {
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   listContent: {
     paddingBottom: 20,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingTop: 50,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   }
 });

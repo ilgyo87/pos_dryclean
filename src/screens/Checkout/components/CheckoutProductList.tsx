@@ -1,5 +1,5 @@
 // src/screens/Checkout/components/CheckoutProductList.tsx
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
@@ -9,10 +9,10 @@ import {
   Image,
   ActivityIndicator,
   useWindowDimensions
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Schema } from '../../../../amplify/data/resource';
-import { getImageSource } from '../../../utils/productImages';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Schema } from "../../../../amplify/data/resource";
+import { getImageSource } from "../../../utils/productImages";
 
 interface CheckoutProductListProps {
   products: Schema["Item"]["type"][];
@@ -27,7 +27,7 @@ const CheckoutProductList = ({
   onSelectProduct,
   isLoading = false
 }: CheckoutProductListProps) => {
-  const placeholderImage = require('../../../../assets/items/tshirt.png');
+  const placeholderImage = require("../../../../assets/items/tshirt.png");
   // Get screen dimensions
   const { width, height } = useWindowDimensions();
   // Determine if we're in portrait mode (height > width)
@@ -55,7 +55,7 @@ const CheckoutProductList = ({
   // Function to get the appropriate image for a product
   const getItemImage = (item: Schema["Item"]["type"]) => {
     // First priority: imageSource if available
-    if (item.imageSource && item.imageSource !== 'placeholder') {
+    if (item.imageSource && item.imageSource !== "placeholder") {
       return getImageSource(item.imageSource);
     }
     // Second priority: imageUrl if available
@@ -66,10 +66,10 @@ const CheckoutProductList = ({
     else {
       // Try to match with a common product name
       const nameLower = item.name.toLowerCase();
-      if (nameLower.includes('shirt')) return getImageSource('tshirt');
-      if (nameLower.includes('pant') || nameLower.includes('trouser')) return getImageSource('trousers');
-      if (nameLower.includes('jacket')) return getImageSource('jacket');
-      if (nameLower.includes('dress')) return getImageSource('dress');
+      if (nameLower.includes("shirt")) return getImageSource("tshirt");
+      if (nameLower.includes("pant") || nameLower.includes("trouser")) return getImageSource("trousers");
+      if (nameLower.includes("jacket")) return getImageSource("jacket");
+      if (nameLower.includes("dress")) return getImageSource("dress");
 
       // Fallback to placeholder
       return placeholderImage;
@@ -146,102 +146,102 @@ const CheckoutProductList = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 0,
     margin: 0,
   },
   header: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   title: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   productsList: {
     padding: 4,
   },
   columnWrapper: {
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
   },
   productCard: {
     flex: 1,
     height: 120,
     marginBottom: 10,
     marginRight: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   imageContainer: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-    backgroundColor: '#f0f0f0',
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    backgroundColor: "#f0f0f0",
   },
   productImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'contain',
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
   },
   placeholderContainer: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
   },
   textOverlay: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     padding: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 15,
   },
   productName: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-    width: '60%',
+    fontWeight: "600",
+    color: "#ffffff",
+    width: "60%",
     marginRight: 4,
   },
   productPrice: {
     fontSize: 19,
-    fontWeight: 'bold',
-    color: '#34C759',
-    width: '40%',
-    textAlign: 'right',
+    fontWeight: "bold",
+    color: "#34C759",
+    width: "40%",
+    textAlign: "right",
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   emptyText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
 });
 

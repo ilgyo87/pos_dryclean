@@ -1,9 +1,9 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
-import ViewShot, { captureRef } from 'react-native-view-shot';
-import { EntityType } from './../types';
-import { uploadQRCapture } from './../utils/QRCodeGenerator';
+import React, { useRef, useEffect, useState } from "react";
+import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import QRCode from "react-native-qrcode-svg";
+import ViewShot, { captureRef } from "react-native-view-shot";
+import { EntityType } from "./../types";
+import { uploadQRCapture } from "./../utils/QRCodeGenerator";
 
 interface QRCodeDisplayProps {
   qrValue: string;
@@ -14,7 +14,7 @@ interface QRCodeDisplayProps {
 
 export function QRCodeDisplay({ 
   qrValue, 
-  entityType = 'Unknown', 
+  entityType = "Unknown", 
   title,
   onClose 
 }: QRCodeDisplayProps) {
@@ -31,7 +31,7 @@ export function QRCodeDisplay({
           captureRef(viewShotRef)
             .then(uri => {
               console.log("QR code captured successfully");
-              uploadQRCapture(uri, entityType, title || 'Unknown');
+              uploadQRCapture(uri, entityType, title || "Unknown");
               setIsCapturing(false);
             })
             .catch(error => {
@@ -50,7 +50,7 @@ export function QRCodeDisplay({
   
   // Update the component to show more information for garments
   let displayInfo = null;
-  if (entityType === 'Garment' && qrValue) {
+  if (entityType === "Garment" && qrValue) {
     try {
       const data = JSON.parse(qrValue);
       displayInfo = (
@@ -62,7 +62,7 @@ export function QRCodeDisplay({
         </View>
       );
     } catch (e) {
-      console.error('Error parsing QR data:', e);
+      console.error("Error parsing QR data:", e);
     }
   }
 
@@ -70,7 +70,7 @@ export function QRCodeDisplay({
     <View style={styles.container}>
       <Text style={styles.title}>{displayTitle}</Text>
       
-      <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 0.9 }}>
+      <ViewShot ref={viewShotRef} options={{ format: "png", quality: 0.9 }}>
         <View style={styles.qrContainer}>
           <QRCode
             value={qrValue}
@@ -85,7 +85,7 @@ export function QRCodeDisplay({
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2196F3" />
           <Text style={styles.loadingText}>
-            {entityType ? `Creating your ${entityType.toLowerCase()}...` : 'Processing...'}
+            {entityType ? `Creating your ${entityType.toLowerCase()}...` : "Processing..."}
           </Text>
         </View>
       ) : (
@@ -103,25 +103,25 @@ export function QRCodeDisplay({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: "#F9F9F9",
     borderRadius: 10,
-    width: '100%',
+    width: "100%",
     maxWidth: 350,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: "center",
   },
   qrContainer: {
     padding: 15,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     borderRadius: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -129,36 +129,36 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
   },
   closeButton: {
-    backgroundColor: '#E53935',
+    backgroundColor: "#E53935",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 5,
     marginTop: 15,
   },
   closeButtonText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   loadingContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 20,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   infoContainer: {
     marginBottom: 15,
     padding: 10,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     borderRadius: 5,
-    width: '100%',
+    width: "100%",
   },
   infoText: {
     fontSize: 14,

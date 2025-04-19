@@ -1,21 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
-import { generateClient } from 'aws-amplify/api';
-import type { Schema } from '../../amplify/data/resource';
+import React, { useState, useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
+import type { RootState } from "../store";
 
-const client = generateClient<Schema>();
+// Move all selectors to top-level
+// This ensures hooks are not called inside functions
+
 
 interface PhoneAvailabilityOptions {
   initialPhoneNumber?: string;
   currentEntityId?: string;
-  entityType?: 'Business' | 'Customer' | 'Employee';
+  entityType?: "Business" | "Customer" | "Employee";
   debounceMs?: number;
 }
 
+/**
+ * usePhoneNumberAvailability must only be called at the top level of a React function component or another custom hook.
+ * Never call this inside a callback, event handler, or non-component function.
+ */
 export const usePhoneNumberAvailability = (options: PhoneAvailabilityOptions = {}) => {
+  // Runtime check for invalid hook call
+  if (typeof React === 'undefined' || typeof useState !== 'function') {
+    throw new Error('usePhoneNumberAvailability must be called inside a function component or custom hook.');
+  }
+  // Select all entities at the top level
+  const customers = useSelector((state: RootState) => state.customer.customers);
+  const businesses = useSelector((state: RootState) => state.business.businesses);
+  const employees = useSelector((state: RootState) => state.employee.employees);
   const {
-    initialPhoneNumber = '',
+    initialPhoneNumber = "",
     currentEntityId,
-    entityType = 'Customer',
+    entityType = "Customer",
     debounceMs = 500
   } = options;
 
@@ -41,42 +55,17 @@ export const usePhoneNumberAvailability = (options: PhoneAvailabilityOptions = {
       }
 
       let existingEntities;
-
-      // Only check the specific entity type
       switch (entityType) {
-        case 'Business':
-          // Check if phone number exists in Businesses
-          const businessResult = await client.models.Business.list({
-            filter: { phoneNumber: { eq: phone } }
-          });
-          existingEntities = businessResult.data?.filter(b => 
-            b.id !== currentEntityId
-          ) || [];
+        case "Customer":
+          existingEntities = customers.filter((c: { id: string; phoneNumber: string }) => c.id !== currentEntityId && c.phoneNumber === phone);
           break;
-          
-        case 'Customer':
-          // Check if phone number exists in Customers
-          const customerResult = await client.models.Customer.list({
-            filter: { phoneNumber: { eq: phone } }
-          });
-          existingEntities = customerResult.data?.filter(c => 
-            c.id !== currentEntityId
-          ) || [];
+        case "Business":
+          existingEntities = businesses.filter((b: { id: string; phoneNumber: string }) => b.id !== currentEntityId && b.phoneNumber === phone);
           break;
-          
-        case 'Employee':
-          // Check if phone number exists in Employees
-          const employeeResult = await client.models.Employee.list({
-            filter: { phoneNumber: { eq: phone } }
-          });
-          existingEntities = employeeResult.data?.filter(e => 
-            e.id !== currentEntityId
-          ) || [];
+        case "Employee":
+          existingEntities = employees.filter((e: { id: string; phoneNumber: string }) => e.id !== currentEntityId && e.phoneNumber === phone);
           break;
-          
         default:
-          // Fallback: check all entity types
-          console.warn('Unknown entity type:', entityType);
           existingEntities = [];
       }
       

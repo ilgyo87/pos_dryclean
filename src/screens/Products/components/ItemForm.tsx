@@ -1,26 +1,26 @@
 // src/screens/Products/components/ItemForm.tsx
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { StyleSheet, View, Text, TextInput, Alert, ScrollView, Switch } from "react-native";
-import ProductImagePicker from '../../../components/ImagePicker';
-import { Image } from 'react-native';
-import { getImageSource } from '../../../utils/productImages';
-import { uploadData, getUrl } from '@aws-amplify/storage';
+import ProductImagePicker from "../../../components/ImagePicker";
+import { Image } from "react-native";
+import { getImageSource } from "../../../utils/productImages";
+import { uploadData, getUrl } from "@aws-amplify/storage";
 
 function getEffectiveImageSource(imageSource: string, imageUrl: string) {
-  if (imageUrl && imageUrl.trim() !== '') {
+  if (imageUrl && imageUrl.trim() !== "") {
     return { uri: imageUrl.trim() };
-  } else if (imageSource && imageSource !== 'placeholder') {
+  } else if (imageSource && imageSource !== "placeholder") {
     return getImageSource(imageSource);
   } else {
-    return getImageSource('placeholder');
+    return getImageSource("placeholder");
   }
 }
-import { useSelector } from 'react-redux';
-import { RootState } from '../../../store';
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store";
 
 interface ItemFormProps {
   onCloseModal: () => void;
-  createOrEdit: 'create' | 'edit';
+  createOrEdit: "create" | "edit";
   params: Record<string, any>;
   onFormChange?: () => void;
 }
@@ -32,17 +32,17 @@ const ItemForm = forwardRef(({
   onFormChange
 }: ItemFormProps, ref) => {
   // Get existing item and current category if in edit mode
-  const existingItem = createOrEdit === 'edit' ? params?.item : null;
+  const existingItem = createOrEdit === "edit" ? params?.item : null;
   const categoryId = params?.categoryId || existingItem?.categoryId;
 
   // Form state
-  const [name, setName] = useState(existingItem?.name || '');
-  const [description, setDescription] = useState(existingItem?.description || '');
-  const [price, setPrice] = useState(existingItem?.price?.toString() || '');
-  const [duration, setDuration] = useState(existingItem?.duration?.toString() || '');
+  const [name, setName] = useState(existingItem?.name || "");
+  const [description, setDescription] = useState(existingItem?.description || "");
+  const [price, setPrice] = useState(existingItem?.price?.toString() || "");
+  const [duration, setDuration] = useState(existingItem?.duration?.toString() || "");
   const [taxable, setTaxable] = useState(existingItem?.taxable || false);
-  const [imageUrl, setImageUrl] = useState(existingItem?.imageUrl || '');
-  const [imageSource, setImageSource] = useState(existingItem?.imageSource || 'placeholder');
+  const [imageUrl, setImageUrl] = useState(existingItem?.imageUrl || "");
+  const [imageSource, setImageSource] = useState(existingItem?.imageSource || "placeholder");
 
   // Get loading state from Redux store
   const isReduxLoading = useSelector((state: RootState) => state.item.isLoading);
@@ -57,87 +57,87 @@ const ItemForm = forwardRef(({
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     resetForm: () => {
-      if (createOrEdit === 'edit' && existingItem) {
+      if (createOrEdit === "edit" && existingItem) {
         // Reset to original values
-        setName(existingItem.name || '');
-        setDescription(existingItem.description || '');
-        setPrice(existingItem.price?.toString() || '');
-        setDuration(existingItem.duration?.toString() || '');
+        setName(existingItem.name || "");
+        setDescription(existingItem.description || "");
+        setPrice(existingItem.price?.toString() || "");
+        setDuration(existingItem.duration?.toString() || "");
         setTaxable(existingItem.taxable || false);
-        setImageUrl(existingItem.imageUrl || '');
-        setImageSource(existingItem.imageSource || 'placeholder');
+        setImageUrl(existingItem.imageUrl || "");
+        setImageSource(existingItem.imageSource || "placeholder");
       } else {
         // Clear form
-        setName('');
-        setDescription('');
-        setPrice('');
-        setDuration('');
+        setName("");
+        setDescription("");
+        setPrice("");
+        setDuration("");
         setTaxable(false);
-        setImageUrl('');
-        setImageSource('placeholder');
+        setImageUrl("");
+        setImageSource("placeholder");
       }
     },
     validateAndGetFormData: async () => {
       // imageUrlPreferred: true if imageUrl is a valid HTTP(S) URL, else false
 
-      console.log('ItemForm.validateAndGetFormData called');
+      console.log("ItemForm.validateAndGetFormData called");
 
       // Basic validation
       if (!name.trim()) {
-        console.log('Product name is required');
+        console.log("Product name is required");
         return { valid: false, message: "Product name is required" };
       }
 
-      if (!price || price.trim() === '' || isNaN(parseFloat(price))) {
-        console.log('Valid price is required');
+      if (!price || price.trim() === "" || isNaN(parseFloat(price))) {
+        console.log("Valid price is required");
         return { valid: false, message: "Valid price is required" };
       }
 
       if (!categoryId) {
-        console.log('Category ID is missing');
+        console.log("Category ID is missing");
         return { valid: false, message: "Category ID is missing" };
       }
 
-      console.log('Item validation passed');
+      console.log("Item validation passed");
 
       // Create data object with properly defined structure
       const formattedPrice = parseFloat(price);
-      const formattedDuration = duration && duration.trim() !== ''
+      const formattedDuration = duration && duration.trim() !== ""
         ? parseInt(duration, 10)
         : undefined;
 
       // --- IMAGE UPLOAD LOGIC ---
       let finalImageUrl: string | undefined = undefined;
       // If a device image is selected, upload and use it
-      if (imageSource && imageSource.startsWith('file://')) {
+      if (imageSource && imageSource.startsWith("file://")) {
         // Use item name (slugified) as ID for new items, or item ID for edits
-        const itemId = (createOrEdit === 'edit' && existingItem?.id)
+        const itemId = (createOrEdit === "edit" && existingItem?.id)
           ? existingItem.id
-          : name.trim().toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+          : name.trim().toLowerCase().replace(/\s+/g, "-") + "-" + Date.now();
         try {
-          const extension = imageSource.split('.').pop() || 'jpg';
+          const extension = imageSource.split(".").pop() || "jpg";
           // Remove 'public/' prefix, Amplify handles it via accessLevel
           const key = `products/${itemId}.${extension}`;
           // Convert file URI to Blob
           const response = await fetch(imageSource);
           const blob = await response.blob();
-          await uploadData({ key, data: blob, options: { contentType: `image/${extension}`, accessLevel: 'guest' } }).result;
-          const { url } = await getUrl({ key, options: { accessLevel: 'guest' } });
+          await uploadData({ key, data: blob, options: { contentType: `image/${extension}`, accessLevel: "guest" } }).result;
+          const { url } = await getUrl({ key, options: { accessLevel: "guest" } });
           finalImageUrl = String(url);
         } catch (err) {
-          console.error('Image upload failed:', err);
+          console.error("Image upload failed:", err);
         }
-      } else if (imageSource && imageSource !== 'placeholder') {
+      } else if (imageSource && imageSource !== "placeholder") {
         // If imageSource is a remote URL (not file://), use it directly
         finalImageUrl = imageSource.trim();
-      } else if (imageUrl && imageUrl.trim() !== '') {
+      } else if (imageUrl && imageUrl.trim() !== "") {
         // If imageSource is empty or 'placeholder', use the imageUrl field (user input)
         finalImageUrl = imageUrl.trim();
       }
       // --- END IMAGE UPLOAD LOGIC ---
 
       function isValidHttpUrl(str: string | undefined): str is string {
-        return typeof str === 'string' && /^https?:\/\//.test(str);
+        return typeof str === "string" && /^https?:\/\//.test(str);
       }
       const itemData = {
         name: name.trim(),
@@ -152,10 +152,10 @@ const ItemForm = forwardRef(({
         valid: true // Add valid flag for successful validation
       };
 
-      console.log('Item data being returned:', itemData);
+      console.log("Item data being returned:", itemData);
 
       // Add ID if editing
-      if (createOrEdit === 'edit' && existingItem?.id) {
+      if (createOrEdit === "edit" && existingItem?.id) {
         return {
           ...itemData,
           id: existingItem.id
@@ -165,8 +165,8 @@ const ItemForm = forwardRef(({
       return itemData;
     },
     isFormValid: () => {
-      return name.trim() !== '' &&
-        price !== '' &&
+      return name.trim() !== "" &&
+        price !== "" &&
         !isNaN(parseFloat(price)) &&
         parseFloat(price) > 0 &&
         !!categoryId;
@@ -175,13 +175,13 @@ const ItemForm = forwardRef(({
 
   const handlePriceChange = (text: string) => {
     // Only allow numbers and decimal point
-    const filteredText = text.replace(/[^0-9.]/g, '');
+    const filteredText = text.replace(/[^0-9.]/g, "");
     setPrice(filteredText);
   };
 
   const handleDurationChange = (text: string) => {
     // Only allow numbers
-    const filteredText = text.replace(/[^0-9]/g, '');
+    const filteredText = text.replace(/[^0-9]/g, "");
     setDuration(filteredText);
   };
 
@@ -243,7 +243,7 @@ const ItemForm = forwardRef(({
           currentImage={imageSource}
           onImageSelected={(uri: string) => {
             setImageSource(uri);
-            setImageUrl(''); // Clear imageUrl when picking a device image
+            setImageUrl(""); // Clear imageUrl when picking a device image
           }}
         />
 
@@ -255,8 +255,8 @@ const ItemForm = forwardRef(({
             value={imageUrl}
             onChangeText={(text) => {
               setImageUrl(text);
-              if (text.trim() !== '') {
-                setImageSource(''); // Clear imageSource when entering a URL
+              if (text.trim() !== "") {
+                setImageSource(""); // Clear imageSource when entering a URL
               }
             }}
             autoCapitalize="none"
@@ -273,38 +273,38 @@ const ItemForm = forwardRef(({
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   container: {
     padding: 10,
   },
   label: {
     marginBottom: 5,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderRadius: 5,
     padding: 10,
     marginBottom: 15,
   },
   multilineInput: {
     height: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 15,
   },
   inputContainer: {
     marginBottom: 15,
   },
   helperText: {
-    color: '#666',
+    color: "#666",
     fontSize: 12,
     marginTop: 5,
   },

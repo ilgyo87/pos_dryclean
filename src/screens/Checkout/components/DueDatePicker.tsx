@@ -1,8 +1,8 @@
 // src/screens/Checkout/components/DueDatePicker.tsx
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
-import { Calendar } from 'react-native-calendars';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
+import { Calendar } from "react-native-calendars";
+import { Ionicons } from "@expo/vector-icons";
 
 interface DueDatePickerProps {
   selectedDate: Date;
@@ -14,17 +14,17 @@ const DueDatePicker = ({ selectedDate, onDateChange }: DueDatePickerProps) => {
   
   // Format date for display
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric"
     });
   };
   
   // Format date for the calendar (YYYY-MM-DD)
   const formatCalendarDate = (date: Date) => {
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   };
   
   // Current date formatted for the calendar
@@ -34,7 +34,7 @@ const DueDatePicker = ({ selectedDate, onDateChange }: DueDatePickerProps) => {
   const handleDateSelect = (day: any) => {
     // Fix timezone issues by ensuring date is set properly using local time
     const dateString = day.dateString; // Format: YYYY-MM-DD
-    const [year, month, date] = dateString.split('-').map((num: string) => parseInt(num, 10));
+    const [year, month, date] = dateString.split("-").map((num: string) => parseInt(num, 10));
     
     // Create a date at noon to avoid timezone issues
     const adjustedDate = new Date(year, month - 1, date, 12, 0, 0);
@@ -78,13 +78,13 @@ const DueDatePicker = ({ selectedDate, onDateChange }: DueDatePickerProps) => {
               minDate={formatCalendarDate(new Date())}
               onDayPress={handleDateSelect}
               markedDates={{
-                [currentFormattedDate]: { selected: true, selectedColor: '#4CAF50' }
+                [currentFormattedDate]: { selected: true, selectedColor: "#4CAF50" }
               }}
               theme={{
-                todayTextColor: '#4CAF50',
-                selectedDayBackgroundColor: '#4CAF50',
-                dotColor: '#4CAF50',
-                arrowColor: '#4CAF50',
+                todayTextColor: "#4CAF50",
+                selectedDayBackgroundColor: "#4CAF50",
+                dotColor: "#4CAF50",
+                arrowColor: "#4CAF50",
               }}
             />
           </View>
@@ -96,59 +96,59 @@ const DueDatePicker = ({ selectedDate, onDateChange }: DueDatePickerProps) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderRadius: 8,
     margin: 10,
     padding: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   label: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginRight: 10,
   },
   dateSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     padding: 10,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   dateText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
     padding: 20,
   },
   calendarContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 10,
     padding: 15,
-    width: '100%',
+    width: "100%",
     maxWidth: 350,
   },
   calendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 15,
   },
   calendarTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   closeButton: {
     padding: 5,

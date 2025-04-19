@@ -1,4 +1,4 @@
-import { remove, getUrl } from 'aws-amplify/storage';
+import { remove, getUrl } from "aws-amplify/storage";
 
 /**
  * Deletes an image from S3 given its key (e.g. public/products/filename.jpg)
@@ -22,7 +22,7 @@ export async function getS3ImageUrl(key: string): Promise<string | undefined> {
 }
 
 export async function deleteS3Image(key: string): Promise<void> {
-  if (!key || typeof key !== 'string') return;
+  if (!key || typeof key !== "string") return;
   try {
     await remove({ key });
     console.log(`Deleted image from S3: ${key}`);

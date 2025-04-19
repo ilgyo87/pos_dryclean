@@ -1,8 +1,8 @@
 // src/screens/Dashboard/components/DashboardGrid.tsx
-import React from 'react';
-import { View, StyleSheet, useWindowDimensions } from 'react-native';
-import { DashboardCategory } from '../../../types';
-import CategoryCard from './CategoryCard';
+import React from "react";
+import { View, StyleSheet, useWindowDimensions } from "react-native";
+import { DashboardCategory } from "../../../types";
+import CategoryCard from "./CategoryCard";
 
 interface DashboardGridProps {
   categories: DashboardCategory[];
@@ -41,9 +41,9 @@ export const DashboardGrid = ({ categories, onCardPress }: DashboardGridProps) =
 
 const styles = StyleSheet.create({
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     paddingVertical: 4, 
     marginTop: 30,      
     gap: 9, 

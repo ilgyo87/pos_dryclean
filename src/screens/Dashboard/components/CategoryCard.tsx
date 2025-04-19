@@ -1,8 +1,8 @@
 // src/screens/Dashboard/components/CategoryCard.tsx
-import React from 'react';
-import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { DashboardCategory } from '../../../types';
+import React from "react";
+import { TouchableOpacity, Text, View, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { DashboardCategory } from "../../../types";
 
 interface CategoryCardProps {
   category: DashboardCategory;
@@ -38,31 +38,31 @@ const styles = StyleSheet.create({
   card: {
     padding: 40,
     borderRadius: 12,
-    margin: '1.5%',      
+    margin: "1.5%",      
     height: 150,     
-    width: '100%', 
-    justifyContent: 'space-between',
+    width: "100%", 
+    justifyContent: "space-between",
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 8,
-    width: '100%'
+    width: "100%"
   },
   cardTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   count: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
   }
 });

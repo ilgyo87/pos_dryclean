@@ -3,137 +3,82 @@ import React, { useState, useCallback, useEffect } from "react";
 import { View, Text, ActivityIndicator, SafeAreaView, Alert, Modal } from "react-native";
 import { AuthUser } from "aws-amplify/auth";
 import { useFocusEffect } from "@react-navigation/native";
-import { generateClient } from 'aws-amplify/data';
-import { Schema } from '../../../amplify/data/resource';
-import type { DashboardCategory } from "../../types";
+import { DashboardCategory } from "../../types";
 import { DashboardGrid } from "./components/DashboardGrid";
 import styles from "./styles/DashboardStyles";
 import PredictiveSearch from "../../components/PredictiveSearch";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../store";
+import { useDashboardData } from "./hooks/useDashboardData";
 
-const client = generateClient<Schema>();
-
-import BusinessForm from '../../components/BusinessForm';
-
-export default function Dashboard({ user, navigation, isBusinessAvailable }: { user: AuthUser | null, navigation?: any, isBusinessAvailable: boolean }) {
-  const [business, setBusiness] = useState<Schema['Business']['type'] | null>(null);
-  // Modal state for business creation
-  const [isLoading, setIsLoading] = useState(true);
-  const [customers, setCustomers] = useState<Schema['Customer']['type'][]>([]);
-
-  const [counts, setCounts] = useState({
-    customers: 0,
-    employees: 0,
-    orders: 0,
-    products: 0
-  });
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchBusinessData();
-    }, [])
-  );
+export default function Dashboard({ navigation }: { navigation?: any }) {
+  const { business, isLoading } = useDashboardData();
+  const customers = useSelector((state: RootState) => state.customer.customers);
 
   useEffect(() => {
-    if (isBusinessAvailable) {
-      fetchBusinessData();
+    if (!business && navigation) {
+      navigation.navigate("BusinessForm");
     }
-  }, [isBusinessAvailable]);
-  const fetchBusinessData = async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
+  }, [business, navigation]);
 
-    try {
-      setIsLoading(true);
-
-      const businessResponse = await client.models.Business.list({
-        filter: { userId: { eq: user.userId } }
-      });
-
-      if (businessResponse.data && businessResponse.data.length > 0) {
-        setBusiness(businessResponse.data[0]);
-
-        const customersResponse = await client.models.Customer.list();
-        const employeesResponse = await client.models.Employee.list();
-        const ordersResponse = await client.models.Order.list();
-        const productsResponse = await client.models.Item.list();
-        if (customersResponse.data) {
-          setCustomers(customersResponse.data);
-        }
-
-        setCounts({
-          customers: customersResponse.data?.length || 0,
-          employees: employeesResponse.data?.length || 0,
-          orders: ordersResponse.data?.length || 0,
-          products: productsResponse.data?.length || 0
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCustomerSearch = (customer: Schema["Customer"]["type"]) => {
-    // Navigate directly to checkout with this customer
-    if (business) {
-      navigation.navigate('Checkout', {
+  const handleCustomerSearch = (customer: any) => {
+    if (business && navigation) {
+      navigation.navigate("Checkout", {
         businessId: business.id,
         customerId: customer.id,
         customerName: `${customer.firstName} ${customer.lastName}`,
-        items: [], // Empty cart to start with
-        total: 0,   // No total yet
-        pickupDate: new Date(Date.now() + 86400000).toISOString(), // Default to tomorrow
-        customerPreferences: customer.preferences || '',
+        items: [],
+        total: 0,
+        pickupDate: new Date(Date.now() + 86400000).toISOString(),
+        customerPreferences: customer.preferences || "",
         firstName: customer.firstName,
         lastName: customer.lastName
       });
-    } else {
-      // Fallback to customer edit if no business found
-      navigation.navigate('Customers', {
-        screen: 'CustomerEdit',
+    } else if (navigation) {
+      navigation.navigate("Customers", {
+        screen: "CustomerEdit",
         params: { customerId: customer.id }
       });
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchBusinessData();
-    }, [user?.userId])
-  );
+  // Example: You may want to compute counts from Redux state if needed
+  const counts = {
+    customers: customers.length,
+    employees: useSelector((state: RootState) => state.employee.employees.length),
+    orders: useSelector((state: RootState) => state.order.orders.length),
+    products: useSelector((state: RootState) => state.item.items.length)
+  };
 
   const categories: DashboardCategory[] = [
-    { id: 'customers', title: 'Customers', icon: 'people-outline', color: '#4285F4', count: counts.customers },
-    { id: 'orders', title: 'Orders', icon: 'receipt-outline', color: '#FBBC05', count: counts.orders },
-    { id: 'products', title: 'Products', icon: 'shirt-outline', color: '#8E44AD', count: counts.products },
-    { id: 'employees', title: 'Team', icon: 'people-circle-outline', color: '#34A853', count: counts.employees },
-    { id: 'reports', title: 'Reports', icon: 'bar-chart-outline', color: '#EA4335' },
-    { id: 'settings', title: 'Settings', icon: 'settings-outline', color: '#607D8B' },
+    { id: "customers", title: "Customers", icon: "people-outline", color: "#4285F4", count: counts.customers },
+    { id: "orders", title: "Orders", icon: "receipt-outline", color: "#FBBC05", count: counts.orders },
+    { id: "products", title: "Products", icon: "shirt-outline", color: "#8E44AD", count: counts.products },
+    { id: "employees", title: "Team", icon: "people-circle-outline", color: "#34A853", count: counts.employees },
+    { id: "reports", title: "Reports", icon: "bar-chart-outline", color: "#EA4335" },
+    { id: "settings", title: "Settings", icon: "settings-outline", color: "#607D8B" },
   ];
 
   const navigateToSection = (sectionId: string) => {
     if (navigation) {
       switch (sectionId) {
-        case 'customers':
-          navigation.navigate('Customers');
+        case "customers":
+          navigation.navigate("Customers");
           break;
-        case 'employees':
-          navigation.navigate('Employees');
+        case "employees":
+          navigation.navigate("Employees");
           break;
-        case 'orders':
-          navigation.navigate('Orders');
+        case "orders":
+          navigation.navigate("Orders");
           break;
-        case 'reports':
-          navigation.navigate('Reports');
+        case "reports":
+          navigation.navigate("Reports");
           break;
-        case 'products':
-          navigation.navigate('Products');
+        case "products":
+          navigation.navigate("Products");
           break;
-        case 'settings':
-          navigation.navigate('Settings');
+        case "settings":
+          navigation.navigate("Settings");
           break;
         default:
           console.log(`No navigation defined for ${sectionId}`);

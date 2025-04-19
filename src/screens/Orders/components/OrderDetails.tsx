@@ -1,5 +1,5 @@
 // src/screens/Orders/OrderDetails.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,16 +9,16 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView
-} from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../../store';
-import { fetchOrderById, updateOrderStatus, fetchOrderItems } from '../../../store/slices/OrderSlice';
-import OrderSummary from '../../Checkout/components/OrderSummary';
+} from "react-native";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../../store";
+import { fetchOrderById, updateOrderStatus, fetchOrderItems } from "../../../store/slices/OrderSlice";
+import OrderSummary from "../../Checkout/components/OrderSummary";
 
 // Order status types
-type OrderStatus = 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED';
+type OrderStatus = "CREATED" | "PROCESSING" | "READY" | "COMPLETED" | "CANCELLED" | "DELIVERY_SCHEDULED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "FAILED";
 
 export default function OrderDetails() {
   const route = useRoute<any>();
@@ -51,56 +51,56 @@ export default function OrderDetails() {
   
   // Format date to readable string
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
       });
     } catch (error) {
-      return 'Invalid date';
+      return "Invalid date";
     }
   };
   
   // Get status color
   const getStatusColor = (status?: OrderStatus): string => {
-    if (!status) return '#757575'; // Default gray
+    if (!status) return "#757575"; // Default gray
     
     switch (status) {
-      case 'CREATED':
-        return '#2196F3'; // Blue
-      case 'PROCESSING':
-        return '#FFA000'; // Amber
-      case 'READY':
-        return '#4CAF50'; // Green
-      case 'COMPLETED':
-        return '#388E3C'; // Dark Green
-      case 'CANCELLED':
-        return '#F44336'; // Red
-      case 'DELIVERY_SCHEDULED':
-        return '#9C27B0'; // Purple
-      case 'OUT_FOR_DELIVERY':
-        return '#FF5722'; // Deep Orange
-      case 'DELIVERED':
-        return '#009688'; // Teal
+      case "CREATED":
+        return "#2196F3"; // Blue
+      case "PROCESSING":
+        return "#FFA000"; // Amber
+      case "READY":
+        return "#4CAF50"; // Green
+      case "COMPLETED":
+        return "#388E3C"; // Dark Green
+      case "CANCELLED":
+        return "#F44336"; // Red
+      case "DELIVERY_SCHEDULED":
+        return "#9C27B0"; // Purple
+      case "OUT_FOR_DELIVERY":
+        return "#FF5722"; // Deep Orange
+      case "DELIVERED":
+        return "#009688"; // Teal
       default:
-        return '#757575'; // Grey
+        return "#757575"; // Grey
     }
   };
   
   // Format status text
   const formatStatus = (status?: OrderStatus): string => {
-    if (!status) return 'Unknown';
+    if (!status) return "Unknown";
     
-    return status.replace(/_/g, ' ').toLowerCase()
-      .split(' ')
+    return status.replace(/_/g, " ").toLowerCase()
+      .split(" ")
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+      .join(" ");
   };
   
   // Handle order refresh
@@ -117,23 +117,23 @@ export default function OrderDetails() {
     if (!currentOrder || !orderId) return;
     
     Alert.alert(
-      'Update Order Status',
+      "Update Order Status",
       `Are you sure you want to change this order status to ${formatStatus(newStatus)}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         { 
-          text: 'Update', 
+          text: "Update", 
           onPress: async () => {
             try {
               await dispatch(updateOrderStatus({ orderId, status: newStatus }));
               // Refresh order details
               dispatch(fetchOrderById(orderId));
             } catch (error) {
-              console.error('Error updating order status:', error);
-              Alert.alert('Error', 'Failed to update order status');
+              console.error("Error updating order status:", error);
+              Alert.alert("Error", "Failed to update order status");
             }
           },
-          style: 'default'
+          style: "default"
         },
       ]
     );
@@ -144,20 +144,20 @@ export default function OrderDetails() {
     if (!currentStatus) return [];
     
     switch (currentStatus) {
-      case 'CREATED':
-        return ['PROCESSING', 'CANCELLED'];
-      case 'PROCESSING':
-        return ['READY', 'CANCELLED'];
-      case 'READY':
-        return ['COMPLETED', 'DELIVERY_SCHEDULED', 'CANCELLED'];
-      case 'DELIVERY_SCHEDULED':
-        return ['OUT_FOR_DELIVERY', 'CANCELLED'];
-      case 'OUT_FOR_DELIVERY':
-        return ['DELIVERED', 'CANCELLED'];
-      case 'COMPLETED':
-      case 'DELIVERED':
-      case 'CANCELLED':
-        return ['FAILED']; // Terminal states, no next status
+      case "CREATED":
+        return ["PROCESSING", "CANCELLED"];
+      case "PROCESSING":
+        return ["READY", "CANCELLED"];
+      case "READY":
+        return ["COMPLETED", "DELIVERY_SCHEDULED", "CANCELLED"];
+      case "DELIVERY_SCHEDULED":
+        return ["OUT_FOR_DELIVERY", "CANCELLED"];
+      case "OUT_FOR_DELIVERY":
+        return ["DELIVERED", "CANCELLED"];
+      case "COMPLETED":
+      case "DELIVERED":
+      case "CANCELLED":
+        return ["FAILED"]; // Terminal states, no next status
       default:
         return [];
     }
@@ -169,10 +169,10 @@ export default function OrderDetails() {
     name: item.name || `Item #${item.id?.substring(0, 6)}`,
     price: item.price || 0,
     quantity: item.quantity ?? 1,
-    type: item.type || 'product',
+    type: item.type || "product",
     orderId: item.orderId,
     orderNumber: item.orderNumber,
-    starch: item.starch ?? 'NONE',
+    starch: item.starch ?? "NONE",
     pressOnly: item.pressOnly ?? false
   }));
   
@@ -183,7 +183,7 @@ export default function OrderDetails() {
   const total = currentOrder?.total || subtotal + tax + tip;
   
   // Next status options for current order
-  const nextStatusOptions = getNextStatusOptions(currentOrder?.status || 'FAILED');
+  const nextStatusOptions = getNextStatusOptions(currentOrder?.status || "FAILED");
   
   if ((orderLoading || orderItemsLoading) && !refreshing) {
     return (
@@ -248,8 +248,8 @@ export default function OrderDetails() {
         {/* Order Header */}
         <View style={styles.orderHeader}>
           <Text style={styles.orderNumber}>{currentOrder.orderNumber}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(currentOrder.status || 'FAILED') }]}>
-            <Text style={styles.statusText}>{formatStatus(currentOrder.status || 'FAILED')}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(currentOrder.status || "FAILED") }]}>
+            <Text style={styles.statusText}>{formatStatus(currentOrder.status || "FAILED")}</Text>
           </View>
         </View>
         
@@ -272,14 +272,14 @@ export default function OrderDetails() {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Customer</Text>
             <Text style={styles.detailValue}>
-              {(currentOrder as any).customerName || 'Customer not found'}
+              {(currentOrder as any).customerName || "Customer not found"}
             </Text>
           </View>
           
           {currentOrder.notes && currentOrder.notes.length > 0 && (
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Notes</Text>
-              <Text style={styles.detailValue}>{currentOrder.notes.join('\n')}</Text>
+              <Text style={styles.detailValue}>{currentOrder.notes.join("\n")}</Text>
             </View>
           )}
         </View>
@@ -330,62 +330,62 @@ export default function OrderDetails() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   contentContainer: {
     padding: 16,
   },
   loading: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   errorText: {
     fontSize: 16,
-    color: '#E53935',
-    textAlign: 'center',
+    color: "#E53935",
+    textAlign: "center",
     marginTop: 16,
     marginBottom: 16,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   backButtonText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     marginLeft: 4,
   },
   refreshButton: {
     padding: 8,
   },
   orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   orderNumber: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -393,16 +393,16 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   statusText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -410,36 +410,36 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 12,
-    color: '#333',
+    color: "#333",
   },
   detailRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 12,
-    flexWrap: 'wrap',
+    flexWrap: "wrap",
   },
   detailLabel: {
-    width: '40%',
+    width: "40%",
     fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    color: "#666",
+    fontWeight: "500",
   },
   detailValue: {
     flex: 1,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   emptyText: {
     fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
-    textAlign: 'center',
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
     marginVertical: 20,
   },
   statusButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   statusButton: {
@@ -450,18 +450,18 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statusButtonText: {
-    color: '#fff',
-    fontWeight: '500',
+    color: "#fff",
+    fontWeight: "500",
   },
   retryButton: {
-    backgroundColor: '#4285F4',
+    backgroundColor: "#4285F4",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 4,
     marginTop: 16,
   },
   retryButtonText: {
-    color: '#fff',
-    fontWeight: '500',
+    color: "#fff",
+    fontWeight: "500",
   },
 });

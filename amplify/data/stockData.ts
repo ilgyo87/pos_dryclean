@@ -14,7 +14,7 @@ export interface StockItem {
   price: number;
   duration?: number;
   imageSource?: string;
-  starch?: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
+  starch?: "NONE" | "LIGHT" | "MEDIUM" | "HEAVY";
   pressOnly?: boolean;
   imageUrl?: string;
 }

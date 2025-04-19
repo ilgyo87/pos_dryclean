@@ -1,14 +1,14 @@
 // src/store/slices/CustomerSlice.ts
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { generateClient } from 'aws-amplify/data';
-import { Schema } from '../../../amplify/data/resource';
-import type { RootState } from '../index';
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { generateClient } from "aws-amplify/data";
+import { Schema } from "../../../amplify/data/resource";
+import type { RootState } from "../index";
 
 const client = generateClient<Schema>();
 
 // Define customer state interface
 interface CustomerState {
-  customers: Schema['Customer']['type'][];
+  customers: Schema["Customer"]["type"][];
   isLoading: boolean;
   error: string | null;
 }
@@ -28,7 +28,7 @@ const makeSerializable = (customer: any) => {
   const serializedCustomer = {...customer};
   
   // Remove the garments function if it exists
-  if (typeof serializedCustomer.garments === 'function') {
+  if (typeof serializedCustomer.garments === "function") {
     delete serializedCustomer.garments;
   }
   
@@ -37,7 +37,7 @@ const makeSerializable = (customer: any) => {
 
 // Async thunks
 export const fetchCustomers = createAsyncThunk(
-  'customer/fetchCustomers',
+  "customer/fetchCustomers",
   async (userId: string, { rejectWithValue }) => {
     try {
       const { data, errors } = await client.models.Customer.list({
@@ -45,66 +45,66 @@ export const fetchCustomers = createAsyncThunk(
       });
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to fetch customers');
+        return rejectWithValue(errors[0]?.message || "Failed to fetch customers");
       }
       
       // Make customers serializable before returning
       const serializedCustomers = data.map(makeSerializable);
       return serializedCustomers;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch customers');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to fetch customers");
     }
   }
 );
 
 export const createCustomer = createAsyncThunk(
-  'customer/createCustomer',
+  "customer/createCustomer",
   async ({ customerData, userId }: { customerData: any, userId: string }, { rejectWithValue }) => {
     try {
       // Remove the valid flag as it's not in the schema
       const { valid, ...cleanCustomerData } = customerData;
       const input = { ...cleanCustomerData, userId };
       
-      console.log('Sending to API:', input);
+      console.log("Sending to API:", input);
       const { data, errors } = await client.models.Customer.create(input);
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to create customer');
+        return rejectWithValue(errors[0]?.message || "Failed to create customer");
       }
       
       // Make customer serializable before returning
       return makeSerializable(data);
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to create customer');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to create customer");
     }
   }
 );
 
 export const updateCustomer = createAsyncThunk(
-  'customer/updateCustomer',
+  "customer/updateCustomer",
   async ({ customerData, userId }: { customerData: any, userId: string }, { rejectWithValue }) => {
     try {
       // Remove the valid flag as it's not in the schema
       const { valid, ...cleanCustomerData } = customerData;
       const input = { ...cleanCustomerData, userId };
       
-      console.log('Sending to API for update:', input);
+      console.log("Sending to API for update:", input);
       const { data, errors } = await client.models.Customer.update(input);
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to update customer');
+        return rejectWithValue(errors[0]?.message || "Failed to update customer");
       }
       
       // Make customer serializable before returning
       return makeSerializable(data);
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update customer');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to update customer");
     }
   }
 );
 
 export const deleteCustomer = createAsyncThunk(
-  'customer/deleteCustomer',
+  "customer/deleteCustomer",
   async (customerId: string, { rejectWithValue }) => {
     try {
       const { errors } = await client.models.Customer.delete({
@@ -112,19 +112,19 @@ export const deleteCustomer = createAsyncThunk(
       });
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to delete customer');
+        return rejectWithValue(errors[0]?.message || "Failed to delete customer");
       }
 
       return customerId;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to delete customer');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to delete customer");
     }
   }
 );
 
 // Customer slice
 const CustomerSlice = createSlice({
-  name: 'customer',
+  name: "customer",
   initialState,
   reducers: {
     clearErrors: (state) => {

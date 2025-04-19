@@ -1,9 +1,9 @@
 // src/components/BusinessForm.tsx
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
-import { usePhoneNumberAvailability } from './usePhoneNumberAvailability';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import { View, Text, TextInput, StyleSheet, ActivityIndicator } from "react-native";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
+import { usePhoneNumberAvailability } from "./usePhoneNumberAvailability";
 
 // Create component with forwardRef to access from parent
 const BusinessForm = forwardRef(({ 
@@ -14,23 +14,23 @@ const BusinessForm = forwardRef(({
   onBusinessCreated
 }: { 
   onCloseModal: () => void, 
-  createOrEdit: 'create' | 'edit', 
+  createOrEdit: "create" | "edit", 
   params: Record<string, any>,
   onFormChange?: () => void,
   onBusinessCreated?: () => void
 }, ref) => {
     // Get existing business if in edit mode
-    const existingBusiness = createOrEdit === 'edit' ? params?.business : null;
+    const existingBusiness = createOrEdit === "edit" ? params?.business : null;
 
     // Form state
-    const [businessName, setBusinessName] = useState(existingBusiness?.name || '');
-    const [firstName, setFirstName] = useState(existingBusiness?.firstName || '');
-    const [lastName, setLastName] = useState(existingBusiness?.lastName || '');
-    const [address, setAddress] = useState(existingBusiness?.address || '');
-    const [city, setCity] = useState(existingBusiness?.city || '');
-    const [state, setState] = useState(existingBusiness?.state || '');
-    const [zipCode, setZipCode] = useState(existingBusiness?.zipCode || '');
-    const [email, setEmail] = useState(existingBusiness?.email || '');
+    const [businessName, setBusinessName] = useState(existingBusiness?.name || "");
+    const [firstName, setFirstName] = useState(existingBusiness?.firstName || "");
+    const [lastName, setLastName] = useState(existingBusiness?.lastName || "");
+    const [address, setAddress] = useState(existingBusiness?.address || "");
+    const [city, setCity] = useState(existingBusiness?.city || "");
+    const [state, setState] = useState(existingBusiness?.state || "");
+    const [zipCode, setZipCode] = useState(existingBusiness?.zipCode || "");
+    const [email, setEmail] = useState(existingBusiness?.email || "");
 
     // Phone number with availability check
     const {
@@ -41,9 +41,9 @@ const BusinessForm = forwardRef(({
         getPhoneInputStyle,
         getPhoneStatusText
     } = usePhoneNumberAvailability({
-        initialPhoneNumber: existingBusiness?.phoneNumber || '',
+        initialPhoneNumber: existingBusiness?.phoneNumber || "",
         currentEntityId: existingBusiness?.id,
-        entityType: 'Business'
+        entityType: "Business"
     });
 
     // Get loading state from Redux store
@@ -58,35 +58,35 @@ const BusinessForm = forwardRef(({
     // Expose methods to parent via ref
     useImperativeHandle(ref, () => ({
         resetForm: () => {
-            if (createOrEdit === 'edit' && existingBusiness) {
+            if (createOrEdit === "edit" && existingBusiness) {
                 // Reset to original values
-                setBusinessName(existingBusiness.name || '');
-                setFirstName(existingBusiness.firstName || '');
-                setLastName(existingBusiness.lastName || '');
-                setPhoneNumber(existingBusiness.phoneNumber || '');
+                setBusinessName(existingBusiness.name || "");
+                setFirstName(existingBusiness.firstName || "");
+                setLastName(existingBusiness.lastName || "");
+                setPhoneNumber(existingBusiness.phoneNumber || "");
             } else {
                 // Clear form
-                setBusinessName('');
-                setFirstName('');
-                setLastName('');
-                setPhoneNumber('');
+                setBusinessName("");
+                setFirstName("");
+                setLastName("");
+                setPhoneNumber("");
             }
         },
         validateAndGetFormData: () => {
-            console.log('BusinessForm.validateAndGetFormData called');
+            console.log("BusinessForm.validateAndGetFormData called");
             
             // Basic validation
             if (!businessName.trim()) {
-                console.log('Business name is required');
+                console.log("Business name is required");
                 return { valid: false, message: "Business name is required" };
             }
             if (!phoneNumber.trim()) {
-                console.log('Phone number is required');
+                console.log("Phone number is required");
                 return { valid: false, message: "Phone number is required" };
             }
             // Check if phone number is available
             if (phoneNumberAvailable === false) {
-                console.log('Phone number is not available');
+                console.log("Phone number is not available");
                 return { valid: false, message: "This phone number is already in use" };
             }
 
@@ -99,10 +99,10 @@ const BusinessForm = forwardRef(({
                 phoneNumber: phoneNumber.trim(),
             };
             
-            console.log('Business data being returned:', businessData);
+            console.log("Business data being returned:", businessData);
 
             // Add ID if editing
-            if (createOrEdit === 'edit' && existingBusiness?.id) {
+            if (createOrEdit === "edit" && existingBusiness?.id) {
                 return {
                     ...businessData,
                     id: existingBusiness.id,
@@ -114,8 +114,8 @@ const BusinessForm = forwardRef(({
         },
         isFormValid: () => {
             // Business name and phone number must be filled
-            const hasRequiredFields = businessName.trim() !== '' && 
-                                      phoneNumber.trim() !== '';
+            const hasRequiredFields = businessName.trim() !== "" && 
+                                      phoneNumber.trim() !== "";
                                       
             // If phone number is long enough to validate but hasn't been checked yet,
             // we're still checking, so consider form valid to allow submission
@@ -221,50 +221,50 @@ const BusinessForm = forwardRef(({
 
 const styles = StyleSheet.create({
     container: {
-        width: '100%',
+        width: "100%",
         padding: 10,
-        alignSelf: 'center',
-        alignItems: 'center',
+        alignSelf: "center",
+        alignItems: "center",
     },
     label: {
         marginBottom: 7,
-        fontWeight: '500',
+        fontWeight: "500",
         fontSize: 15,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#ccc',
+        borderColor: "#ccc",
         borderRadius: 6,
         padding: 14,
         marginBottom: 22,
         fontSize: 16,
-        backgroundColor: '#fafbfc',
+        backgroundColor: "#fafbfc",
         width: 340,
-        maxWidth: '90%',
-        alignSelf: 'center',
+        maxWidth: "90%",
+        alignSelf: "center",
     },
     validInput: {
-        borderColor: '#4CAF50',  // Green for valid
-        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+        borderColor: "#4CAF50",  // Green for valid
+        backgroundColor: "rgba(76, 175, 80, 0.1)",
     },
     invalidInput: {
-        borderColor: '#E53935',  // Red for invalid
-        backgroundColor: 'rgba(229, 57, 53, 0.1)',
+        borderColor: "#E53935",  // Red for invalid
+        backgroundColor: "rgba(229, 57, 53, 0.1)",
     },
     statusText: {
         fontSize: 12,
         marginTop: -10,
         marginBottom: 10,
-        textAlign: 'right'
+        textAlign: "right"
     },
     available: {
-        color: '#4CAF50', // Green
+        color: "#4CAF50", // Green
     },
     unavailable: {
-        color: '#E53935', // Red
+        color: "#E53935", // Red
     },
     checking: {
-        color: '#0000ff', // Blue
+        color: "#0000ff", // Blue
     }
 });
 

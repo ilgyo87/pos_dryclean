@@ -165,37 +165,37 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: 8,
     padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginVertical: 5,
     minWidth: 110,
   },
   buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonIcon: {
     marginRight: 6,
   },
   createButton: {
-    backgroundColor: '#22C55E', // Green
+    backgroundColor: "#22C55E", // Green
   },
   updateButton: {
-    backgroundColor: '#3B82F6', // Blue
+    backgroundColor: "#3B82F6", // Blue
   },
   deleteButton: {
-    backgroundColor: '#EF4444', // Red
+    backgroundColor: "#EF4444", // Red
   },
   resetButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: '#3B82F6',
+    borderColor: "#3B82F6",
   },
   cancelButton: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: '#6B7280',
+    borderColor: "#6B7280",
   },
   disabledButton: {
     opacity: 0.6,
@@ -204,23 +204,23 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   resetButtonText: {
-    color: '#3B82F6',
+    color: "#3B82F6",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   cancelButtonText: {
-    color: '#6B7280',
+    color: "#6B7280",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

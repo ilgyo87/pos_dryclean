@@ -1,15 +1,15 @@
 // src/store/slices/ItemSlice.ts
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { generateClient } from 'aws-amplify/data';
-import { Schema } from '../../../amplify/data/resource';
-import type { RootState } from '../index';
-import { deleteS3Image } from '../../utils/s3ImageUtils';
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { generateClient } from "aws-amplify/data";
+import { Schema } from "../../../amplify/data/resource";
+import type { RootState } from "../index";
+import { deleteS3Image } from "../../utils/s3ImageUtils";
 
 const client = generateClient<Schema>();
 
 // Define item state interface
 interface ItemState {
-  items: Schema['Item']['type'][];
+  items: Schema["Item"]["type"][];
   isLoading: boolean;
   error: string | null;
 }
@@ -29,7 +29,7 @@ const makeSerializable = (item: any) => {
   const serializedItem = {...item};
   
   // Remove any function properties if they exist
-  if (typeof serializedItem.category === 'function') {
+  if (typeof serializedItem.category === "function") {
     delete serializedItem.category;
   }
   
@@ -38,7 +38,7 @@ const makeSerializable = (item: any) => {
 
 // Async thunks
 export const fetchItems = createAsyncThunk(
-  'item/fetchItems',
+  "item/fetchItems",
   async (categoryId: string | null, { rejectWithValue }) => {
     try {
       // If categoryId is null, return empty array
@@ -51,7 +51,7 @@ export const fetchItems = createAsyncThunk(
       });
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to fetch items');
+        return rejectWithValue(errors[0]?.message || "Failed to fetch items");
       }
       
       // Make items serializable and ensure imageSource is properly set
@@ -67,17 +67,17 @@ export const fetchItems = createAsyncThunk(
         }
         
         // Item name for analysis
-        const itemName = item.name?.toLowerCase() || '';
+        const itemName = item.name?.toLowerCase() || "";
         
         // Directly assign imageSource based on slugified item name, fallback to 'tshirt' if not found
         const slugify = (str: string) => str.toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '');
-        const candidate = slugify(item.name || '');
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+        const candidate = slugify(item.name || "");
         // imageAssets is only available in utils, so just assign the key; fallback logic is handled in getImageSource
         return {
           ...baseItem,
-          imageSource: candidate || 'tshirt',
+          imageSource: candidate || "tshirt",
         };
 
       });
@@ -89,47 +89,47 @@ export const fetchItems = createAsyncThunk(
       });
       return enhancedItems;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch items');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to fetch items");
     }
   }
 );
 
 export const createItem = createAsyncThunk(
-  'item/createItem',
+  "item/createItem",
   async (itemData: any, { rejectWithValue }) => {
     try {
       // Validate required fields
       if (!itemData.name) {
-        return rejectWithValue('Item name is required');
+        return rejectWithValue("Item name is required");
       }
       
       if (!itemData.categoryId) {
-        return rejectWithValue('Category ID is required');
+        return rejectWithValue("Category ID is required");
       }
       
       if (itemData.price === undefined || itemData.price === null) {
-        return rejectWithValue('Price is required');
+        return rejectWithValue("Price is required");
       }
 
       // Store the original imageSource for adding to Redux state later
       const originalImageSource = itemData.imageSource;
-      console.log('Original imageSource for UI:', originalImageSource);
+      console.log("Original imageSource for UI:", originalImageSource);
       
       // Only remove 'valid' field; save all other fields as provided
       const { valid, ...directData } = itemData;
       // Ensure imageUrlPreferred is set based on imageUrl
       directData.imageUrlPreferred = !!(directData.imageUrl && /^https?:\/\//.test(directData.imageUrl));
-      console.log('Saving itemData directly to API:', directData);
+      console.log("Saving itemData directly to API:", directData);
       
       try {
         // Use a straightforward create approach
         const createResult = await client.models.Item.create(directData);
         
-        console.log('Create result:', createResult);
+        console.log("Create result:", createResult);
         
         if (!createResult.data) {
-          console.error('Failed to create item, no data returned');
-          return rejectWithValue('Failed to create item');
+          console.error("Failed to create item, no data returned");
+          return rejectWithValue("Failed to create item");
         }
         
         const data = createResult.data;
@@ -137,23 +137,23 @@ export const createItem = createAsyncThunk(
         // Add back the imageSource for UI purposes
         const enhancedData = {
           ...makeSerializable(data),
-          imageSource: originalImageSource || 'placeholder'
+          imageSource: originalImageSource || "placeholder"
         };
         
-        console.log('Enhanced data with imageSource for Redux:', enhancedData);
+        console.log("Enhanced data with imageSource for Redux:", enhancedData);
         return enhancedData;
       } catch (error) {
         // Give more detailed error information to help with debugging
-        console.error('Error creating item:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
+        console.error("Error creating item:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
         
         // Try to determine specific error type for better error messages
-        let errorMessage = 'Failed to create item';
+        let errorMessage = "Failed to create item";
         if (error instanceof Error) {
           errorMessage = error.message;
           
           // Add more context if it's a validation error
-          if (error.message.includes('validation')) {
+          if (error.message.includes("validation")) {
             errorMessage = `Schema validation error: ${error.message}`;
           }
         }
@@ -161,27 +161,27 @@ export const createItem = createAsyncThunk(
         return rejectWithValue(errorMessage);
       }
     } catch (outerError) {
-      console.error('Outer error in create process:', outerError);
-      return rejectWithValue(outerError instanceof Error ? outerError.message : 'Failed to process item creation');
+      console.error("Outer error in create process:", outerError);
+      return rejectWithValue(outerError instanceof Error ? outerError.message : "Failed to process item creation");
     }
   }
 );
 
 export const updateItem = createAsyncThunk(
-  'item/updateItem',
+  "item/updateItem",
   async (itemData: any, { rejectWithValue, getState }) => {
     try {
       // Validate ID and required fields
       if (!itemData.id) {
-        return rejectWithValue('Item ID is required for update');
+        return rejectWithValue("Item ID is required for update");
       }
       
       if (!itemData.name) {
-        return rejectWithValue('Item name is required');
+        return rejectWithValue("Item name is required");
       }
       
       if (itemData.price === undefined || itemData.price === null) {
-        return rejectWithValue('Price is required');
+        return rejectWithValue("Price is required");
       }
 
       // Store the original imageSource for adding to Redux state later
@@ -195,8 +195,8 @@ export const updateItem = createAsyncThunk(
         const prevImageSource = prevItem.imageSource;
         // If the previous imageSource is a S3 key, and the imageSource is being changed, delete the old S3 image
         if (
-          typeof prevImageSource === 'string' &&
-          prevImageSource.startsWith('public/products/') &&
+          typeof prevImageSource === "string" &&
+          prevImageSource.startsWith("public/products/") &&
           prevImageSource !== itemData.imageSource
         ) {
           // Fire and forget
@@ -207,7 +207,7 @@ export const updateItem = createAsyncThunk(
       const { valid, userId, ...rest } = itemData;
       // Only include imageUrl if it's a non-empty string
       // Build cleanedData with id included at creation to avoid readonly assignment
-      const cleanedData: Schema['Item']['type'] = {
+      const cleanedData: Schema["Item"]["type"] = {
         id: itemData.id,
         ...rest
       };
@@ -219,26 +219,26 @@ export const updateItem = createAsyncThunk(
       }
       // Remove 'valid' property if present
       delete (cleanedData as any).valid;
-      console.log('Saving cleaned itemData to API (update):', cleanedData);
+      console.log("Saving cleaned itemData to API (update):", cleanedData);
       
       // Use a simpler approach that bypasses the problematic code
-      console.log('Attempting simplified update for item:', itemData.id);
+      console.log("Attempting simplified update for item:", itemData.id);
       
       try {
         if (!cleanedData.id) {
-          return rejectWithValue('Item ID is required for update');
+          return rejectWithValue("Item ID is required for update");
         }
         
         console.log(`Updating item ID ${cleanedData.id} with data:`, cleanedData);
         
         // Use the Amplify Gen 2 update mutation
-        const updateResult = await client.models.Item.update(cleanedData as Schema['Item']['type']);
+        const updateResult = await client.models.Item.update(cleanedData as Schema["Item"]["type"]);
         
-        console.log('Update result:', updateResult);
+        console.log("Update result:", updateResult);
         
         if (!updateResult.data) {
-          console.error('Failed to update item, no data returned');
-          return rejectWithValue('Failed to update item');
+          console.error("Failed to update item, no data returned");
+          return rejectWithValue("Failed to update item");
         }
         
         const data = updateResult.data;
@@ -246,23 +246,23 @@ export const updateItem = createAsyncThunk(
         // Add back the imageSource for UI purposes
         const enhancedData = {
           ...makeSerializable(data),
-          imageSource: originalImageSource || 'placeholder'
+          imageSource: originalImageSource || "placeholder"
         };
         
-        console.log('Enhanced data with imageSource for Redux:', enhancedData);
+        console.log("Enhanced data with imageSource for Redux:", enhancedData);
         return enhancedData;
       } catch (error) {
         // Give more detailed error information to help with debugging
-        console.error('Error updating item:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
+        console.error("Error updating item:", error);
+        console.error("Error details:", JSON.stringify(error, null, 2));
         
         // Try to determine specific error type for better error messages
-        let errorMessage = 'Failed to update item';
+        let errorMessage = "Failed to update item";
         if (error instanceof Error) {
           errorMessage = error.message;
           
           // Add more context if it's a validation error
-          if (error.message.includes('validation')) {
+          if (error.message.includes("validation")) {
             errorMessage = `Schema validation error: ${error.message}`;
           }
         }
@@ -270,14 +270,14 @@ export const updateItem = createAsyncThunk(
         return rejectWithValue(errorMessage);
       }
     } catch (outerError) {
-      console.error('Outer error in update process:', outerError);
-      return rejectWithValue(outerError instanceof Error ? outerError.message : 'Failed to process item update');
+      console.error("Outer error in update process:", outerError);
+      return rejectWithValue(outerError instanceof Error ? outerError.message : "Failed to process item update");
     }
   }
 );
 
 export const deleteItem = createAsyncThunk(
-  'item/deleteItem',
+  "item/deleteItem",
   async (itemId: string, { rejectWithValue }) => {
     try {
       const { errors } = await client.models.Item.delete({
@@ -285,19 +285,19 @@ export const deleteItem = createAsyncThunk(
       });
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to delete item');
+        return rejectWithValue(errors[0]?.message || "Failed to delete item");
       }
 
       return itemId;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to delete item');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to delete item");
     }
   }
 );
 
 // Item slice
 const ItemSlice = createSlice({
-  name: 'item',
+  name: "item",
   initialState,
   reducers: {
     clearErrors: (state) => {

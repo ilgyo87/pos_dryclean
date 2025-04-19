@@ -16,11 +16,11 @@ export const formatCurrency = (amount: number): string => {
  */
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { 
-    weekday: 'short',
-    month: 'short', 
-    day: 'numeric',
-    year: 'numeric'
+  return date.toLocaleDateString("en-US", { 
+    weekday: "short",
+    month: "short", 
+    day: "numeric",
+    year: "numeric"
   });
 };
 
@@ -31,8 +31,8 @@ export const formatDate = (dateString: string): string => {
  */
 export const formatPaymentMethod = (method: string): string => {
   return method
-    .replace(/_/g, ' ')
-    .split(' ')
+    .replace(/_/g, " ")
+    .split(" ")
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
+    .join(" ");
 };

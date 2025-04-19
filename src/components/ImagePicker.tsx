@@ -1,8 +1,8 @@
 // src/components/ImagePicker.tsx
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
-import * as ImagePickerLib from 'react-native-image-picker';
-import { getImageSource, getAssetImageNames } from '../utils/productImages';
+import React, { useState } from "react";
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Modal } from "react-native";
+import * as ImagePickerLib from "react-native-image-picker";
+import { getImageSource, getAssetImageNames } from "../utils/productImages";
 
 interface ProductImagePickerProps {
   currentImage: string;
@@ -18,7 +18,7 @@ const ProductImagePicker: React.FC<ProductImagePickerProps> = ({
 
   const openCamera = () => {
     ImagePickerLib.launchCamera({
-      mediaType: 'photo',
+      mediaType: "photo",
       includeBase64: false,
       maxHeight: 500,
       maxWidth: 500,
@@ -32,7 +32,7 @@ const ProductImagePicker: React.FC<ProductImagePickerProps> = ({
 
   const openGallery = () => {
     ImagePickerLib.launchImageLibrary({
-      mediaType: 'photo',
+      mediaType: "photo",
       includeBase64: false,
       maxHeight: 500,
       maxWidth: 500,
@@ -54,7 +54,7 @@ const ProductImagePicker: React.FC<ProductImagePickerProps> = ({
           source={getImageSource(currentImage)}
           style={styles.previewImage}
         />
-        {currentImage && (currentImage.startsWith('http') || currentImage.startsWith('file:')) && (
+        {currentImage && (currentImage.startsWith("http") || currentImage.startsWith("file:")) && (
           <Text style={styles.uriLabel}>From Gallery/Camera</Text>
         )}
         <Text style={styles.changeText}>Change Image</Text>
@@ -99,7 +99,7 @@ const ProductImagePicker: React.FC<ProductImagePickerProps> = ({
                       style={styles.assetImage}
                     />
                     <Text style={styles.assetName} numberOfLines={1}>
-                      {imageName.replace(/_/g, ' ')}
+                      {imageName.replace(/_/g, " ")}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -124,43 +124,43 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   previewContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 8,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
   },
   previewImage: {
     width: 120,
     height: 120,
-    resizeMode: 'contain',
+    resizeMode: "contain",
   },
   changeText: {
     marginTop: 8,
-    color: '#007AFF',
-    fontWeight: '600',
+    color: "#007AFF",
+    fontWeight: "600",
   },
   uriLabel: {
     marginTop: 4,
-    color: '#FF9500',
+    color: "#FF9500",
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalContent: {
-    width: '90%',
-    maxHeight: '80%',
-    backgroundColor: 'white',
+    width: "90%",
+    maxHeight: "80%",
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -168,74 +168,74 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   sourceButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     marginBottom: 24,
   },
   sourceButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
-    width: '45%',
-    alignItems: 'center',
+    width: "45%",
+    alignItems: "center",
   },
   buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
   },
   assetList: {
     maxHeight: 300,
   },
   imageGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   assetItem: {
-    width: '30%',
+    width: "30%",
     marginBottom: 12,
     padding: 4,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   selectedAsset: {
-    borderColor: '#34C759',
+    borderColor: "#34C759",
     borderWidth: 2,
-    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+    backgroundColor: "rgba(52, 199, 89, 0.1)",
   },
   assetImage: {
     width: 60,
     height: 60,
-    resizeMode: 'contain',
+    resizeMode: "contain",
   },
   assetName: {
     fontSize: 10,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 4,
   },
   closeButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: "#FF3B30",
     padding: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 16,
   },
   closeButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
   }
 });
 

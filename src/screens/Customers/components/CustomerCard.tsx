@@ -1,7 +1,7 @@
 // src/screens/Customers/components/CustomerCard.tsx
-import React from 'react';
-import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React from "react";
+import { TouchableOpacity, Text, View, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface CustomerCardProps {
   customer: any;
@@ -29,14 +29,14 @@ export default function CustomerCard({ customer, onPress }: CustomerCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     marginHorizontal: 2,
     marginVertical: 6,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -46,9 +46,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#4285F4',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#4285F4",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   info: {
@@ -56,11 +56,11 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   detail: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   }
 });

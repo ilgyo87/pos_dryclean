@@ -1,6 +1,6 @@
 // src/screens/Checkout/components/TipSelector.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from "react-native";
 
 interface TipSelectorProps {
   subtotal: number;
@@ -39,13 +39,13 @@ const TipSelector: React.FC<TipSelectorProps> = ({
   // Handle custom tip input
   const handleCustomTipChange = (text: string) => {
     // Remove any non-numeric characters except decimal point
-    const sanitizedText = text.replace(/[^0-9.]/g, '');
+    const sanitizedText = text.replace(/[^0-9.]/g, "");
     
     // Ensure only one decimal point
-    const parts = sanitizedText.split('.');
+    const parts = sanitizedText.split(".");
     let formattedText = parts[0];
     if (parts.length > 1) {
-      formattedText += '.' + parts[1].substring(0, 2); // Limit to 2 decimal places
+      formattedText += "." + parts[1].substring(0, 2); // Limit to 2 decimal places
     }
     
     setCustomTip(formattedText);
@@ -75,7 +75,7 @@ const TipSelector: React.FC<TipSelectorProps> = ({
                 activePercent === percent && styles.activePercentText
               ]}
             >
-              {percent === 0 ? 'No Tip' : `${percent}%`}
+              {percent === 0 ? "No Tip" : `${percent}%`}
             </Text>
           </TouchableOpacity>
         ))}
@@ -100,12 +100,12 @@ const TipSelector: React.FC<TipSelectorProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 15,
     marginHorizontal: 10,
     marginVertical: 15,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -113,53 +113,53 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    color: '#333',
+    color: "#333",
   },
   percentButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 20,
   },
   percentButton: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     paddingVertical: 10,
     marginHorizontal: 5,
     borderRadius: 5,
-    alignItems: 'center',
+    alignItems: "center",
   },
   activePercentButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
   },
   percentText: {
-    color: '#555',
-    fontWeight: '500',
+    color: "#555",
+    fontWeight: "500",
   },
   activePercentText: {
-    color: '#fff',
+    color: "#fff",
   },
   customTipContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   customTipLabel: {
     fontSize: 16,
-    color: '#555',
+    color: "#555",
   },
   customTipInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
     borderRadius: 5,
     paddingHorizontal: 10,
     minWidth: 100,
   },
   currencySymbol: {
     fontSize: 16,
-    color: '#555',
+    color: "#555",
     marginRight: 5,
   },
   customTipInput: {

@@ -1,5 +1,5 @@
 // src/screens/Orders/components/FilterTabs.tsx
-import React from 'react';
+import React from "react";
 import { 
   View, 
   Text, 
@@ -7,8 +7,8 @@ import {
   TouchableOpacity, 
   ScrollView, 
   useWindowDimensions
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface FilterTabsProps {
   tabs: Array<{
@@ -48,7 +48,7 @@ const FilterTabs = ({ tabs, activeTab, onTabPress }: FilterTabsProps) => {
               <Ionicons 
                 name={tab.icon as any} 
                 size={16} 
-                color={isActive ? '#fff' : '#555'} 
+                color={isActive ? "#fff" : "#555"} 
                 style={styles.tabIcon}
               />
               <Text 
@@ -70,10 +70,10 @@ const FilterTabs = ({ tabs, activeTab, onTabPress }: FilterTabsProps) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -84,30 +84,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   wideScreenContent: {
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginHorizontal: 4,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
   },
   activeTab: {
-    backgroundColor: '#4285F4',
+    backgroundColor: "#4285F4",
   },
   tabIcon: {
     marginRight: 4,
   },
   tabText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#555',
+    fontWeight: "500",
+    color: "#555",
   },
   activeTabText: {
-    color: '#fff',
+    color: "#fff",
   },
 });
 

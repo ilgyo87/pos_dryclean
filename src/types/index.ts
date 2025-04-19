@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { AuthUser } from "@aws-amplify/auth";
 
-export type EntityType = 'Business' | 'Employee' | 'Customer' | 'Garment' | 'Rack' | 'Product' | 'Category' | 'Unknown';
+export type EntityType = "Business" | "Employee" | "Customer" | "Garment" | "Rack" | "Product" | "Category" | "Unknown";
 
 export interface NavigationProps {
   user: AuthUser | null;
@@ -14,7 +14,7 @@ export interface CreateFormModalProps {
   onClose: () => void;
   params: Record<string, any>;
   type: EntityType;
-  createOrEdit: 'create' | 'edit';
+  createOrEdit: "create" | "edit";
 }
 
 export interface CancelResetCreateButtonsProps {

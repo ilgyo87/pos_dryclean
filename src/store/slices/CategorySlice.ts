@@ -1,14 +1,14 @@
 // src/store/slices/CategorySlice.ts
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { generateClient } from 'aws-amplify/data';
-import { Schema } from '../../../amplify/data/resource';
-import type { RootState } from '../index';
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { generateClient } from "aws-amplify/data";
+import { Schema } from "../../../amplify/data/resource";
+import type { RootState } from "../index";
 
 const client = generateClient<Schema>();
 
 // Define category state interface
 interface CategoryState {
-  categories: Schema['Category']['type'][];
+  categories: Schema["Category"]["type"][];
   isLoading: boolean;
   error: string | null;
 }
@@ -28,7 +28,7 @@ const makeSerializable = (category: any) => {
   const serializedCategory = {...category};
   
   // Remove the items function if it exists
-  if (typeof serializedCategory.items === 'function') {
+  if (typeof serializedCategory.items === "function") {
     delete serializedCategory.items;
   }
   
@@ -37,7 +37,7 @@ const makeSerializable = (category: any) => {
 
 // Async thunks
 export const fetchCategories = createAsyncThunk(
-  'category/fetchCategories',
+  "category/fetchCategories",
   async (userId: string, { rejectWithValue }) => {
     try {
       const { data, errors } = await client.models.Category.list({
@@ -45,79 +45,79 @@ export const fetchCategories = createAsyncThunk(
       });
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to fetch categories');
+        return rejectWithValue(errors[0]?.message || "Failed to fetch categories");
       }
       
       // Make categories serializable before returning
       const serializedCategories = data.map(makeSerializable);
       return serializedCategories;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch categories');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to fetch categories");
     }
   }
 );
 
 export const createCategory = createAsyncThunk(
-  'category/createCategory',
+  "category/createCategory",
   async ({ categoryData, userId }: { categoryData: any, userId: string }, { rejectWithValue }) => {
     try {
       // Validate required fields
       if (!categoryData.name) {
-        return rejectWithValue('Category name is required');
+        return rejectWithValue("Category name is required");
       }
       
       // Remove the valid flag as it's not in the schema
       const { valid, ...cleanCategoryData } = categoryData;
       const input = { ...cleanCategoryData, userId };
-      console.log('Sending to API:', input);
+      console.log("Sending to API:", input);
       
       const { data, errors } = await client.models.Category.create(input);
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to create category');
+        return rejectWithValue(errors[0]?.message || "Failed to create category");
       }
       
       // Make category serializable before returning
       return makeSerializable(data);
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to create category');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to create category");
     }
   }
 );
 
 export const updateCategory = createAsyncThunk(
-  'category/updateCategory',
+  "category/updateCategory",
   async ({ categoryData, userId }: { categoryData: any, userId: string }, { rejectWithValue }) => {
     try {
       // Validate ID and required fields
       if (!categoryData.id) {
-        return rejectWithValue('Category ID is required for update');
+        return rejectWithValue("Category ID is required for update");
       }
       
       if (!categoryData.name) {
-        return rejectWithValue('Category name is required');
+        return rejectWithValue("Category name is required");
       }
       
       // Remove the valid flag as it's not in the schema
       const { valid, ...cleanCategoryData } = categoryData;
       const input = { ...cleanCategoryData, userId };
-      console.log('Sending to API for update:', input);
+      console.log("Sending to API for update:", input);
       const { data, errors } = await client.models.Category.update(input);
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to update category');
+        return rejectWithValue(errors[0]?.message || "Failed to update category");
       }
       
       // Make category serializable before returning
       return makeSerializable(data);
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update category');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to update category");
     }
   }
 );
 
 export const deleteCategory = createAsyncThunk(
-  'category/deleteCategory',
+  "category/deleteCategory",
   async (categoryId: string, { rejectWithValue }) => {
     try {
       // First, delete the category
@@ -125,7 +125,7 @@ export const deleteCategory = createAsyncThunk(
         id: categoryId
       });
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to delete category');
+        return rejectWithValue(errors[0]?.message || "Failed to delete category");
       }
 
       // Next, fetch all items with this categoryId
@@ -134,7 +134,7 @@ export const deleteCategory = createAsyncThunk(
       });
       if (itemListErrors) {
         // Not a blocker for deleting the category, but log for debugging
-        console.error('Failed to fetch items for deleted category:', itemListErrors);
+        console.error("Failed to fetch items for deleted category:", itemListErrors);
       }
       // Delete each item associated with this category
       if (Array.isArray(items)) {
@@ -152,14 +152,14 @@ export const deleteCategory = createAsyncThunk(
 
       return categoryId;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to delete category');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to delete category");
     }
   }
 );
 
 // Category slice
 const CategorySlice = createSlice({
-  name: 'category',
+  name: "category",
   initialState,
   reducers: {
     clearErrors: (state) => {

@@ -1,7 +1,7 @@
 // src/screens/Dashboard/components/SearchBar.tsx
-import React from 'react';
-import { View, TextInput, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React from "react";
+import { View, TextInput, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface SearchBarProps {
   value: string;
@@ -29,9 +29,9 @@ export const SearchBar = ({
 
 const styles = StyleSheet.create({
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
     borderRadius: 8,
     marginVertical: 12,
     paddingHorizontal: 12,

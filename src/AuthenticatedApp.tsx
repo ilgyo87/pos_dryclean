@@ -1,13 +1,13 @@
 // src/AuthenticatedApp.tsx
 import { useEffect, useState } from "react";
-import { useAuthenticator } from '@aws-amplify/ui-react-native';
+import { useAuthenticator } from "@aws-amplify/ui-react-native";
 import { SafeAreaView, View, Alert } from "react-native";
 import Navigation from "./components/Navigation";
 import CreateFormModal from "./components/CreateFormModal";
 import { ActivityIndicator } from "react-native";
-import Toast from 'react-native-toast-message';
-import { useAppDispatch, useAppSelector } from './store/hooks';
-import { fetchBusinesses } from './store/slices/BusinessSlice';
+import Toast from "react-native-toast-message";
+import { useAppDispatch, useAppSelector } from "./store/hooks";
+import { fetchBusinesses } from "./store/slices/BusinessSlice";
 import { Schema } from "../amplify/data/resource";
 
 export default function AuthenticatedApp() {
@@ -53,16 +53,10 @@ export default function AuthenticatedApp() {
                         params={{ userId }}
                         type="Business"
                         createOrEdit="create"
-                        onBusinessCreated={() => {
-                          // Refetch businesses so Dashboard can display the name
-                          dispatch(fetchBusinesses(userId)).then((result) => {
-                            setIsBusinessAvailable((result.payload as Schema['Business']['type'][]).length > 0);
-                          });
-                        }}
                     />
                 ) : (
                     isLoading && (
-                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
                             <ActivityIndicator size="large" color="#0000ff" />
                         </View>
                     )

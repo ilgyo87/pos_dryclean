@@ -1,8 +1,8 @@
 // src/screens/Employees/components/EmployeeList.tsx
-import React from 'react';
-import { FlatList, StyleSheet, RefreshControl, Text, View } from 'react-native';
-import EmployeeCard from './EmployeeCard';
-import { Schema } from '../../../../amplify/data/resource';
+import React from "react";
+import { FlatList, StyleSheet, RefreshControl, Text, View } from "react-native";
+import EmployeeCard from "./EmployeeCard";
+import { Schema } from "../../../../amplify/data/resource";
 
 interface EmployeeListProps {
   employees: Schema["Employee"]["type"][];
@@ -45,19 +45,19 @@ export default function EmployeeList({
 const styles = StyleSheet.create({
   list: {
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   listContent: {
     paddingBottom: 20,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingTop: 50,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   }
 });

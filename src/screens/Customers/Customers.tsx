@@ -15,7 +15,7 @@ import { fetchCustomers } from "../../store/slices/CustomerSlice";
 
 export default function Customers({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<'create' | 'edit'>('create');
+  const [modalType, setModalType] = useState<"create" | "edit">("create");
   const [editingCustomer, setEditingCustomer] = useState<Schema["Customer"]["type"] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -35,13 +35,13 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
 
   const handleCreateCustomer = () => {
     if (!user) return;
-    setModalType('create');
+    setModalType("create");
     setEditingCustomer(null);
     setIsModalVisible(true);
   };
 
   const handleEditCustomer = (customer: Schema["Customer"]["type"]) => {
-    setModalType('edit');
+    setModalType("edit");
     setEditingCustomer(customer);
     setIsModalVisible(true);
   };
@@ -60,7 +60,7 @@ export default function Customers({ user, navigation }: { user: AuthUser | null,
 
   const handleCustomerSearch = (customer: Schema["Customer"]["type"]) => {
     // Instead of navigating, open the edit modal
-    setModalType('edit');
+    setModalType("edit");
     setEditingCustomer(customer);
     setIsModalVisible(true);
   };

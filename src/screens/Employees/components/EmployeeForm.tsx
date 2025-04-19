@@ -1,15 +1,17 @@
 // src/screens/Employees/components/EmployeeForm.tsx
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { StyleSheet, View, Text, TextInput, Alert, Platform, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
-import { Ionicons } from '@expo/vector-icons';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../../store';
-import { usePhoneNumberAvailability } from '../../../components/usePhoneNumberAvailability';
-import { Schema } from '../../../../amplify/data/resource';
-import { usePinCodeAvailability } from '../../../components/usePinCodeAvailability';
+import { Ionicons } from "@expo/vector-icons";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store";
+import { usePhoneNumberAvailability } from "../../../components/usePhoneNumberAvailability";
+import { Schema } from "../../../../amplify/data/resource";
+import { usePinCodeAvailability } from "../../../components/usePinCodeAvailability";
+import { useAppDispatch } from "../../../store/hooks";
+import { createEmployee, updateEmployee } from "../../../store/slices/EmployeeSlice";
 
-type RoleType = 'MANAGER' | 'STAFF' | 'ADMIN' | 'CLEANER' | 'PRESSER' | 'COUNTER';
-type StatusType = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE';
+type RoleType = "MANAGER" | "STAFF" | "ADMIN" | "CLEANER" | "PRESSER" | "COUNTER";
+type StatusType = "ACTIVE" | "INACTIVE" | "ON_LEAVE";
 
 // Define an interface for the employee data
 interface EmployeeFormData {
@@ -36,23 +38,23 @@ const EmployeeForm = forwardRef(({
     onFormChange
 }: {
     onCloseModal: () => void,
-    createOrEdit: 'create' | 'edit',
+    createOrEdit: "create" | "edit",
     params: Record<string, any>,
     onFormChange?: () => void
 }, ref) => {
-    const existingEmployee = createOrEdit === 'edit' ? params?.employee : null;
+    const existingEmployee = createOrEdit === "edit" ? params?.employee : null;
 
     // Form state
-    const [firstName, setFirstName] = useState(existingEmployee?.firstName || '');
-    const [lastName, setLastName] = useState(existingEmployee?.lastName || '');
-    const [email, setEmail] = useState(existingEmployee?.email || '');
-    const [role, setRole] = useState<RoleType>(existingEmployee?.role || 'STAFF');
-    const [status, setStatus] = useState<StatusType>(existingEmployee?.status || 'ACTIVE');
-    const [hourlyRate, setHourlyRate] = useState(existingEmployee?.hourlyRate?.toString() || '');
-    const [address, setAddress] = useState(existingEmployee?.address || '');
-    const [city, setCity] = useState(existingEmployee?.city || '');
-    const [state, setState] = useState(existingEmployee?.state || '');
-    const [zipCode, setZipCode] = useState(existingEmployee?.zipCode || '');
+    const [firstName, setFirstName] = useState(existingEmployee?.firstName || "");
+    const [lastName, setLastName] = useState(existingEmployee?.lastName || "");
+    const [email, setEmail] = useState(existingEmployee?.email || "");
+    const [role, setRole] = useState<RoleType>(existingEmployee?.role || "STAFF");
+    const [status, setStatus] = useState<StatusType>(existingEmployee?.status || "ACTIVE");
+    const [hourlyRate, setHourlyRate] = useState(existingEmployee?.hourlyRate?.toString() || "");
+    const [address, setAddress] = useState(existingEmployee?.address || "");
+    const [city, setCity] = useState(existingEmployee?.city || "");
+    const [state, setState] = useState(existingEmployee?.state || "");
+    const [zipCode, setZipCode] = useState(existingEmployee?.zipCode || "");
     // pinCode is now managed by the usePinCodeAvailability hook
 
     // UI state for dropdowns
@@ -68,23 +70,14 @@ const EmployeeForm = forwardRef(({
         getPhoneInputStyle,
         getPhoneStatusText
     } = usePhoneNumberAvailability({
-        initialPhoneNumber: existingEmployee?.phoneNumber || '',
+        initialPhoneNumber: existingEmployee?.phoneNumber || "",
         currentEntityId: existingEmployee?.id,
-        entityType: 'Employee'
+        entityType: "Employee"
     });
 
-    // Add this near the other hook usage
-    const {
-        pinCode,
-        setPinCode,
-        isAvailable: pinCodeAvailable,
-        isChecking: isCheckingPin,
-        getPinInputStyle: getPinInputStyle,
-        getPinStatusText: getPinStatusText
-    } = usePinCodeAvailability({
-        initialPinCode: existingEmployee?.pinCode || '',
-        currentEntityId: existingEmployee?.id
-    });
+    // Pin code state and availability
+    const [pinCode, setPinCode] = useState(existingEmployee?.pinCode || "");
+    const pinCodeAvailable = usePinCodeAvailability(pinCode, existingEmployee?.id);
 
     // Get loading state from Redux store
     const reduxLoading = useSelector((state: RootState) => state.employee.isLoading);
@@ -104,6 +97,47 @@ const EmployeeForm = forwardRef(({
         firstName, lastName, email, phoneNumber, role,
         hourlyRate, address, city, state, zipCode, status, pinCode
     ]);
+
+    const dispatch = useAppDispatch();
+    const userId = params?.userId;
+    const [submitError, setSubmitError] = useState<string|null>(null);
+
+    // Validate and collect form data
+    const validateAndGetFormData = () => {
+        if (!firstName.trim()) return { valid: false, message: "First name is required" };
+        if (!lastName.trim()) return { valid: false, message: "Last name is required" };
+        if (!phoneNumber.trim()) return { valid: false, message: "Phone number is required" };
+        if (phoneNumberAvailable === false) return { valid: false, message: "Phone number is already in use" };
+        if (!pinCode.trim() || pinCode.length !== 4) return { valid: false, message: "A 4-digit PIN code is required" };
+        if (pinCodeAvailable === false) return { valid: false, message: "A PIN code is already in use" };
+        // Build payload
+        const data: any = { firstName, lastName, email, phoneNumber, role, status, address, city, state, zipCode, pinCode };
+        if (hourlyRate) data.hourlyRate = parseFloat(hourlyRate);
+        if (createOrEdit === "edit" && existingEmployee?.id) data.id = existingEmployee.id;
+        return { valid: true, ...data };
+    };
+
+    // Submit handler for CreateFormModal
+    const handleSubmit = async () => {
+        setSubmitError(null);
+        const formData = validateAndGetFormData();
+        if (!formData.valid) {
+            setSubmitError(formData.message!);
+            return;
+        }
+        try {
+            setIsLoading(true);
+            if (createOrEdit === "create") {
+                await dispatch(createEmployee({ employeeData: formData, userId })).unwrap();
+            } else {
+                await dispatch(updateEmployee({ employeeData: formData, userId })).unwrap();
+            }
+        } catch (err: any) {
+            setSubmitError(err.message || "Failed to save employee");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // Role options
     const roleOptions: { label: string; value: RoleType }[] = [
@@ -136,143 +170,49 @@ const EmployeeForm = forwardRef(({
     // Expose methods to parent component via ref
     useImperativeHandle(ref, () => ({
         resetForm: () => {
-            if (createOrEdit === 'edit' && existingEmployee) {
+            if (createOrEdit === "edit" && existingEmployee) {
                 // In edit mode, reset to the original employee data
-                setFirstName(existingEmployee.firstName || '');
-                setLastName(existingEmployee.lastName || '');
-                setEmail(existingEmployee.email || '');
-                setPhoneNumber(existingEmployee.phoneNumber || '');
-                setRole(existingEmployee.role || 'STAFF');
-                setHourlyRate(existingEmployee.hourlyRate?.toString() || '');
-                setAddress(existingEmployee.address || '');
-                setCity(existingEmployee.city || '');
-                setState(existingEmployee.state || '');
-                setZipCode(existingEmployee.zipCode || '');
-                setStatus(existingEmployee.status || 'ACTIVE');
-                setPinCode(existingEmployee.pinCode || '');
+                setFirstName(existingEmployee.firstName || "");
+                setLastName(existingEmployee.lastName || "");
+                setEmail(existingEmployee.email || "");
+                setPhoneNumber(existingEmployee.phoneNumber || "");
+                setRole(existingEmployee.role || "STAFF");
+                setHourlyRate(existingEmployee.hourlyRate?.toString() || "");
+                setAddress(existingEmployee.address || "");
+                setCity(existingEmployee.city || "");
+                setState(existingEmployee.state || "");
+                setZipCode(existingEmployee.zipCode || "");
+                setStatus(existingEmployee.status || "ACTIVE");
+                setPinCode(existingEmployee.pinCode || "");
             } else {
                 // In create mode, clear the form completely
-                setFirstName('');
-                setLastName('');
-                setEmail('');
-                setPhoneNumber('');
-                setRole('STAFF');
-                setHourlyRate('');
-                setAddress('');
-                setCity('');
-                setState('');
-                setZipCode('');
-                setStatus('ACTIVE');
-                setPinCode('');
+                setFirstName("");
+                setLastName("");
+                setEmail("");
+                setPhoneNumber("");
+                setRole("STAFF");
+                setHourlyRate("");
+                setAddress("");
+                setCity("");
+                setState("");
+                setZipCode("");
+                setStatus("ACTIVE");
+                setPinCode("");
             }
         },
-        validateAndGetFormData: () => {
-            console.log('EmployeeForm.validateAndGetFormData called');
-            
-            // Basic validation
-            if (!firstName.trim()) {
-                console.log('First name is required');
-                return { valid: false, message: "First name is required" };
-            }
-            if (!lastName.trim()) {
-                console.log('Last name is required');
-                return { valid: false, message: "Last name is required" };
-            }
-            if (!phoneNumber.trim()) {
-                console.log('Phone number is required');
-                return { valid: false, message: "Phone number is required" };
-            }
-            // Check if phone number is available
-            if (phoneNumberAvailable === false) {
-                console.log('This phone number is already in use');
-                return { valid: false, message: "This phone number is already in use" };
-            }
-
-            // Additional validation for pin code if provided - it should be exactly 4 digits
-            if (!pinCode.trim() || pinCode.length !== 4) {
-                console.log('A 4-digit PIN code is required');
-                return { valid: false, message: "A 4-digit PIN code is required" };
-            }
-            // Check if PIN code is available
-            if (pinCodeAvailable === false) {
-                console.log('This PIN code is already in use by another employee');
-                return { valid: false, message: "This PIN code is already in use by another employee" };
-            }
-            
-            console.log('Employee validation passed');
-
-            // Create employee data object with properly defined structure
-            const employeeData: EmployeeFormData & { valid: boolean } = {
-                firstName,
-                lastName,
-                phoneNumber,
-                role,
-                valid: true // Add the valid flag for successful validation
-            };
-
-            // Add optional fields if they have values
-            if (email) employeeData.email = email;
-            if (hourlyRate) employeeData.hourlyRate = parseFloat(hourlyRate);
-            if (address) employeeData.address = address;
-            if (city) employeeData.city = city;
-            if (state) employeeData.state = state;
-            if (zipCode) employeeData.zipCode = zipCode;
-            if (status) employeeData.status = status;
-            if (pinCode) employeeData.pinCode = pinCode;
-
-            // Add ID if editing
-            if (createOrEdit === 'edit' && existingEmployee?.id) {
-                employeeData.id = existingEmployee.id;
-            }
-            
-            console.log('Employee data being returned:', employeeData);
-            return employeeData;
-        },
-        isFormValid: () => {
-            // Special case: If form is completely untouched, return true
-            // to keep buttons enabled at start
-            if (phoneNumber.trim() === '' &&
-                firstName.trim() === '' &&
-                lastName.trim() === '') {
-                return true;
-            }
-
-            // Required fields validation
-            const hasRequiredFields =
-                firstName.trim() !== '' &&
-                lastName.trim() !== '' &&
-                phoneNumber.trim() !== '' &&
-                role.trim() !== '';
-
-            // Phone validation
-            let isPhoneValid = true;
-            if (phoneNumber.length >= 10) {
-                isPhoneValid = phoneNumberAvailable !== false;
-            } else if (phoneNumber.length > 0) {
-                // Only disable when they've started typing a phone number
-                // but haven't finished yet
-                isPhoneValid = false;
-            }
-
-            // Pin validation if provided
-            let isPinValid = true;
-            if (pinCode) {
-                isPinValid = /^\d{4}$/.test(pinCode);
-            }
-
-            return hasRequiredFields && isPhoneValid && isPinValid;
-        }
+        validateAndGetFormData,
+        handleSubmit
     }));
 
     const handleHourlyRateChange = (text: string) => {
         // Only allow numbers and decimal point
-        const filteredText = text.replace(/[^0-9.]/g, '');
+        const filteredText = text.replace(/[^0-9.]/g, "");
         setHourlyRate(filteredText);
     };
 
     const handlePinCodeChange = (text: string) => {
         // Only allow numbers and limit to 4 digits
-        const filteredText = text.replace(/[^0-9]/g, '').substring(0, 4);
+        const filteredText = text.replace(/[^0-9]/g, "").substring(0, 4);
         setPinCode(filteredText);
     };
 
@@ -482,13 +422,11 @@ const EmployeeForm = forwardRef(({
                     />
                     {pinCode.length > 0 && (
                         <View style={styles.statusIndicatorContainer}>
-                            {isCheckingPin ? (
-                                <ActivityIndicator size="small" color="#FFA000" style={styles.loader} />
-                            ) : (
-                                <Text style={[styles.statusText, { color: getPinStatusText().color }]}>
-                                    {getPinStatusText().text}
+                            {pinCode.length === 4 ? (
+                                <Text style={[styles.statusText, { color: pinCodeAvailable ? '#4CAF50' : '#E53935' }]}> 
+                                    {pinCodeAvailable ? 'Available' : 'Already in use'}
                                 </Text>
-                            )}
+                            ) : null}
                         </View>
                     )}
                 </View>
@@ -540,133 +478,133 @@ const EmployeeForm = forwardRef(({
 
 const styles = StyleSheet.create({
     container: {
-        width: '100%',
+        width: "100%",
     },
     scrollContainer: {
         flex: 1,
-        width: '100%',
-        alignSelf: 'stretch',
+        width: "100%",
+        alignSelf: "stretch",
     },
     label: {
         marginBottom: 5,
-        fontWeight: '500',
-        color: '#333',
+        fontWeight: "500",
+        color: "#333",
     },
     sectionHeader: {
         fontSize: 25,
-        fontWeight: 'bold',
+        fontWeight: "bold",
         marginTop: 16,
         marginBottom: 8,
-        color: '#333',
+        color: "#333",
     },
     input: {
         borderWidth: 1,
-        borderColor: '#ccc',
+        borderColor: "#ccc",
         borderRadius: 5,
         padding: 10,
         marginBottom: 15,
-        backgroundColor: '#fff',
+        backgroundColor: "#fff",
     },
     validInput: {
-        borderColor: '#4CAF50',  // Green for valid
-        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+        borderColor: "#4CAF50",  // Green for valid
+        backgroundColor: "rgba(76, 175, 80, 0.1)",
     },
     invalidInput: {
-        borderColor: '#E53935',  // Red for invalid
-        backgroundColor: 'rgba(229, 57, 53, 0.1)',
+        borderColor: "#E53935",  // Red for invalid
+        backgroundColor: "rgba(229, 57, 53, 0.1)",
     },
     statusText: {
         fontSize: 12,
         marginRight: 5,
         marginTop: -10,
         marginBottom: 10,
-        textAlign: 'right'
+        textAlign: "right"
     },
     statusIndicatorContainer: {
-        position: 'absolute',
+        position: "absolute",
         right: 10,
         top: 0,
         bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-        flexDirection: 'row',
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "row",
     },
     inputContainer: {
-        position: 'relative',
+        position: "relative",
         marginBottom: 15,
     },
     available: {
-        color: '#4CAF50', // Green
+        color: "#4CAF50", // Green
     },
     unavailable: {
-        color: '#E53935', // Red
+        color: "#E53935", // Red
     },
     checking: {
-        color: '#0000ff', // Blue
+        color: "#0000ff", // Blue
     },
     loader: {
         marginVertical: 10,
     },
     dropdownContainer: {
         marginBottom: 15,
-        position: 'relative',
+        position: "relative",
         // The base z-index will be overridden by inline styles
         zIndex: 1,
     },
     dropdownButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
         padding: 10,
         borderWidth: 1,
-        borderColor: '#ccc',
+        borderColor: "#ccc",
         borderRadius: 5,
-        backgroundColor: '#fff',
+        backgroundColor: "#fff",
     },
     dropdownButtonText: {
         fontSize: 16,
-        color: '#333',
+        color: "#333",
     },
     dropdownList: {
-        position: 'absolute',
-        top: '100%',
+        position: "absolute",
+        top: "100%",
         left: 0,
         right: 0,
-        backgroundColor: '#fff',
+        backgroundColor: "#fff",
         borderWidth: 1,
-        borderColor: '#ccc',
+        borderColor: "#ccc",
         borderRadius: 5,
         marginTop: 5,
         maxHeight: 200,
         elevation: 5,
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
         zIndex: 2,
     },
     dropdownItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
         padding: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: "#f0f0f0",
     },
     dropdownItemSelected: {
-        backgroundColor: 'rgba(0, 122, 255, 0.1)',
+        backgroundColor: "rgba(0, 122, 255, 0.1)",
     },
     dropdownItemText: {
         fontSize: 16,
-        color: '#333',
+        color: "#333",
     },
     dropdownItemTextSelected: {
-        color: '#007AFF',
-        fontWeight: '500',
+        color: "#007AFF",
+        fontWeight: "500",
     },
     statusContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        flexDirection: "row",
+        alignItems: "center",
     },
     statusIndicator: {
         width: 10,

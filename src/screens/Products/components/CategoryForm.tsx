@@ -1,12 +1,12 @@
 // src/screens/Products/components/CategoryForm.tsx
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { StyleSheet, View, Text, TextInput, Alert, ScrollView } from "react-native";
-import { useSelector } from 'react-redux';
-import { RootState } from '../../../store';
+import { useSelector } from "react-redux";
+import { RootState } from "../../../store";
 
 interface CategoryFormProps {
   onCloseModal: () => void;
-  createOrEdit: 'create' | 'edit';
+  createOrEdit: "create" | "edit";
   params: Record<string, any>;
   onFormChange?: () => void;
 }
@@ -18,13 +18,13 @@ const CategoryForm = forwardRef(({
   onFormChange
 }: CategoryFormProps, ref) => {
   // Get existing category if in edit mode
-  const existingCategory = createOrEdit === 'edit' ? params?.category : null;
+  const existingCategory = createOrEdit === "edit" ? params?.category : null;
 
   // Form state
-  const [name, setName] = useState(existingCategory?.name || '');
-  const [description, setDescription] = useState(existingCategory?.description || '');
-  const [price, setPrice] = useState(existingCategory?.price?.toString() || '');
-  const [imageUrl, setImageUrl] = useState(existingCategory?.imageUrl || '');
+  const [name, setName] = useState(existingCategory?.name || "");
+  const [description, setDescription] = useState(existingCategory?.description || "");
+  const [price, setPrice] = useState(existingCategory?.price?.toString() || "");
+  const [imageUrl, setImageUrl] = useState(existingCategory?.imageUrl || "");
 
   // Get loading state from Redux store
   const isReduxLoading = useSelector((state: RootState) => state.category.isLoading);
@@ -39,33 +39,33 @@ const CategoryForm = forwardRef(({
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     resetForm: () => {
-      if (createOrEdit === 'edit' && existingCategory) {
+      if (createOrEdit === "edit" && existingCategory) {
         // Reset to original values
-        setName(existingCategory.name || '');
-        setDescription(existingCategory.description || '');
-        setPrice(existingCategory.price?.toString() || '');
-        setImageUrl(existingCategory.imageUrl || '');
+        setName(existingCategory.name || "");
+        setDescription(existingCategory.description || "");
+        setPrice(existingCategory.price?.toString() || "");
+        setImageUrl(existingCategory.imageUrl || "");
       } else {
         // Clear form
-        setName('');
-        setDescription('');
-        setPrice('');
-        setImageUrl('');
+        setName("");
+        setDescription("");
+        setPrice("");
+        setImageUrl("");
       }
     },
     validateAndGetFormData: () => {
-      console.log('CategoryForm.validateAndGetFormData called');
+      console.log("CategoryForm.validateAndGetFormData called");
       
       // Basic validation
       if (!name.trim()) {
-        console.log('Service name is required');
+        console.log("Service name is required");
         return { valid: false, message: "Service name is required" };
       }
 
-      console.log('Category validation passed');
+      console.log("Category validation passed");
       
       // Create data object with properly defined structure
-      const formattedPrice = price && price.trim() !== '' 
+      const formattedPrice = price && price.trim() !== "" 
         ? parseFloat(price) 
         : undefined;
 
@@ -77,10 +77,10 @@ const CategoryForm = forwardRef(({
         valid: true // Add valid flag for successful validation
       };
 
-      console.log('Category data being returned:', categoryData);
+      console.log("Category data being returned:", categoryData);
       
       // Add ID if editing
-      if (createOrEdit === 'edit' && existingCategory?.id) {
+      if (createOrEdit === "edit" && existingCategory?.id) {
         return {
           ...categoryData,
           id: existingCategory.id
@@ -90,13 +90,13 @@ const CategoryForm = forwardRef(({
       return categoryData;
     },
     isFormValid: () => {
-      return name.trim() !== '';
+      return name.trim() !== "";
     }
   }));
 
   const handlePriceChange = (text: string) => {
     // Only allow numbers and decimal point
-    const filteredText = text.replace(/[^0-9.]/g, '');
+    const filteredText = text.replace(/[^0-9.]/g, "");
     setPrice(filteredText);
   };
 
@@ -148,26 +148,26 @@ const CategoryForm = forwardRef(({
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   container: {
     padding: 10,
   },
   label: {
     marginBottom: 5,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderRadius: 5,
     padding: 10,
     marginBottom: 15,
   },
   multilineInput: {
     height: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   }
 });
 

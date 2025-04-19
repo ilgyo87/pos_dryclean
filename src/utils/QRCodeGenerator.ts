@@ -1,6 +1,6 @@
-import { uploadData } from 'aws-amplify/storage';
-import { Alert } from 'react-native';
-import { EntityType } from '../types';
+import { uploadData } from "aws-amplify/storage";
+import { Alert } from "react-native";
+import { EntityType } from "../types";
 
 export interface BaseEntityData {
     id: string;
@@ -18,14 +18,14 @@ export const generateQRCodeData = <T extends BaseEntityData>(
     };
 
     switch (entityType) {
-        case 'Business':
+        case "Business":
             return JSON.stringify({
                 ...baseData,
                 name: data.name,
                 phoneNumber: data.phoneNumber,
             });
 
-        case 'Employee':
+        case "Employee":
             return JSON.stringify({
                 ...baseData,
                 firstName: data.firstName,
@@ -35,7 +35,7 @@ export const generateQRCodeData = <T extends BaseEntityData>(
                 businessId: data.businessID,
             });
 
-        case 'Customer':
+        case "Customer":
             return JSON.stringify({
                 ...baseData,
                 firstName: data.firstName,
@@ -44,14 +44,14 @@ export const generateQRCodeData = <T extends BaseEntityData>(
                 businessId: data.businessID,
             });
 
-        case 'Garment':
+        case "Garment":
             return JSON.stringify({
                 ...baseData,
                 businessId: data.businessID,
                 customerId: data.customerID,
             });
 
-        case 'Rack':
+        case "Rack":
             return JSON.stringify({
                 ...baseData,
                 businessId: data.businessID,
@@ -69,7 +69,7 @@ export const generateQRCodeData = <T extends BaseEntityData>(
 export const parseQRCode = (qrValue: string): { type: EntityType, data: any } | null => {
     try {
         const parsedData = JSON.parse(qrValue);
-        if (parsedData && parsedData.type && ['Business', 'Employee', 'Customer', 'Garment'].includes(parsedData.type)) {
+        if (parsedData && parsedData.type && ["Business", "Employee", "Customer", "Garment"].includes(parsedData.type)) {
             return {
                 type: parsedData.type as EntityType,
                 data: parsedData
@@ -77,7 +77,7 @@ export const parseQRCode = (qrValue: string): { type: EntityType, data: any } | 
         }
         return null;
     } catch (error) {
-        console.error('Error parsing QR code data:', error);
+        console.error("Error parsing QR code data:", error);
         return null;
     }
 };
@@ -90,7 +90,7 @@ export const uploadQRCapture = async (uri: string, type: EntityType, title: stri
 
     // Create unique filename with datetime for S3
     const now = new Date();
-    const timestamp = now.toISOString().replace(/[:.]/g, '-');
+    const timestamp = now.toISOString().replace(/[:.]/g, "-");
     const filename = `qrcodes/${type}/${title}_${timestamp}.png`;
 
     // Upload to S3
@@ -99,14 +99,14 @@ export const uploadQRCapture = async (uri: string, type: EntityType, title: stri
             path: filename,
             data: blob,
             options: {
-                contentType: 'image/png'
+                contentType: "image/png"
             }
         }).result;
-        console.log('Successfully uploaded QR code:', result);
+        console.log("Successfully uploaded QR code:", result);
         return result;
     } catch (error) {
-        console.error('Upload error:', error);
-        Alert.alert('Error', `Failed to save QR code: ${error}`);
+        console.error("Upload error:", error);
+        Alert.alert("Error", `Failed to save QR code: ${error}`);
         return null;
     }
 };

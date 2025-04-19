@@ -69,7 +69,7 @@ export default function Navigation({
   
   // State for PIN input
   const [isPinModalVisible, setIsPinModalVisible] = useState(false);
-  const [pin, setPin] = useState('');
+  const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
   const pinRef = useRef(pin);
   
@@ -88,18 +88,18 @@ export default function Navigation({
     } else {
       // If no employee is signed in, show PIN modal
       setIsPinModalVisible(true);
-      setPin('');
+      setPin("");
       setPinError(false);
     }
   };
   
   // Handle PIN submission
   const handlePinSubmit = () => {
-    console.log('PIN received for processing:', pinRef.current, 'Length:', pinRef.current.length);
+    console.log("PIN received for processing:", pinRef.current, "Length:", pinRef.current.length);
     
     // If we're still not getting all 4 digits, don't proceed
     if (pinRef.current.length < 4) {
-      console.log('PIN incomplete, not processing');
+      console.log("PIN incomplete, not processing");
       return;
     }
     
@@ -113,12 +113,12 @@ export default function Navigation({
         name: `${matchedEmployee.firstName} ${matchedEmployee.lastName}`
       });
       setIsPinModalVisible(false);
-      setPin('');
+      setPin("");
     } else {
       // Invalid PIN - show error
       setPinError(true);
       setTimeout(() => {
-        setPin('');
+        setPin("");
         // Keep modal open but reset the error after 2 seconds
         setTimeout(() => setPinError(false), 2000);
       }, 500);
@@ -130,11 +130,11 @@ export default function Navigation({
       <Stack.Navigator
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#ffffff',
+            backgroundColor: "#ffffff",
           },
-          headerTintColor: '#000000',
+          headerTintColor: "#000000",
           headerTitleStyle: {
-            fontWeight: 'bold',
+            fontWeight: "bold",
           },
           headerBackVisible: true,
           headerTitle: (props) => (
@@ -148,7 +148,7 @@ export default function Navigation({
         }}
       >
         <Stack.Screen name="DASHBOARD">
-          {(props) => <Dashboard {...props} user={user} />}
+          {(props) => <Dashboard {...props} />}
         </Stack.Screen>
         <Stack.Screen name="Customers">
           {(props) => <CustomersScreen {...props} user={user} />}
@@ -215,22 +215,22 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   signOutContainer: {
-    marginLeft: 'auto',
+    marginLeft: "auto",
     paddingBottom: 65,
   },
   signInOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginLeft: 16,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
-    backgroundColor: '#f0f8ff',
+    backgroundColor: "#f0f8ff",
   },
   signInOutText: {
     marginLeft: 4,
-    color: '#007AFF',
-    fontWeight: '500',
+    color: "#007AFF",
+    fontWeight: "500",
     fontSize: 14,
   },
 });

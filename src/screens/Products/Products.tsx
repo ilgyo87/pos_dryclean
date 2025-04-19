@@ -1,15 +1,15 @@
 // src/screens/Products/Products.tsx
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 import { View, StyleSheet, ActivityIndicator, Alert, Text } from "react-native"; 
 import { AuthUser } from "aws-amplify/auth";
 import { useFocusEffect } from "@react-navigation/native";
-import ServiceList from './components/ServiceList';
-import ProductList from './components/ProductList';
-import StockLoader from './components/StockLoader';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchCategories } from '../../store/slices/CategorySlice';
-import { fetchItems, clearItems } from '../../store/slices/ItemSlice';
-import CreateFormModal from '../../components/CreateFormModal';
+import ServiceList from "./components/ServiceList";
+import ProductList from "./components/ProductList";
+import StockLoader from "./components/StockLoader";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { fetchCategories } from "../../store/slices/CategorySlice";
+import { fetchItems, clearItems } from "../../store/slices/ItemSlice";
+import CreateFormModal from "../../components/CreateFormModal";
 
 export default function Products({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -17,8 +17,8 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
     
     // Modal state
     const [isModalVisible, setIsModalVisible] = useState(false);
-    const [modalType, setModalType] = useState<'Category' | 'Item'>('Category');
-    const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+    const [modalType, setModalType] = useState<"Category" | "Item">("Category");
+    const [modalMode, setModalMode] = useState<"create" | "edit">("create");
     const [editingItem, setEditingItem] = useState<any>(null);
     const [editingCategory, setEditingCategory] = useState<any>(null);
     const [showStockLoader, setShowStockLoader] = useState(false);
@@ -92,15 +92,15 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
 
     // Modal handlers
     const handleAddCategory = () => {
-        setModalType('Category');
-        setModalMode('create');
+        setModalType("Category");
+        setModalMode("create");
         setEditingCategory(null);
         setIsModalVisible(true);
     };
 
     const handleEditCategory = (category: any) => {
-        setModalType('Category');
-        setModalMode('edit');
+        setModalType("Category");
+        setModalMode("edit");
         setEditingCategory(category);
         setIsModalVisible(true);
     };
@@ -114,15 +114,15 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
             return;
         }
         
-        setModalType('Item');
-        setModalMode('create');
+        setModalType("Item");
+        setModalMode("create");
         setEditingItem(null);
         setIsModalVisible(true);
     };
 
     const handleEditItem = (item: any) => {
-        setModalType('Item');
-        setModalMode('edit');
+        setModalType("Item");
+        setModalMode("edit");
         setEditingItem(item);
         setIsModalVisible(true);
     };
@@ -175,7 +175,7 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
                         predefined templates for common dry cleaning services.
                     </Text>
                     <StockLoader 
-                        userId={user?.userId || ''} 
+                        userId={user?.userId || ""} 
                         onDataLoaded={handleStockDataLoaded}
                         createService={(data) => {
                             if (user?.userId) {
@@ -220,7 +220,7 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
             </View>
 
             {/* Modals for creating/editing */}
-            {isModalVisible && modalType === 'Category' && (
+            {isModalVisible && modalType === "Category" && (
                 <CreateFormModal
                     visible={isModalVisible}
                     onClose={handleCloseModal}
@@ -233,7 +233,7 @@ export default function Products({ user, navigation }: { user: AuthUser | null, 
                 />
             )}
 
-            {isModalVisible && modalType === 'Item' && (
+            {isModalVisible && modalType === "Item" && (
                 <CreateFormModal
                     visible={isModalVisible}
                     onClose={handleCloseModal}
@@ -253,58 +253,58 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 16,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: "#f5f5f5",
     },
     contentContainer: {
         flex: 1,
-        backgroundColor: 'white',
+        backgroundColor: "white",
         borderRadius: 8,
-        overflow: 'hidden',
+        overflow: "hidden",
     },
     loadingContainer: { 
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
     },
     loadingContainerProductList: { 
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
         padding: 20,
     },
     errorContainer: { 
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
         padding: 20,
     },
     errorContainerProductList: { 
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
         padding: 20,
     },
     errorText: {
-        color: 'red',
-        textAlign: 'center',
+        color: "red",
+        textAlign: "center",
     },
     emptyStateContainer: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: "center",
+        alignItems: "center",
         padding: 20,
-        backgroundColor: 'white',
+        backgroundColor: "white",
         borderRadius: 8,
     },
     emptyStateTitle: {
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: "bold",
         marginBottom: 10,
     },
     emptyStateText: {
         fontSize: 16,
-        textAlign: 'center',
+        textAlign: "center",
         marginBottom: 20,
-        color: '#666',
+        color: "#666",
     }
 });

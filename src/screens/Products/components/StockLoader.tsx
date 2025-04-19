@@ -1,11 +1,11 @@
 // src/screens/Products/components/StockLoader.tsx
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, FlatList } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { DEFAULT_CATEGORIES } from '../../../../amplify/data/stockData';
-import { useAppDispatch } from '../../../store/hooks';
-import { createCategory } from '../../../store/slices/CategorySlice';
-import { createItem } from '../../../store/slices/ItemSlice';
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, FlatList } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { DEFAULT_CATEGORIES } from "../../../../amplify/data/stockData";
+import { useAppDispatch } from "../../../store/hooks";
+import { createCategory } from "../../../store/slices/CategorySlice";
+import { createItem } from "../../../store/slices/ItemSlice";
 
 interface StockLoaderProps {
   userId: string;
@@ -65,16 +65,16 @@ export default function StockLoader({
                 categoryId,
                 name: item.name,
                 price: item.price || 0,
-                description: item.description || '',
+                description: item.description || "",
                 duration: item.duration || 0,
-                starch: item.starch || 'NONE',
+                starch: item.starch || "NONE",
                 pressOnly: item.pressOnly !== undefined ? item.pressOnly : false,
                 taxable: false,
               };
               if (item.imageSource) {
-                itemToCreate.imageSource = item.imageSource.replace('.png', '');
+                itemToCreate.imageSource = item.imageSource.replace(".png", "");
               }
-              if (item.imageUrl && (item.imageUrl.startsWith('http://') || item.imageUrl.startsWith('https://'))) {
+              if (item.imageUrl && (item.imageUrl.startsWith("http://") || item.imageUrl.startsWith("https://"))) {
                 itemToCreate.imageUrl = item.imageUrl;
               }
               const result = await dispatch(createItem(itemToCreate)).unwrap();
@@ -88,7 +88,7 @@ export default function StockLoader({
           if (failed.length > 0) {
             Alert.alert(
               "Some items failed",
-              failed.map(f => `${f.name}: ${f.error}`).join('\n')
+              failed.map(f => `${f.name}: ${f.error}`).join("\n")
             );
           } else {
 
@@ -149,9 +149,9 @@ export default function StockLoader({
                     categoryId,
                     name: item.name,
                     price: item.price || 0,
-                    description: item.description || '',
+                    description: item.description || "",
                     duration: item.duration || 0,
-                    starch: item.starch || 'NONE',
+                    starch: item.starch || "NONE",
                     pressOnly: item.pressOnly !== undefined ? item.pressOnly : false,
                     taxable: false, // Default value as per schema
                   };
@@ -159,11 +159,11 @@ export default function StockLoader({
                   // Handle image source mapping
                   if (item.imageSource) {
                     // Store the image source name without the extension
-                    itemToCreate.imageSource = item.imageSource.replace('.png', '');
+                    itemToCreate.imageSource = item.imageSource.replace(".png", "");
                   }
                   
                   // Handle legacy imageUrl (if present)
-                  if (item.imageUrl && (item.imageUrl.startsWith('http://') || item.imageUrl.startsWith('https://'))) {
+                  if (item.imageUrl && (item.imageUrl.startsWith("http://") || item.imageUrl.startsWith("https://"))) {
                     itemToCreate.imageUrl = item.imageUrl;
                   }
                   
@@ -245,69 +245,69 @@ export default function StockLoader({
 }
 
 // Import DEFAULT_ITEMS from stockData.ts
-import { DEFAULT_ITEMS } from '../../../../amplify/data/stockData';
+import { DEFAULT_ITEMS } from "../../../../amplify/data/stockData";
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderRadius: 10,
     padding: 16,
-    width: '100%',
+    width: "100%",
     maxWidth: 450,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   description: {
-    color: '#666',
+    color: "#666",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   listContent: {
     paddingBottom: 8,
   },
   categoryItem: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
     borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderLeftColor: "#007AFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   categoryContent: {
     flex: 1,
   },
   categoryName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 4,
   },
   categoryDescription: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   loadAllButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     borderRadius: 8,
     padding: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
   },
   disabledButton: {
-    backgroundColor: '#999',
+    backgroundColor: "#999",
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: "#fff",
+    fontWeight: "600",
     fontSize: 16,
   },
   buttonIcon: {

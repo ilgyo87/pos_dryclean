@@ -1,8 +1,8 @@
 // src/screens/Products/components/ServiceList.tsx
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import type { Schema } from './../../../../amplify/data/resource';
+import React from "react";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import type { Schema } from "./../../../../amplify/data/resource";
 
 interface ServiceListProps {
   services: Schema["Category"]["type"][];
@@ -81,29 +81,29 @@ const styles = StyleSheet.create({
   servicesContainer: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   addButton: {
-    backgroundColor: '#007AFF',
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: "#007AFF",
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
   },
   buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
     fontSize: 14,
     marginLeft: 4,
   },
@@ -111,40 +111,40 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   serviceItem: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
     marginRight: 12,
     minWidth: 100,
-    alignItems: 'center',
+    alignItems: "center",
   },
   selectedServiceItem: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
   },
   serviceText: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
   },
   selectedServiceText: {
-    color: '#fff',
+    color: "#fff",
   },
   servicePrice: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
   },
   emptyState: {
     padding: 20,
-    alignItems: 'center',
-    backgroundColor: '#f9f9f9',
+    alignItems: "center",
+    backgroundColor: "#f9f9f9",
     borderRadius: 8,
     marginTop: 10,
   },
   emptyStateText: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   }
 });

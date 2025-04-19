@@ -1,14 +1,14 @@
 // src/store/slices/BusinessSlice.ts
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { generateClient } from 'aws-amplify/data';
-import { Schema } from '../../../amplify/data/resource';
-import type { RootState } from '../index';
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { generateClient } from "aws-amplify/data";
+import { Schema } from "../../../amplify/data/resource";
+import type { RootState } from "../index";
 
 const client = generateClient<Schema>();
 
 // Define business state interface
 interface BusinessState {
-  businesses: Schema['Business']['type'][];
+  businesses: Schema["Business"]["type"][];
   isLoading: boolean;
   error: string | null;
 }
@@ -28,7 +28,7 @@ const makeSerializable = (business: any) => {
   const serializedBusiness = {...business};
   
   // Remove functions if they exist
-  if (typeof serializedBusiness.businessMetrics === 'function') {
+  if (typeof serializedBusiness.businessMetrics === "function") {
     delete serializedBusiness.businessMetrics;
   }
   
@@ -37,7 +37,7 @@ const makeSerializable = (business: any) => {
 
 // Async thunks
 export const fetchBusinesses = createAsyncThunk(
-  'business/fetchBusinesses',
+  "business/fetchBusinesses",
   async (userId: string, { rejectWithValue }) => {
     try {
       const { data, errors } = await client.models.Business.list({
@@ -45,80 +45,80 @@ export const fetchBusinesses = createAsyncThunk(
       });
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to fetch businesses');
+        return rejectWithValue(errors[0]?.message || "Failed to fetch businesses");
       }
       
       // Make businesses serializable before returning
       const serializedBusinesses = data.map(makeSerializable);
       return serializedBusinesses;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch businesses');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to fetch businesses");
     }
   }
 );
 
 export const createBusiness = createAsyncThunk(
-  'business/createBusiness',
+  "business/createBusiness",
   async ({ businessData, userId }: { businessData: any, userId: string }, { rejectWithValue }) => {
     try {
       // Validate required fields
       if (!businessData.name || !businessData.phoneNumber) {
-        return rejectWithValue('Business name and phone number are required');
+        return rejectWithValue("Business name and phone number are required");
       }
       
       // Remove the valid flag as it's not in the schema
       const { valid, ...cleanBusinessData } = businessData;
       const input = { ...cleanBusinessData, userId };
       
-      console.log('Sending to API:', input);
+      console.log("Sending to API:", input);
       const { data, errors } = await client.models.Business.create(input);
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to create business');
+        return rejectWithValue(errors[0]?.message || "Failed to create business");
       }
       
       // Make business serializable before returning
       return makeSerializable(data);
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to create business');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to create business");
     }
   }
 );
 
 export const updateBusiness = createAsyncThunk(
-  'business/updateBusiness',
+  "business/updateBusiness",
   async ({ businessData, userId }: { businessData: any, userId: string }, { rejectWithValue }) => {
     try {
       // Validate ID and required fields
       if (!businessData.id) {
-        return rejectWithValue('Business ID is required for update');
+        return rejectWithValue("Business ID is required for update");
       }
       
       if (!businessData.name || !businessData.phoneNumber) {
-        return rejectWithValue('Business name and phone number are required');
+        return rejectWithValue("Business name and phone number are required");
       }
       
       // Remove the valid flag as it's not in the schema
       const { valid, ...cleanBusinessData } = businessData;
       const input = { ...cleanBusinessData, userId };
       
-      console.log('Sending to API for update:', input);
+      console.log("Sending to API for update:", input);
       const { data, errors } = await client.models.Business.update(input);
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to update business');
+        return rejectWithValue(errors[0]?.message || "Failed to update business");
       }
       
       // Make business serializable before returning
       return makeSerializable(data);
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to update business');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to update business");
     }
   }
 );
 
 export const deleteBusiness = createAsyncThunk(
-  'business/deleteBusiness',
+  "business/deleteBusiness",
   async (businessId: string, { rejectWithValue }) => {
     try {
       const { errors } = await client.models.Business.delete({
@@ -126,19 +126,19 @@ export const deleteBusiness = createAsyncThunk(
       });
 
       if (errors) {
-        return rejectWithValue(errors[0]?.message || 'Failed to delete business');
+        return rejectWithValue(errors[0]?.message || "Failed to delete business");
       }
 
       return businessId;
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to delete business');
+      return rejectWithValue(error instanceof Error ? error.message : "Failed to delete business");
     }
   }
 );
 
 // Business slice
 const BusinessSlice = createSlice({
-  name: 'business',
+  name: "business",
   initialState,
   reducers: {
     clearErrors: (state) => {

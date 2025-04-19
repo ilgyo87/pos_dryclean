@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { View, TextInput, StyleSheet, Pressable, Text, Modal, TouchableWithoutFeedback } from 'react-native';
+import React, { useRef, useEffect } from "react";
+import { View, TextInput, StyleSheet, Pressable, Text, Modal, TouchableWithoutFeedback } from "react-native";
 
 type PinInputProps = {
   value: string;
@@ -29,7 +29,7 @@ export function PinInput({
   }, [value]);
 
   const handleChange = (text: string) => {
-    const numericValue = text.replace(/[^0-9]/g, '');
+    const numericValue = text.replace(/[^0-9]/g, "");
     
     if (numericValue.length <= maxLength) {
       onChange(numericValue);
@@ -39,7 +39,7 @@ export function PinInput({
       if (numericValue.length === maxLength && onSubmit) {
         // Use a small delay to ensure UI is updated
         setTimeout(() => {
-          console.log('Submitting with PIN from ref:', pinValueRef.current);
+          console.log("Submitting with PIN from ref:", pinValueRef.current);
           onSubmit();
         }, 300);
       }
@@ -57,7 +57,7 @@ export function PinInput({
       boxes.push(
         <View key={i} style={styles.digitBox}>
           <Text style={styles.digit}>
-            {value.length > i ? '•' : ''}
+            {value.length > i ? "•" : ""}
           </Text>
         </View>
       );
@@ -111,17 +111,17 @@ export function PinInput({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 20,
-    width: '80%',
-    alignItems: 'center',
-    shadowColor: '#000',
+    width: "80%",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -129,29 +129,29 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 20,
   },
   pinContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginBottom: 20,
   },
   digitBox: {
     width: 40,
     height: 50,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginHorizontal: 5,
   },
   digit: {
     fontSize: 24,
   },
   hiddenInput: {
-    position: 'absolute',
+    position: "absolute",
     opacity: 0,
     height: 0,
     width: 0,
@@ -161,18 +161,18 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   cancelButtonText: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 16,
   },
   submitButton: {
     marginTop: 15,
     padding: 10,
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     borderRadius: 8,
   },
   submitButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   }
 });

@@ -1,5 +1,5 @@
 // src/screens/Checkout/components/ReceiptModal.tsx
-import React, { useRef } from 'react';
+import React, { useRef } from "react";
 import {
   Modal,
   View,
@@ -8,9 +8,9 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { formatDate } from '../../../utils/formatters';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { formatDate } from "../../../utils/formatters";
 
 export interface ReceiptModalProps {
   visible: boolean;
@@ -24,7 +24,7 @@ export interface ReceiptModalProps {
       name: string;
       price: number;
       quantity: number;
-      type: 'service' | 'product';
+      type: "service" | "product";
       orderId: string;
       orderNumber: string;
     }[];
@@ -58,10 +58,10 @@ const ReceiptModal = ({
   // Format payment method for display
   const formatPaymentMethod = (method: string) => {
     return method
-      .replace(/_/g, ' ')
-      .split(' ')
+      .replace(/_/g, " ")
+      .split(" ")
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+      .join(" ");
   };
 
   return (
@@ -206,59 +206,59 @@ const ReceiptModal = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 10,
     padding: 0,
-    width: '100%',
+    width: "100%",
     maxWidth: 500,
-    maxHeight: '90%',
-    shadowColor: '#000',
+    maxHeight: "90%",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   closeButton: {
     padding: 5,
   },
   receiptContainer: {
-    maxHeight: '70%',
-    backgroundColor: '#fff',
+    maxHeight: "70%",
+    backgroundColor: "#fff",
   },
   receiptContent: {
     padding: 20,
   },
   receiptHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
   },
   businessName: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 5,
   },
   receiptTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
   },
   orderNumber: {
@@ -267,20 +267,20 @@ const styles = StyleSheet.create({
   },
   receiptDate: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   receiptSection: {
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 5,
-    color: '#555',
+    color: "#555",
   },
   divider: {
     height: 1,
-    backgroundColor: '#ddd',
+    backgroundColor: "#ddd",
     marginBottom: 10,
   },
   customerName: {
@@ -289,22 +289,22 @@ const styles = StyleSheet.create({
   },
   pickupDate: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   itemsHeader: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingBottom: 5,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   headerText: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   itemRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   itemText: {
     fontSize: 14,
@@ -315,62 +315,62 @@ const styles = StyleSheet.create({
   },
   itemQty: {
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
   itemPrice: {
     flex: 2,
-    textAlign: 'right',
+    textAlign: "right",
   },
   summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 5,
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#555',
+    color: "#555",
   },
   summaryValue: {
     fontSize: 14,
   },
   totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 10,
     marginBottom: 5,
   },
   totalLabel: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   totalValue: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   receiptFooter: {
     marginTop: 20,
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: "#eee",
   },
   footerText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 5,
-    textAlign: 'center',
+    textAlign: "center",
   },
   buttonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     padding: 15,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: "#eee",
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 12,
     borderRadius: 5,
     flex: 1,
@@ -380,29 +380,29 @@ const styles = StyleSheet.create({
     marginRight: 5,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
     fontSize: 15,
   },
   printButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
   },
   doneButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
   },
   disabledButton: {
-    backgroundColor: '#B0BEC5',
+    backgroundColor: "#B0BEC5",
   },
   errorText: {
-    color: '#E53935',
-    textAlign: 'center',
+    color: "#E53935",
+    textAlign: "center",
     padding: 10,
     fontSize: 14,
   },
   employeeName: {
     fontSize: 14,
-    color: '#4CAF50',
-    fontWeight: '500',
+    color: "#4CAF50",
+    fontWeight: "500",
     marginTop: 5,
   },
 });

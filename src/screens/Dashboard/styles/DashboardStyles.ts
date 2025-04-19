@@ -1,10 +1,10 @@
 // src/screens/Dashboard/styles/styles.ts
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from "react-native";
 
 export const dashboardStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   content: {
     flex: 1,
@@ -12,7 +12,7 @@ export const dashboardStyles = StyleSheet.create({
   },
   gridContainer: {
     flex: 1,
-    width: '100%',
+    width: "100%",
 
   },
   header: {
@@ -20,17 +20,17 @@ export const dashboardStyles = StyleSheet.create({
   },
   businessName: {
     fontSize: 30,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "center",
   },
   loading: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   searchContainer: {
-    width: '100%',
+    width: "100%",
     zIndex: 100,
   },
 });

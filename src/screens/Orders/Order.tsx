@@ -22,7 +22,7 @@ import SearchBar from "../../components/SearchBar";
 import { generateClient } from "aws-amplify/api";
 import type { Schema } from "../../../amplify/data/resource";
 
-type OrderStatus = 'ALL' | 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED';
+type OrderStatus = "ALL" | "CREATED" | "PROCESSING" | "READY" | "COMPLETED" | "CANCELLED" | "DELIVERY_SCHEDULED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "FAILED";
 
 export default function Orders({ user, employee, navigation }: { 
   user: AuthUser | null, 
@@ -44,7 +44,7 @@ export default function Orders({ user, employee, navigation }: {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(orderError);
-  const [activeTab, setActiveTab] = useState<OrderStatus>('ALL');
+  const [activeTab, setActiveTab] = useState<OrderStatus>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [orderItemCounts, setOrderItemCounts] = useState<Record<string, number>>({});
@@ -63,7 +63,7 @@ export default function Orders({ user, employee, navigation }: {
     
     // Copy all non-function properties
     Object.keys(item).forEach(key => {
-      if (typeof item[key] !== 'function') {
+      if (typeof item[key] !== "function") {
         serialized[key] = item[key];
       }
     });
@@ -77,7 +77,7 @@ export default function Orders({ user, employee, navigation }: {
     dispatch(clearOrderError());
     setError(null);
     
-    console.log('Setting up order subscription - INITIAL');
+    console.log("Setting up order subscription - INITIAL");
     
     // Define subscription function
     const setupSubscription = () => {
@@ -101,8 +101,8 @@ export default function Orders({ user, employee, navigation }: {
           }
         },
         error: (err) => {
-          console.error('Error in order subscription:', err);
-          setError(err.message || 'Failed to subscribe to orders');
+          console.error("Error in order subscription:", err);
+          setError(err.message || "Failed to subscribe to orders");
           setIsLoading(false);
         }
       });
@@ -116,7 +116,7 @@ export default function Orders({ user, employee, navigation }: {
     
     // Clean up subscription only on unmount
     return () => {
-      console.log('Cleaning up order subscription - FINAL');
+      console.log("Cleaning up order subscription - FINAL");
       if (subscriptionRef.current) {
         subscriptionRef.current.unsubscribe();
         subscriptionRef.current = null;
@@ -131,7 +131,7 @@ export default function Orders({ user, employee, navigation }: {
     try {
       const { data, errors } = await clientRef.current.models.Order.list();
       if (errors) {
-        setError(errors[0]?.message || 'Failed to refresh orders');
+        setError(errors[0]?.message || "Failed to refresh orders");
       } else {
         // Process and store the orders - make sure they're serializable
         const processedItems = data.map(item => makeSerializable(item));
@@ -141,7 +141,7 @@ export default function Orders({ user, employee, navigation }: {
       if (error instanceof Error) {
         setError(error.message);
       } else {
-        setError('Unknown error refreshing orders');
+        setError("Unknown error refreshing orders");
       }
     } finally {
       setRefreshing(false);
@@ -152,7 +152,7 @@ export default function Orders({ user, employee, navigation }: {
   const filteredOrders = React.useMemo(() => {
     return orders.filter(order => {
       // First filter by status tab
-      if (activeTab !== 'ALL' && order.status !== activeTab) {
+      if (activeTab !== "ALL" && order.status !== activeTab) {
         return false;
       }
   
@@ -166,7 +166,7 @@ export default function Orders({ user, employee, navigation }: {
         }
         
         // Get customer name directly from order if available
-        let customerName = '';
+        let customerName = "";
         if (order.firstName && order.lastName) {
           customerName = `${order.firstName} ${order.lastName}`;
         } else if (order.customerName) {
@@ -187,7 +187,7 @@ export default function Orders({ user, employee, navigation }: {
   // Handle status change
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
     try {
-      if (newStatus === 'ALL') return; // ALL is not a valid status for an order
+      if (newStatus === "ALL") return; // ALL is not a valid status for an order
       
       console.log(`Updating order ${orderId} status to ${newStatus}`);
       
@@ -206,10 +206,10 @@ export default function Orders({ user, employee, navigation }: {
       const { data, errors } = await clientRef.current.models.Order.update(updateInput);
       
       if (errors) {
-        console.error('Errors updating order status:', errors);
-        setError(errors[0]?.message || 'Failed to update order status');
+        console.error("Errors updating order status:", errors);
+        setError(errors[0]?.message || "Failed to update order status");
       } else {
-        console.log('Order status updated successfully');
+        console.log("Order status updated successfully");
         // The subscription will handle updating the UI
       }
     } catch (error) {
@@ -217,7 +217,7 @@ export default function Orders({ user, employee, navigation }: {
       if (error instanceof Error) {
         setError(error.message);
       } else {
-        setError('Unknown error updating order status');
+        setError("Unknown error updating order status");
       }
     }
   };
@@ -225,17 +225,17 @@ export default function Orders({ user, employee, navigation }: {
   // Handle order press: show modal if CREATED, else navigate
   const handleOrderPress = useCallback((orderId: string) => {
     if (!orderId) {
-      console.error('Invalid order ID');
+      console.error("Invalid order ID");
       return;
     }
     
     const order = orders.find((o: any) => o.id === orderId);
     if (!order) {
-      console.error('Order not found:', orderId);
+      console.error("Order not found:", orderId);
       return;
     }
     
-    if (order.status === 'CREATED') {
+    if (order.status === "CREATED") {
       // Set modal data for CREATED orders
       setModalOrder(order);
       // Fetch order items
@@ -243,7 +243,7 @@ export default function Orders({ user, employee, navigation }: {
       setCreatedModalVisible(true);
     } else {
       // Navigate to details for other orders
-      navigator.navigate('OrderDetails', { orderId });
+      navigator.navigate("OrderDetails", { orderId });
     }
   }, [orders, navigator]);
 
@@ -255,7 +255,7 @@ export default function Orders({ user, employee, navigation }: {
       });
       
       if (errors) {
-        console.error('Errors fetching order items:', errors);
+        console.error("Errors fetching order items:", errors);
         return;
       }
       
@@ -263,7 +263,7 @@ export default function Orders({ user, employee, navigation }: {
       const processedItems = data.map(item => makeSerializable(item));
       setModalOrderItems(processedItems || []);
     } catch (error) {
-      console.error('Error fetching order items for modal:', error);
+      console.error("Error fetching order items for modal:", error);
     }
   }, [makeSerializable]);
 
@@ -281,7 +281,7 @@ export default function Orders({ user, employee, navigation }: {
       });
       
       if (errors) {
-        console.error('Errors fetching order items count:', errors);
+        console.error("Errors fetching order items count:", errors);
         return 0;
       }
       
@@ -295,7 +295,7 @@ export default function Orders({ user, employee, navigation }: {
       
       return count;
     } catch (error) {
-      console.error('Error fetching order items count:', error);
+      console.error("Error fetching order items count:", error);
       return 0;
     }
   }, [orderItemCounts]);
@@ -330,15 +330,15 @@ export default function Orders({ user, employee, navigation }: {
 
   // Define status tabs
   const statusTabs = [
-    { id: 'ALL' as OrderStatus, label: 'All Orders', icon: 'list' },
-    { id: 'CREATED' as OrderStatus, label: 'New', icon: 'create' },
-    { id: 'PROCESSING' as OrderStatus, label: 'Processing', icon: 'refresh' },
-    { id: 'READY' as OrderStatus, label: 'Ready', icon: 'checkmark-circle' },
-    { id: 'COMPLETED' as OrderStatus, label: 'Completed', icon: 'checkbox' },
-    { id: 'CANCELLED' as OrderStatus, label: 'Cancelled', icon: 'close-circle' },
-    { id: 'DELIVERY_SCHEDULED' as OrderStatus, label: 'Delivery Scheduled', icon: 'calendar' },
-    { id: 'OUT_FOR_DELIVERY' as OrderStatus, label: 'Out for Delivery', icon: 'car' },
-    { id: 'DELIVERED' as OrderStatus, label: 'Delivered', icon: 'home' },
+    { id: "ALL" as OrderStatus, label: "All Orders", icon: "list" },
+    { id: "CREATED" as OrderStatus, label: "New", icon: "create" },
+    { id: "PROCESSING" as OrderStatus, label: "Processing", icon: "refresh" },
+    { id: "READY" as OrderStatus, label: "Ready", icon: "checkmark-circle" },
+    { id: "COMPLETED" as OrderStatus, label: "Completed", icon: "checkbox" },
+    { id: "CANCELLED" as OrderStatus, label: "Cancelled", icon: "close-circle" },
+    { id: "DELIVERY_SCHEDULED" as OrderStatus, label: "Delivery Scheduled", icon: "calendar" },
+    { id: "OUT_FOR_DELIVERY" as OrderStatus, label: "Out for Delivery", icon: "car" },
+    { id: "DELIVERED" as OrderStatus, label: "Delivered", icon: "home" },
   ];
 
   // Remove item from modal order items
@@ -349,7 +349,7 @@ export default function Orders({ user, employee, navigation }: {
   // Print all handler (stub)
   const handlePrintAll = useCallback(() => {
     // Implement print logic here
-    alert('Print All clicked!');
+    alert("Print All clicked!");
   }, []);
 
   // Close modal
@@ -364,7 +364,9 @@ export default function Orders({ user, employee, navigation }: {
       {/* Modal for CREATED orders */}
       <OrderCreatedModal
         visible={createdModalVisible}
-        orderNumber={modalOrder?.orderNumber || ''}
+        orderNumber={modalOrder?.orderNumber || ""}
+        orderId={modalOrder?.id || ""}
+        customerId={modalOrder?.customerId || ""}
         items={modalOrderItems}
         onClose={handleCloseModal}
         onRemoveItem={handleRemoveModalItem}
@@ -406,7 +408,7 @@ export default function Orders({ user, employee, navigation }: {
             <Text style={styles.emptyText}>
               {searchQuery
                 ? "No orders found matching your search"
-                : activeTab === 'ALL'
+                : activeTab === "ALL"
                 ? "No orders found"
                 : `No ${activeTab.toLowerCase()} orders found`}
             </Text>
@@ -423,8 +425,8 @@ export default function Orders({ user, employee, navigation }: {
             <TouchableOpacity 
               style={styles.refreshButton} 
               onPress={() => {
-                setActiveTab('ALL');
-                setSearchQuery('');
+                setActiveTab("ALL");
+                setSearchQuery("");
               }}
             >
               <Text style={styles.refreshButtonText}>Clear Filters</Text>
@@ -453,77 +455,77 @@ export default function Orders({ user, employee, navigation }: {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   content: {
     flex: 1,
     padding: 16,
-    width: '100%',
+    width: "100%",
   },
   header: {
     marginBottom: 16,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   searchContainer: {
     marginVertical: 16,
-    width: '100%',
+    width: "100%",
     zIndex: 100,
   },
   loading: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   listContent: {
     paddingBottom: 20,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginTop: 16,
     marginBottom: 24,
   },
   refreshButton: {
-    backgroundColor: '#4285F4',
+    backgroundColor: "#4285F4",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 4,
   },
   refreshButtonText: {
-    color: '#fff',
-    fontWeight: '500',
+    color: "#fff",
+    fontWeight: "500",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   errorText: {
     fontSize: 16,
-    color: '#E53935',
-    textAlign: 'center',
+    color: "#E53935",
+    textAlign: "center",
     marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: '#E53935',
+    backgroundColor: "#E53935",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 4,
   },
   retryButtonText: {
-    color: '#fff',
-    fontWeight: '500',
+    color: "#fff",
+    fontWeight: "500",
   },
 });

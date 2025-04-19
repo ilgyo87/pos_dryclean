@@ -15,7 +15,7 @@ import { fetchEmployees } from "../../store/slices/EmployeeSlice";
 
 export default function Employees({ user, navigation }: { user: AuthUser | null, navigation?: any }) {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<'create' | 'edit'>('create');
+  const [modalType, setModalType] = useState<"create" | "edit">("create");
   const [editingEmployee, setEditingEmployee] = useState<Schema["Employee"]["type"] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -35,13 +35,13 @@ export default function Employees({ user, navigation }: { user: AuthUser | null,
 
   const handleCreateEmployee = () => {
     if (!user) return;
-    setModalType('create');
+    setModalType("create");
     setEditingEmployee(null);
     setIsModalVisible(true);
   };
 
   const handleEditEmployee = (employee: Schema["Employee"]["type"]) => {
-    setModalType('edit');
+    setModalType("edit");
     setEditingEmployee(employee);
     setIsModalVisible(true);
   };

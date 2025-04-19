@@ -1,5 +1,10 @@
 // src/screens/Orders/components/OrderCreatedModal.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
+import { useAppDispatch } from '../../../store/hooks';
+import { createOrderItem } from '../../../store/slices/OrderSlice';
+import type { Schema } from "../../../../amplify/data/resource";
+import { generateClient } from 'aws-amplify/data';
+const client = generateClient<Schema>();
 import {
   Modal,
   View,
@@ -11,22 +16,18 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../../amplify/data/resource';
-import { generateQRCodeData } from '../../../utils/QRCodeGenerator';
-import { QRCodeDisplay } from '../../../components/QRCodeDisplay';
-import { usePrinter } from '../../Checkout/hooks/usePrinter';
-
-const client = generateClient<Schema>();
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { generateQRCodeData } from "../../../utils/QRCodeGenerator";
+import { QRCodeDisplay } from "../../../components/QRCodeDisplay";
+import { usePrinter } from "../../Checkout/hooks/usePrinter";
 
 interface OrderItem {
   id: string;
   name: string;
   itemName?: string;
   price?: number;
-  starch?: 'NONE' | 'LIGHT' | 'MEDIUM' | 'HEAVY';
+  starch?: "NONE" | "LIGHT" | "MEDIUM" | "HEAVY";
   pressOnly?: boolean;
 }
 
@@ -39,6 +40,7 @@ interface OrderCreatedModalProps {
   items: OrderItem[];
   onClose: () => void;
   onPrintAll: () => void;
+  onRemoveItem: (itemId: string) => void;
 }
 
 const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
@@ -51,30 +53,40 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
   onClose,
   onPrintAll
 }) => {
+  const dispatch = useAppDispatch();
   const { handlePrint, isPrinting: isPrinterBusy } = usePrinter();
   // Debug: Check for duplicate or missing IDs
   const idSet = new Set();
-  items.forEach((item, idx) => {
-    if (!item.id) {
+  // Defensive: filter out null/undefined items
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+
+  safeItems.forEach((item, idx) => {
+    if (!item?.id) {
       console.warn(`OrderCreatedModal: Item at index ${idx} is missing an ID`, item);
     } else if (idSet.has(item.id)) {
       console.warn(`OrderCreatedModal: Duplicate ID found: ${item.id}`, item);
     }
-    idSet.add(item.id);
+    if (item?.id) idSet.add(item.id);
   });
-  console.log('OrderCreatedModal items:', items.map((item, idx) => ({ idx, id: item.id, name: item.name || item.itemName })));
+  console.log("OrderCreatedModal items:", safeItems.map((item, idx) => ({ idx, id: item?.id, name: item?.name || item?.itemName })));
+
+  if (!orderId || !orderNumber || !customerId) {
+    // Required props missing, don't render modal
+    return null;
+  }
 
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [scanInput, setScanInput] = useState<string>('');
+  const [scanInput, setScanInput] = useState<string>("");
   const [scannedItems, setScannedItems] = useState<Set<string>>(new Set());
   const [isCreatingGarment, setIsCreatingGarment] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
-  const [currentQRData, setCurrentQRData] = useState<string>('');
-  const [currentQRTitle, setCurrentQRTitle] = useState<string>('');
+  const [currentQRData, setCurrentQRData] = useState<string>("");
+  const [currentQRTitle, setCurrentQRTitle] = useState<string>("");
 
   // Track which items we want to print
-  const unselectedItems = items.filter(item => !selectedItems.has(item.id));
+  // Defensive: filter out null/undefined items
+  const unselectedItems = safeItems.filter(item => item?.id && !selectedItems.has(item.id));
 
   // Reference to the input field for auto-focusing
   const scanInputRef = useRef<TextInput>(null);
@@ -98,8 +110,8 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
       try {
         const parsedData = JSON.parse(scanInput);
         if (!parsedData.itemName || !parsedData.customerId) {
-          Alert.alert('Invalid QR Code', 'The scanned code is not a valid garment QR code.');
-          setScanInput('');
+          Alert.alert("Invalid QR Code", "The scanned code is not a valid garment QR code.");
+          setScanInput("");
           return;
         }
 
@@ -117,7 +129,7 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
             type: parsedData.itemName,
             checkInDate: new Date().toISOString(),
             targetReadyDate: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days by default
-            status: 'CHECKED_IN' as const, // Type assertion to match the enum exactly
+            status: "CHECKED_IN" as const, // Type assertion to match the enum exactly
             customerId: customerId,
             orderId: orderId,
             orderItemId: matchingItem.id,
@@ -131,9 +143,26 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
           const { data, errors } = await client.models.Garment.create(garmentData);
 
           if (errors) {
-            console.error('Error creating garment:', errors);
-            Alert.alert('Error', 'Failed to create garment. Please try again.');
+            console.error("Error creating garment:", errors);
+            Alert.alert("Error", "Failed to create garment. Please try again.");
           } else {
+            // After garment is created, also create the OrderItem in Redux/Amplify
+            try {
+              const orderItemPayload = {
+                orderId: orderId,
+                orderNumber: orderNumber,
+                price: matchingItem.price || 0,
+                itemName: matchingItem.itemName || matchingItem.name,
+                starch: matchingItem.starch,
+                pressOnly: matchingItem.pressOnly
+              };
+              const result = await dispatch(createOrderItem(orderItemPayload)).unwrap();
+              console.log('OrderItem created:', result);
+            } catch (orderItemError) {
+              console.error('Error creating OrderItem:', orderItemError);
+              Alert.alert('Order Item Error', 'Failed to create order item. Please try again.');
+            }
+
             // Add this item to scanned list
             const newScanned = new Set(scannedItems);
             newScanned.add(matchingItem.id);
@@ -144,25 +173,25 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
             newSelected.add(matchingItem.id);
             setSelectedItems(newSelected);
 
-            console.log('Garment created successfully:', data);
+            console.log("Garment created successfully:", data);
           }
 
           setIsCreatingGarment(false);
         } else {
-          Alert.alert('Item Not Found', 'No matching item found in this order.');
+          Alert.alert("Item Not Found", "No matching item found in this order.");
         }
 
       } catch (e) {
-        console.error('Error parsing QR code:', e);
-        Alert.alert('Invalid QR Code', 'Please scan a valid garment QR code.');
+        console.error("Error parsing QR code:", e);
+        Alert.alert("Invalid QR Code", "Please scan a valid garment QR code.");
       }
 
       // Clear the input field and refocus it
-      setScanInput('');
+      setScanInput("");
       scanInputRef.current?.focus();
     } catch (error) {
-      console.error('Error processing scan:', error);
-      Alert.alert('Error', 'An error occurred while processing the scan.');
+      console.error("Error processing scan:", error);
+      Alert.alert("Error", "An error occurred while processing the scan.");
       setIsCreatingGarment(false);
     }
   };
@@ -172,14 +201,14 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
       setIsPrinting(true);
       const itemsToPrint = items.filter(item => !selectedItems.has(item.id));
       if (itemsToPrint.length === 0) {
-        Alert.alert('No Items to Print', 'All items have been processed or excluded from printing.');
+        Alert.alert("No Items to Print", "All items have been processed or excluded from printing.");
         setIsPrinting(false);
         return;
       }
       for (const item of itemsToPrint) {
         // Generate the QR code data for this item
         const qrData = {
-          type: 'Garment',
+          type: "Garment",
           itemName: item.itemName || item.name,
           customerId: customerId,
           employeeId: employeeId,
@@ -190,23 +219,17 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
         // You may want to use generateQRCodeData or just pass qrData
         // Send to label printer
         await handlePrint({
-          businessName: 'Dry Cleaners',
+          businessName: "Dry Cleaners",
           orderNumber: orderNumber,
-          employeeName: employeeId || '',
           customerName: customerId,
-          pickupDate: '', // Fill if you have this info
-          items: [{
+          paymentMethod: "N/A",
+          orderItems: [{
             name: item.itemName || item.name,
-            quantity: 1,
-            price: item.price || 0
+            price: item.price || 0,
+            quantity: 1
           }],
-          subtotal: item.price || 0,
-          tax: 0,
-          tip: 0,
-          total: item.price || 0,
-          paymentMethod: 'N/A',
-          // You can add the QR data as a custom property if your print template supports it
-          qrCode: JSON.stringify(qrData)
+          orderTotal: item.price || 0,
+          orderDate: new Date(),
         });
         // Mark this item as selected
         setSelectedItems(prev => {
@@ -216,19 +239,19 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
         });
       }
       setIsPrinting(false);
-      Alert.alert('Print Complete', `${itemsToPrint.length} label(s) printed successfully.`);
+      Alert.alert("Print Complete", `${itemsToPrint.length} label(s) printed successfully.`);
     } catch (error) {
-      console.error('Error printing labels:', error);
-      Alert.alert('Print Error', 'Failed to print labels. Please try again.');
+      console.error("Error printing labels:", error);
+      Alert.alert("Print Error", "Failed to print labels. Please try again.");
       setIsPrinting(false);
     }
   };
 
 
   const getItemStatus = (itemId: string) => {
-    if (scannedItems.has(itemId)) return 'scanned';
-    if (selectedItems.has(itemId)) return 'selected';
-    return 'normal';
+    if (scannedItems.has(itemId)) return "scanned";
+    if (selectedItems.has(itemId)) return "selected";
+    return "normal";
   };
 
   const closeQRCode = () => {
@@ -293,7 +316,7 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
           <Text style={styles.sectionTitle}>
             Items ({items.length - selectedItems.size} remaining)
           </Text>
-          <View style={[styles.listContent, { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' }]}>
+          <View style={[styles.listContent, { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-start" }]}>
             {items.map((item, idx) => {
               const status = getItemStatus(item.id);
               return (
@@ -301,11 +324,11 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
                   key={item.id || idx}
                   style={[
                     styles.itemCard,
-                    status === 'selected' && styles.selectedItemCard,
-                    status === 'scanned' && styles.scannedItemCard
+                    status === "selected" && styles.selectedItemCard,
+                    status === "scanned" && styles.scannedItemCard
                   ]}
                   onPress={() => toggleItemSelection(item.id)}
-                  disabled={status === 'scanned'}
+                  disabled={status === "scanned"}
                 >
                   <Text style={styles.itemName}>
                     {item.itemName || item.name}
@@ -358,7 +381,7 @@ const OrderCreatedModal: React.FC<OrderCreatedModalProps> = ({
   );
 };
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 const CARD_MARGIN = 8;
 const NUM_COLUMNS = 3;
 const CARD_WIDTH = (width * 0.9 - CARD_MARGIN * 2 * NUM_COLUMNS) / NUM_COLUMNS;
@@ -366,39 +389,39 @@ const CARD_WIDTH = (width * 0.9 - CARD_MARGIN * 2 * NUM_COLUMNS) / NUM_COLUMNS;
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 20,
-    width: '90%',
-    height: '80%',
+    width: "90%",
+    height: "80%",
     maxWidth: 800,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   title: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   closeButton: {
     padding: 4,
   },
   scannerContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   scannerInput: {
     flex: 1,
@@ -407,20 +430,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   scanButton: {
-    backgroundColor: '#4285F4',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#4285F4",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 20,
   },
   scanButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
     marginLeft: 8,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginVertical: 10,
   },
   listContent: {
@@ -428,94 +451,94 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   itemCard: {
-    flexBasis: '47%',
+    flexBasis: "47%",
     padding: 12,
-    backgroundColor: 'moccasin',
+    backgroundColor: "moccasin",
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: 'black',
+    borderColor: "black",
     minHeight: 80,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
+    alignItems: "flex-start",
+    justifyContent: "center",
     margin: 4,
   },
   selectedItemCard: {
-    backgroundColor: '#e0e0e0',
-    borderColor: '#bdbdbd',
+    backgroundColor: "#e0e0e0",
+    borderColor: "#bdbdbd",
     opacity: 0.7,
   },
   scannedItemCard: {
-    backgroundColor: '#E8F5E9',
-    borderColor: '#A5D6A7',
+    backgroundColor: "#E8F5E9",
+    borderColor: "#A5D6A7",
   },
   itemName: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
     marginBottom: 8,
   },
   itemDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   itemQty: {
     fontSize: 14,
-    color: '#757575',
+    color: "#757575",
   },
   emptyText: {
-    textAlign: 'center',
-    color: '#999',
+    textAlign: "center",
+    color: "#999",
     marginTop: 20,
   },
   buttonContainer: {
     marginTop: 16,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4285F4',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#4285F4",
     borderRadius: 8,
     paddingVertical: 14,
   },
   disabledButton: {
-    backgroundColor: '#bdbdbd',
+    backgroundColor: "#bdbdbd",
   },
   buttonIcon: {
     marginRight: 8,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
     fontSize: 16,
   },
   loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#E3F2FD',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E3F2FD",
     padding: 8,
     borderRadius: 4,
     marginBottom: 10,
   },
   loadingText: {
     marginLeft: 8,
-    color: '#1976D2',
+    color: "#1976D2",
   },
   qrCodeModal: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   qrCodeContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 20,
-    width: '90%',
+    width: "90%",
     maxWidth: 400,
-    alignItems: 'center',
+    alignItems: "center",
   },
 });
 

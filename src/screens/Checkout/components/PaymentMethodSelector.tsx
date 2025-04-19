@@ -1,14 +1,14 @@
 // src/screens/Checkout/components/PaymentMethodSelector.tsx
-import React from 'react';
+import React from "react";
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity 
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-export type PaymentMethodType = 'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'STORE_CREDIT' | 'MOBILE_PAYMENT';
+export type PaymentMethodType = "CASH" | "CREDIT_CARD" | "DEBIT_CARD" | "STORE_CREDIT" | "MOBILE_PAYMENT";
 
 interface PaymentMethodSelectorProps {
   selectedMethod: PaymentMethodType;
@@ -20,11 +20,11 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   onSelectMethod 
 }) => {
   const paymentMethods = [
-    { id: 'CASH' as PaymentMethodType, label: 'Cash', icon: 'cash-outline' },
-    { id: 'CREDIT_CARD' as PaymentMethodType, label: 'Credit Card', icon: 'card-outline' },
-    { id: 'DEBIT_CARD' as PaymentMethodType, label: 'Debit Card', icon: 'card-outline' },
-    { id: 'MOBILE_PAYMENT' as PaymentMethodType, label: 'Mobile Payment', icon: 'phone-portrait-outline' },
-    { id: 'STORE_CREDIT' as PaymentMethodType, label: 'Store Credit', icon: 'wallet-outline' },
+    { id: "CASH" as PaymentMethodType, label: "Cash", icon: "cash-outline" },
+    { id: "CREDIT_CARD" as PaymentMethodType, label: "Credit Card", icon: "card-outline" },
+    { id: "DEBIT_CARD" as PaymentMethodType, label: "Debit Card", icon: "card-outline" },
+    { id: "MOBILE_PAYMENT" as PaymentMethodType, label: "Mobile Payment", icon: "phone-portrait-outline" },
+    { id: "STORE_CREDIT" as PaymentMethodType, label: "Store Credit", icon: "wallet-outline" },
   ];
 
   return (
@@ -44,7 +44,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
             <Ionicons 
               name={method.icon as any} 
               size={24} 
-              color={selectedMethod === method.id ? '#fff' : '#555'} 
+              color={selectedMethod === method.id ? "#fff" : "#555"} 
             />
             <Text 
               style={[
@@ -65,12 +65,12 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
 const styles = StyleSheet.create({
   container: {
     padding: 15,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     marginTop: 15,
     marginBottom: 20,
     marginHorizontal: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -78,35 +78,35 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    color: '#333',
+    color: "#333",
   },
   methodsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginHorizontal: -5,
   },
   methodButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
     padding: 10,
     borderRadius: 5,
     margin: 5,
-    minWidth: '45%',
+    minWidth: "45%",
   },
   selectedMethod: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
   },
   methodText: {
     fontSize: 14,
     marginLeft: 8,
-    color: '#555',
+    color: "#555",
   },
   selectedMethodText: {
-    color: '#fff',
-    fontWeight: '500',
+    color: "#fff",
+    fontWeight: "500",
   },
 });
 

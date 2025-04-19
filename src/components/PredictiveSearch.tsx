@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Keyboard, TouchableWithoutFeedback, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import type { Schema } from '../../amplify/data/resource';
+import React, { useState, useRef, useEffect } from "react";
+import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Keyboard, TouchableWithoutFeedback, Dimensions } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import type { Schema } from "../../amplify/data/resource";
 
-type Customer = Schema['Customer']['type'];
+type Customer = Schema["Customer"]["type"];
 
 interface PredictiveSearchProps {
     customers: Customer[];
@@ -14,9 +14,9 @@ interface PredictiveSearchProps {
 export default function PredictiveSearch({
     customers,
     onCustomerSelect,
-    placeholder = 'Search customers...'
+    placeholder = "Search customers..."
 }: PredictiveSearchProps) {
-    const [query, setQuery] = useState('');
+    const [query, setQuery] = useState("");
     const [suggestions, setSuggestions] = useState<Customer[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -71,15 +71,15 @@ export default function PredictiveSearch({
 
         const key = e.nativeEvent.key;
 
-        if (key === 'ArrowDown' || key === 'Down') {
+        if (key === "ArrowDown" || key === "Down") {
             e.preventDefault?.();
             setSelectedIndex(prev =>
                 prev < suggestions.length - 1 ? prev + 1 : prev
             );
-        } else if (key === 'ArrowUp' || key === 'Up') {
+        } else if (key === "ArrowUp" || key === "Up") {
             e.preventDefault?.();
             setSelectedIndex(prev => (prev > 0 ? prev - 1 : 0));
-        } else if (key === 'Enter' || key === 'Return') {
+        } else if (key === "Enter" || key === "Return") {
             e.preventDefault?.();
 
             if (selectedIndex === -1 && suggestions.length > 0) {
@@ -92,14 +92,14 @@ export default function PredictiveSearch({
 
     const handleSelectCustomer = (customer: Customer) => {
         onCustomerSelect(customer);
-        setQuery('');
+        setQuery("");
         setSuggestions([]);
         setShowSuggestions(false);
         Keyboard.dismiss();
     };
 
     const clearSearch = () => {
-        setQuery('');
+        setQuery("");
         setSuggestions([]);
         setShowSuggestions(false);
     };
@@ -108,7 +108,7 @@ export default function PredictiveSearch({
       if (!query.trim()) return <Text>{text}</Text>;
   
       // Use a regex that captures the query as a group
-      const regex = new RegExp(`(${query.trim()})`, 'gi');
+      const regex = new RegExp(`(${query.trim()})`, "gi");
       
       // Split the text while preserving the matches
       const parts = text.split(regex);
@@ -195,18 +195,18 @@ export default function PredictiveSearch({
     );
 }
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
     container: {
-        position: 'relative',
-        width: '100%',
+        position: "relative",
+        width: "100%",
         zIndex: 100,
     },
     searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f0f0f0',
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#f0f0f0",
         borderRadius: 8,
         paddingHorizontal: 12,
         marginVertical: 10,
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 45,
         fontSize: 16,
-        color: '#333',
+        color: "#333",
     },
     searchIcon: {
         marginLeft: 8,
@@ -224,25 +224,25 @@ const styles = StyleSheet.create({
         padding: 5,
     },
     backdrop: {
-        position: 'absolute',
+        position: "absolute",
         top: 55,
         left: 0,
         right: 0,
         bottom: -1000,
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: "rgba(0,0,0,0.3)",
         zIndex: 10,
     },
     suggestionsContainer: {
-        position: 'absolute',
+        position: "absolute",
         top: 55,
         left: 0,
         right: 0,
-        backgroundColor: 'white',
+        backgroundColor: "white",
         borderRadius: 8,
         maxHeight: 300,
         zIndex: 20,
         elevation: 5,
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
@@ -250,23 +250,23 @@ const styles = StyleSheet.create({
     suggestionItem: {
         padding: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: "#f0f0f0",
     },
     selectedSuggestion: {
-        backgroundColor: '#f5f5f5',
+        backgroundColor: "#f5f5f5",
     },
     customerName: {
         fontSize: 16,
-        fontWeight: '500',
-        color: '#333',
+        fontWeight: "500",
+        color: "#333",
     },
     customerDetail: {
         fontSize: 14,
-        color: '#666',
+        color: "#666",
         marginTop: 2,
     },
     highlight: {
-        backgroundColor: 'rgba(255,230,0,0.4)',
-        fontWeight: '600',
+        backgroundColor: "rgba(255,230,0,0.4)",
+        fontWeight: "600",
     },
 });

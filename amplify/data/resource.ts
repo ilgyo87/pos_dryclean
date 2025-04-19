@@ -21,17 +21,17 @@ const schema = a.schema({
       state: a.string(),
       zipCode: a.string(),
       phoneNumber: a.phone().required(),
-      coordinates: a.ref('Location'),
+      coordinates: a.ref("Location"),
       email: a.email(),
       website: a.url(),
       hours: a.string().array(),
       logoUrl: a.url(),
       userId: a.string(),
       // Relationships
-      businessMetrics: a.hasMany('BusinessMetric', 'businessId')
+      businessMetrics: a.hasMany("BusinessMetric", "businessId")
     })
     .authorization((allow) => [
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(["read"]),
       allow.owner(),
     ]),
 
@@ -49,7 +49,7 @@ const schema = a.schema({
       discount: a.boolean().default(false),
       discountPercent: a.float().default(0),
       // Relationships
-      items: a.hasMany('Item', 'categoryId')
+      items: a.hasMany("Item", "categoryId")
     })
     .authorization((allow) => [
       allow.owner(),
@@ -66,12 +66,12 @@ const schema = a.schema({
       imageUrl: a.url(),
       imageSource: a.string(),
       imageUrlPreferred: a.boolean().default(false),
-      starch: a.enum(['NONE', 'LIGHT', 'MEDIUM', 'HEAVY']),
+      starch: a.enum(["NONE", "LIGHT", "MEDIUM", "HEAVY"]),
       pressOnly: a.boolean().default(false),
       discountPrice: a.float().default(0),
       // Relationships
       categoryId: a.id().required(),
-      category: a.belongsTo('Category', 'categoryId'),
+      category: a.belongsTo("Category", "categoryId"),
     })
     .authorization((allow) => [
       allow.owner(),
@@ -95,7 +95,7 @@ const schema = a.schema({
       userId: a.id().required(),
       // Relationships
       // orders: a.hasMany('Order', 'customerId'),
-      garments: a.hasMany('Garment', 'customerId'),
+      garments: a.hasMany("Garment", "customerId"),
       // notifications: a.hasMany('CustomerNotification', 'customerId'),
       // credits: a.hasMany('CustomerCredit', 'customerId'),
       // deliveryAddresses: a.hasMany('DeliveryAddress', 'customerId'),
@@ -116,7 +116,7 @@ const schema = a.schema({
       zipCode: a.string().required(),
       instructions: a.string().array(),
       isDefault: a.boolean().default(false),
-      coordinates: a.ref('Location'),
+      coordinates: a.ref("Location"),
       // Relationships
       // customerId: a.id().required(),
       // customer: a.belongsTo('Customer', 'customerId'),
@@ -140,7 +140,7 @@ const schema = a.schema({
       role: a.string().required(),
       hourlyRate: a.float(),
       hireDate: a.datetime(),
-      status: a.enum(['ACTIVE', 'INACTIVE', 'ON_LEAVE']),
+      status: a.enum(["ACTIVE", "INACTIVE", "ON_LEAVE"]),
       permissions: a.string(),
       lastLogin: a.datetime(),
       userId: a.id().required(),
@@ -148,7 +148,7 @@ const schema = a.schema({
       // Relationships
       // orders: a.hasMany('Order', 'employeeId'),
       // transactions: a.hasMany('Transaction', 'employeeId'),
-      employeeShifts: a.hasMany('EmployeeShift', 'employeeId'),
+      employeeShifts: a.hasMany("EmployeeShift", "employeeId"),
       // garmentProcessingEvents: a.hasMany('GarmentProcessingEvent', 'employeeId'),
       // garments: a.hasMany('Garment', 'employeeId'),
       // businessMetrics: a.hasMany('BusinessMetric', 'employeeId'),
@@ -164,15 +164,15 @@ const schema = a.schema({
       clockIn: a.datetime().required(),
       clockOut: a.datetime(),
       duration: a.float(),
-      status: a.enum(['ACTIVE', 'COMPLETED', 'MODIFIED']),
+      status: a.enum(["ACTIVE", "COMPLETED", "MODIFIED"]),
       notes: a.string().array(),
       // Relationships
       employeeId: a.id().required(),
-      employee: a.belongsTo('Employee', 'employeeId'),
+      employee: a.belongsTo("Employee", "employeeId"),
     })
     .authorization((allow) => [
       allow.owner(),
-      allow.authenticated().to(['read']),
+      allow.authenticated().to(["read"]),
     ]),
 
   // Garment Management
@@ -187,31 +187,31 @@ const schema = a.schema({
       notes: a.string().array(),
       imageUrl: a.url() || a.string(),
       status: a.enum([
-        'CHECKED_IN',
-        'IN_PROCESS',
-        'CLEANING',
-        'PRESSING',
-        'ASSEMBLY',
-        'READY',
-        'CLAIMED'
+        "CHECKED_IN",
+        "IN_PROCESS",
+        "CLEANING",
+        "PRESSING",
+        "ASSEMBLY",
+        "READY",
+        "CLAIMED"
       ]),
       checkInDate: a.datetime().required(),
       targetReadyDate: a.datetime(),
       actualReadyDate: a.datetime(),
       claimedDate: a.datetime(),
       specialInstructions: a.string().array(),
-      starch: a.enum(['NONE', 'LIGHT', 'MEDIUM', 'HEAVY']),
+      starch: a.enum(["NONE", "LIGHT", "MEDIUM", "HEAVY"]),
       pressOnly: a.boolean().default(false),
       // Relationships
       customerId: a.id().required(),
-      customer: a.belongsTo('Customer', 'customerId'),
+      customer: a.belongsTo("Customer", "customerId"),
       orderItemId: a.id(),
       // orderItem: a.belongsTo('OrderItem', 'orderItemId'),
       orderId: a.id(),
       // order: a.belongsTo('Order', 'orderId'),
       employeeId: a.id(),
       // employee: a.belongsTo('Employee', 'employeeId'),
-      garmentProcessingEvents: a.hasMany('GarmentProcessingEvent', 'garmentId')
+      garmentProcessingEvents: a.hasMany("GarmentProcessingEvent", "garmentId")
     })
     .authorization((allow) => [
       allow.owner(),
@@ -221,22 +221,22 @@ const schema = a.schema({
   GarmentProcessingEvent: a
     .model({
       eventType: a.enum([
-        'CHECK_IN',
-        'STAIN_TREATMENT',
-        'CLEANING_START',
-        'CLEANING_COMPLETE',
-        'PRESSING_START',
-        'PRESSING_COMPLETE',
-        'ASSEMBLY',
-        'READY_FOR_PICKUP',
-        'CLAIMED'
+        "CHECK_IN",
+        "STAIN_TREATMENT",
+        "CLEANING_START",
+        "CLEANING_COMPLETE",
+        "PRESSING_START",
+        "PRESSING_COMPLETE",
+        "ASSEMBLY",
+        "READY_FOR_PICKUP",
+        "CLAIMED"
       ]),
       timestamp: a.datetime().required(),
       notes: a.string().array(),
       imageUrl: a.url(),
       // Relationships
       garmentId: a.id().required(),
-      garment: a.belongsTo('Garment', 'garmentId'),
+      garment: a.belongsTo("Garment", "garmentId"),
       // employeeId: a.id(),
       // employee: a.belongsTo('Employee', 'employeeId'),
     })
@@ -252,15 +252,15 @@ const schema = a.schema({
       dueDate: a.datetime(),
       pickupDate: a.datetime(),
       status: a.enum([
-        'CREATED',
-        'PROCESSING',
-        'READY',
-        'COMPLETED',
-        'CANCELLED',
-        'DELIVERY_SCHEDULED',
-        'OUT_FOR_DELIVERY',
-        'DELIVERED',
-        'FAILED'
+        "CREATED",
+        "PROCESSING",
+        "READY",
+        "COMPLETED",
+        "CANCELLED",
+        "DELIVERY_SCHEDULED",
+        "OUT_FOR_DELIVERY",
+        "DELIVERED",
+        "FAILED"
       ]),
       notes: a.string().array(),
       subtotal: a.float(),
@@ -278,11 +278,11 @@ const schema = a.schema({
       deliveryDate: a.datetime(),
       deliveryFee: a.float().default(0),
       deliveryStatus: a.enum([
-        'NOT_APPLICABLE',
-        'SCHEDULED',
-        'OUT_FOR_DELIVERY',
-        'DELIVERED',
-        'FAILED'
+        "NOT_APPLICABLE",
+        "SCHEDULED",
+        "OUT_FOR_DELIVERY",
+        "DELIVERED",
+        "FAILED"
       ]),
       deliveryNotes: a.string().array(),
       // Relationships
@@ -296,7 +296,7 @@ const schema = a.schema({
       // employee: a.belongsTo('Employee', 'employeeId'),
       deliveryAddressId: a.id(),
       // deliveryAddress: a.belongsTo('DeliveryAddress', 'deliveryAddressId'),
-      orderItems: a.hasMany('OrderItem', 'orderId'),
+      orderItems: a.hasMany("OrderItem", "orderId"),
       // garments: a.hasMany('Garment', 'orderId'),
       transactionId: a.id(),
       // transaction: a.belongsTo('Transaction', 'transactionId'),
@@ -319,11 +319,11 @@ const schema = a.schema({
       specialInstructions: a.string().array(),
       orderNumber: a.string().required(),
       itemName: a.string(),
-      starch: a.enum(['NONE', 'LIGHT', 'MEDIUM', 'HEAVY']),
+      starch: a.enum(["NONE", "LIGHT", "MEDIUM", "HEAVY"]),
       pressOnly: a.boolean().default(false),
       // Relationships
       orderId: a.id().required(),
-      order: a.belongsTo('Order', 'orderId'),
+      order: a.belongsTo("Order", "orderId"),
       // itemId: a.id().required(),
       // item: a.belongsTo('Item', 'itemId'),
       // garment: a.hasOne('Garment', 'orderItemId')
@@ -336,31 +336,31 @@ const schema = a.schema({
   Transaction: a
     .model({
       type: a.enum([
-        'SALE',
-        'REFUND',
-        'PARTIAL_PAYMENT',
-        'DEPOSIT',
-        'ADJUSTMENT'
+        "SALE",
+        "REFUND",
+        "PARTIAL_PAYMENT",
+        "DEPOSIT",
+        "ADJUSTMENT"
       ]),
       status: a.enum([
-        'PENDING',
-        'COMPLETED',
-        'FAILED',
-        'REFUNDED',
-        'VOIDED'
+        "PENDING",
+        "COMPLETED",
+        "FAILED",
+        "REFUNDED",
+        "VOIDED"
       ]),
       subtotal: a.float(),
       tax: a.float(),
       discount: a.float().default(0),
       total: a.float().required(),
       paymentMethod: a.enum([
-        'CASH',
-        'CREDIT_CARD',
-        'DEBIT_CARD',
-        'MOBILE_PAYMENT',
-        'STORE_CREDIT',
-        'CHECK',
-        'INVOICE'
+        "CASH",
+        "CREDIT_CARD",
+        "DEBIT_CARD",
+        "MOBILE_PAYMENT",
+        "STORE_CREDIT",
+        "CHECK",
+        "INVOICE"
       ]),
       paymentStatus: a.string(),
       notes: a.string().array(),
@@ -385,26 +385,26 @@ const schema = a.schema({
     .model({
       message: a.string().required(),
       type: a.enum([
-        'ORDER_CREATED',
-        'ORDER_READY',
-        'ORDER_DELIVERED',
-        'PAYMENT_CONFIRMATION',
-        'GARMENT_ISSUE',
-        'PROMOTIONAL',
-        'REMINDER'
+        "ORDER_CREATED",
+        "ORDER_READY",
+        "ORDER_DELIVERED",
+        "PAYMENT_CONFIRMATION",
+        "GARMENT_ISSUE",
+        "PROMOTIONAL",
+        "REMINDER"
       ]),
       status: a.enum([
-        'PENDING',
-        'SENT',
-        'DELIVERED',
-        'FAILED',
-        'READ'
+        "PENDING",
+        "SENT",
+        "DELIVERED",
+        "FAILED",
+        "READ"
       ]),
       channel: a.enum([
-        'EMAIL',
-        'SMS',
-        'PUSH',
-        'IN_APP'
+        "EMAIL",
+        "SMS",
+        "PUSH",
+        "IN_APP"
       ]),
       sentAt: a.datetime().required(),
       deliveredAt: a.datetime(),
@@ -427,11 +427,11 @@ const schema = a.schema({
       amount: a.float().required(),
       balance: a.float().required(),
       type: a.enum([
-        'STORE_CREDIT',
-        'REFUND',
-        'PROMOTIONAL',
-        'LOYALTY_REWARD',
-        'ADJUSTMENT'
+        "STORE_CREDIT",
+        "REFUND",
+        "PROMOTIONAL",
+        "LOYALTY_REWARD",
+        "ADJUSTMENT"
       ]),
       description: a.string(),
       expirationDate: a.date(),
@@ -505,11 +505,11 @@ const schema = a.schema({
   LoyaltyTransaction: a
     .model({
       type: a.enum([
-        'EARN',
-        'REDEEM',
-        'ADJUST',
-        'EXPIRE',
-        'TIER_CHANGE'
+        "EARN",
+        "REDEEM",
+        "ADJUST",
+        "EXPIRE",
+        "TIER_CHANGE"
       ]),
       points: a.integer().required(),
       description: a.string().required(),
@@ -527,20 +527,20 @@ const schema = a.schema({
     .model({
       date: a.date().required(),
       metric: a.enum([
-        'DAILY_SALES',
-        'ITEMS_PROCESSED',
-        'NEW_CUSTOMERS',
-        'REPEAT_CUSTOMERS',
-        'AVERAGE_ORDER_VALUE',
-        'GARMENTS_PROCESSED',
-        'LABOR_COSTS',
-        'SUPPLY_COSTS'
+        "DAILY_SALES",
+        "ITEMS_PROCESSED",
+        "NEW_CUSTOMERS",
+        "REPEAT_CUSTOMERS",
+        "AVERAGE_ORDER_VALUE",
+        "GARMENTS_PROCESSED",
+        "LABOR_COSTS",
+        "SUPPLY_COSTS"
       ]),
       value: a.float().required(),
       notes: a.string(),
       // Relationships
       businessId: a.id(),
-      business: a.belongsTo('Business', 'businessId')
+      business: a.belongsTo("Business", "businessId")
     })
     .authorization((allow) => [
       allow.owner(),
@@ -552,11 +552,11 @@ const schema = a.schema({
       name: a.string().required(),
       description: a.string(),
       category: a.enum([
-        'CLEANING_SUPPLY',
-        'PACKAGING',
-        'OFFICE_SUPPLY',
-        'MACHINE_PART',
-        'OTHER'
+        "CLEANING_SUPPLY",
+        "PACKAGING",
+        "OFFICE_SUPPLY",
+        "MACHINE_PART",
+        "OTHER"
       ]),
       sku: a.string(),
       currentStock: a.integer().required().default(0),
@@ -566,7 +566,7 @@ const schema = a.schema({
       lastOrderDate: a.date(),
       lastCountDate: a.date(),
       // Relationships
-      inventoryTransactions: a.hasMany('InventoryTransaction', 'inventoryItemId')
+      inventoryTransactions: a.hasMany("InventoryTransaction", "inventoryItemId")
     })
     .authorization((allow) => [
       allow.owner(),
@@ -576,11 +576,11 @@ const schema = a.schema({
   InventoryTransaction: a
     .model({
       type: a.enum([
-        'PURCHASE',
-        'USE',
-        'ADJUSTMENT',
-        'COUNT',
-        'TRANSFER'
+        "PURCHASE",
+        "USE",
+        "ADJUSTMENT",
+        "COUNT",
+        "TRANSFER"
       ]),
       quantity: a.integer().required(),
       date: a.datetime().required(),
@@ -589,7 +589,7 @@ const schema = a.schema({
       costPerUnit: a.float(),
       // Relationships
       inventoryItemId: a.id().required(),
-      inventoryItem: a.belongsTo('InventoryItem', 'inventoryItemId'),
+      inventoryItem: a.belongsTo("InventoryItem", "inventoryItemId"),
     })
     .authorization((allow) => [
       allow.owner(),
@@ -601,7 +601,7 @@ const schema = a.schema({
     .arguments({
       userId: a.id().required()
     })
-    .returns(a.ref('Business'))
+    .returns(a.ref("Business"))
     .authorization(allow => [allow.authenticated()])
     .handler(a.handler.function(fetchBusiness)),
 
@@ -610,7 +610,7 @@ const schema = a.schema({
     .arguments({
       userId: a.id().required()
     })
-    .returns(a.ref('Customer').array())
+    .returns(a.ref("Customer").array())
     .authorization(allow => [allow.authenticated()])
     .handler(a.handler.function(fetchCustomers)),
 

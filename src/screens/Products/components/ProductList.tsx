@@ -1,10 +1,10 @@
 // src/screens/Products/components/ProductList.tsx
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import type { Schema } from '../../../../amplify/data/resource';
-import { getImageSource } from '../../../utils/productImages';
-import { getS3ImageUrl } from '../../../utils/s3ImageUtils';
+import React from "react";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Dimensions } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import type { Schema } from "../../../../amplify/data/resource";
+import { getImageSource } from "../../../utils/productImages";
+import { getS3ImageUrl } from "../../../utils/s3ImageUtils";
 
 interface ProductListProps {
   products: Schema["Item"]["type"][];
@@ -71,7 +71,7 @@ const ProductList: React.FC<ProductListProps> = ({
       // fallback
       return (
         <Image
-          source={getImageSource('tshirt')}
+          source={getImageSource("tshirt")}
           style={styles.productImage}
         />
       );
@@ -84,7 +84,7 @@ const ProductList: React.FC<ProductListProps> = ({
       <TouchableOpacity
         style={styles.productCard}
         onPress={() => {
-          console.log('Editing item:', item);
+          console.log("Editing item:", item);
           onEditProduct(item);
         }}
       >
@@ -152,26 +152,26 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   productsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   addButton: {
-    backgroundColor: '#34C759', // Green for Add Product
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: "#34C759", // Green for Add Product
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
     fontSize: 14,
     marginLeft: 4,
   },
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   columnWrapper: {
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     marginBottom: 5,
     paddingHorizontal: 4,
   },
@@ -187,94 +187,94 @@ const styles = StyleSheet.create({
   productCard: {
     flex: 1,
     height: 120, // Smaller fixed height
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     marginBottom: 1,
     marginRight: 2,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    shadowColor: '#000',
+    borderColor: "#e0e0e0",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   imageContainer: {
-    width: '100%',
-    height: '100%',
-    position: 'relative',
-    backgroundColor: '#f0f0f0',
-    overflow: 'hidden',
+    width: "100%",
+    height: "100%",
+    position: "relative",
+    backgroundColor: "#f0f0f0",
+    overflow: "hidden",
   },
   placeholderContainer: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
   },
   productImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'contain'
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain"
   },
   textOverlay: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     padding: 4,
-    flexDirection: 'row', // Keep as row
-    alignItems: 'center'
+    flexDirection: "row", // Keep as row
+    alignItems: "center"
   },
   productName: {
     fontSize: 21, // Even smaller
-    fontWeight: '600',
-    color: '#ffffff',
-    width: '60%', // Fixed width
+    fontWeight: "600",
+    color: "#ffffff",
+    width: "60%", // Fixed width
     marginRight: 4,
-    overflow: 'hidden' // Hide overflow text
+    overflow: "hidden" // Hide overflow text
   },
   productPrice: {
     fontSize: 24, // Even smaller
-    fontWeight: 'bold',
-    color: '#34C759',
-    width: '40%', // Fixed width
-    textAlign: 'right' // Align text to the right
+    fontWeight: "bold",
+    color: "#34C759",
+    width: "40%", // Fixed width
+    textAlign: "right" // Align text to the right
   },
   emptyState: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
   // Style for the small tag showing the image source name
   imageSourceTag: {
-    position: 'absolute',
+    position: "absolute",
     top: 2,
     right: 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     paddingHorizontal: 4,
     paddingVertical: 2,
     borderRadius: 4,
   },
   imageSourceText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 8,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   }
 });
 

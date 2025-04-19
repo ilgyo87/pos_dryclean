@@ -1,5 +1,5 @@
 // src/screens/Checkout/components/CheckoutServiceList.tsx
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
@@ -9,9 +9,9 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Dimensions
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Schema } from '../../../../amplify/data/resource';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Schema } from "../../../../amplify/data/resource";
 
 interface CheckoutServiceListProps {
   categories: Schema["Category"]["type"][];
@@ -49,7 +49,7 @@ export default function CheckoutServiceList({
   }
 
   // Get width to calculate tab sizes
-  const screenWidth = Dimensions.get('window').width;
+  const screenWidth = Dimensions.get("window").width;
   const tabWidth = screenWidth / Math.min(sortedCategories.length, 5); // Max 5 visible tabs
   
   return (
@@ -114,60 +114,60 @@ const getCategoryIcon = (name: string = "") => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   tabsContainer: {
     flexGrow: 0,
     height: 70,
   },
   tabsContent: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   tabItem: {
     height: 70,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 10,
     borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    borderBottomColor: "transparent",
   },
   selectedTabItem: {
-    backgroundColor: '#2196F3',
-    borderBottomColor: '#0d47a1',
+    backgroundColor: "#2196F3",
+    borderBottomColor: "#0d47a1",
   },
   tabText: {
     fontSize: 12,
     marginTop: 4,
-    fontWeight: '500',
-    textAlign: 'center',
-    color: '#555555',
+    fontWeight: "500",
+    textAlign: "center",
+    color: "#555555",
   },
   selectedTabText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   emptyText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
 });

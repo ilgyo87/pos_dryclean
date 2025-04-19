@@ -1,6 +1,6 @@
 // Update in src/screens/Orders/components/OrderCard.tsx
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { 
   View, 
   Text, 
@@ -8,11 +8,11 @@ import {
   TouchableOpacity, 
   Alert,
   Modal
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 // Order status types
-type OrderStatus = 'CREATED' | 'PROCESSING' | 'READY' | 'COMPLETED' | 'CANCELLED' | 'DELIVERY_SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'FAILED';
+type OrderStatus = "CREATED" | "PROCESSING" | "READY" | "COMPLETED" | "CANCELLED" | "DELIVERY_SCHEDULED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "FAILED";
 
 interface OrderCardProps {
   order: {
@@ -41,66 +41,66 @@ const OrderCard = ({ order, itemsCount, onPress, onStatusChange }: OrderCardProp
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
       });
     } catch (error) {
-      return 'Invalid date';
+      return "Invalid date";
     }
   };
 
   // Get status color
   const getStatusColor = (status: OrderStatus): string => {
     switch (status) {
-      case 'CREATED':
-        return '#2196F3'; // Blue
-      case 'PROCESSING':
-        return '#FFA000'; // Amber
-      case 'READY':
-        return '#4CAF50'; // Green
-      case 'COMPLETED':
-        return '#388E3C'; // Dark Green
-      case 'CANCELLED':
-        return '#F44336'; // Red
-      case 'DELIVERY_SCHEDULED':
-        return '#9C27B0'; // Purple
-      case 'OUT_FOR_DELIVERY':
-        return '#FF5722'; // Deep Orange
-      case 'DELIVERED':
-        return '#009688'; // Teal
+      case "CREATED":
+        return "#2196F3"; // Blue
+      case "PROCESSING":
+        return "#FFA000"; // Amber
+      case "READY":
+        return "#4CAF50"; // Green
+      case "COMPLETED":
+        return "#388E3C"; // Dark Green
+      case "CANCELLED":
+        return "#F44336"; // Red
+      case "DELIVERY_SCHEDULED":
+        return "#9C27B0"; // Purple
+      case "OUT_FOR_DELIVERY":
+        return "#FF5722"; // Deep Orange
+      case "DELIVERED":
+        return "#009688"; // Teal
       default:
-        return '#757575'; // Grey
+        return "#757575"; // Grey
     }
   };
 
   // Format status text
   const formatStatus = (status: OrderStatus): string => {
-    return status.replace(/_/g, ' ').toLowerCase()
-      .split(' ')
+    return status.replace(/_/g, " ").toLowerCase()
+      .split(" ")
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+      .join(" ");
   };
 
   // Get appropriate next status options based on current status
   const getNextStatusOptions = (currentStatus: OrderStatus): OrderStatus[] => {
     switch (currentStatus) {
-      case 'CREATED':
-        return ['PROCESSING', 'CANCELLED'];
-      case 'PROCESSING':
-        return ['READY', 'CANCELLED'];
-      case 'READY':
-        return ['COMPLETED', 'DELIVERY_SCHEDULED', 'CANCELLED'];
-      case 'DELIVERY_SCHEDULED':
-        return ['OUT_FOR_DELIVERY', 'CANCELLED'];
-      case 'OUT_FOR_DELIVERY':
-        return ['DELIVERED', 'CANCELLED'];
-      case 'COMPLETED':
-      case 'DELIVERED':
-      case 'CANCELLED':
+      case "CREATED":
+        return ["PROCESSING", "CANCELLED"];
+      case "PROCESSING":
+        return ["READY", "CANCELLED"];
+      case "READY":
+        return ["COMPLETED", "DELIVERY_SCHEDULED", "CANCELLED"];
+      case "DELIVERY_SCHEDULED":
+        return ["OUT_FOR_DELIVERY", "CANCELLED"];
+      case "OUT_FOR_DELIVERY":
+        return ["DELIVERED", "CANCELLED"];
+      case "COMPLETED":
+      case "DELIVERED":
+      case "CANCELLED":
         return []; // Terminal states, no next status
       default:
         return [];
@@ -114,14 +114,14 @@ const OrderCard = ({ order, itemsCount, onPress, onStatusChange }: OrderCardProp
     
     // Confirm with user before updating
     Alert.alert(
-      'Update Order Status',
+      "Update Order Status",
       `Are you sure you want to change this order status to ${formatStatus(newStatus)}?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         { 
-          text: 'Update', 
+          text: "Update", 
           onPress: () => onStatusChange(newStatus),
-          style: 'default'
+          style: "default"
         },
       ]
     );
@@ -130,30 +130,30 @@ const OrderCard = ({ order, itemsCount, onPress, onStatusChange }: OrderCardProp
   // Get appropriate icon for status
   const getStatusIcon = (status: OrderStatus): string => {
     switch (status) {
-      case 'CREATED':
-        return 'create-outline';
-      case 'PROCESSING':
-        return 'refresh-outline';
-      case 'READY':
-        return 'checkmark-circle-outline';
-      case 'COMPLETED':
-        return 'checkbox-outline';
-      case 'CANCELLED':
-        return 'close-circle-outline';
-      case 'DELIVERY_SCHEDULED':
-        return 'calendar-outline';
-      case 'OUT_FOR_DELIVERY':
-        return 'car-outline';
-      case 'DELIVERED':
-        return 'home-outline';
+      case "CREATED":
+        return "create-outline";
+      case "PROCESSING":
+        return "refresh-outline";
+      case "READY":
+        return "checkmark-circle-outline";
+      case "COMPLETED":
+        return "checkbox-outline";
+      case "CANCELLED":
+        return "close-circle-outline";
+      case "DELIVERY_SCHEDULED":
+        return "calendar-outline";
+      case "OUT_FOR_DELIVERY":
+        return "car-outline";
+      case "DELIVERED":
+        return "home-outline";
       default:
-        return 'help-outline';
+        return "help-outline";
     }
   };
 
   // Get customer name - using firstName & lastName from the order
   const getCustomerName = (): string => {
-    console.log('Order:', order);
+    console.log("Order:", order);
     // Check for firstName and lastName fields directly from order object
     if (order.firstName && order.lastName) {
       return `${order.firstName} ${order.lastName}`;
@@ -166,7 +166,7 @@ const OrderCard = ({ order, itemsCount, onPress, onStatusChange }: OrderCardProp
       return order.lastName;
     }
     // Last resort
-    return 'Customer';
+    return "Customer";
   };
 
   // Next status options
@@ -193,7 +193,7 @@ const OrderCard = ({ order, itemsCount, onPress, onStatusChange }: OrderCardProp
           <View style={styles.infoItem}>
             <Ionicons name="shirt-outline" size={20} color="#666" />
             <Text style={styles.infoText}>
-              {itemsCount} {itemsCount === 1 ? 'Item' : 'Items'}
+              {itemsCount} {itemsCount === 1 ? "Item" : "Items"}
             </Text>
           </View>
           
@@ -261,67 +261,67 @@ const OrderCard = ({ order, itemsCount, onPress, onStatusChange }: OrderCardProp
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     marginBottom: 12,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   orderNumber: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   date: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   details: {
     marginBottom: 12,
   },
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start', // Changed from space-between to flex-start
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "flex-start", // Changed from space-between to flex-start
+    flexWrap: "wrap",
   },
   infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginRight: 16,
     marginBottom: 8,
   },
   infoText: {
     marginLeft: 6,
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 4,
   },
   statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 16,
   },
   statusText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
     marginLeft: 4,
   },
   updateButton: {
@@ -330,41 +330,41 @@ const styles = StyleSheet.create({
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 20,
-    width: '80%',
+    width: "80%",
     maxWidth: 400,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   statusOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   statusOptionIcon: {
     marginRight: 12,
   },
   statusOptionText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
 });
 
