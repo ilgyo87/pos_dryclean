@@ -23,8 +23,8 @@ export interface Customer {
   export interface Business {
     _id: string;
     businessName: string;
-    firstName?: string;
-    lastName?: string;
+    firstName: string;
+    lastName: string;
     address?: string;
     city?: string;
     state?: string;
@@ -35,7 +35,7 @@ export interface Customer {
     website?: string;
     hours?: string[];
     logoUrl?: string;
-    userId?: string;
+    userId: string;
     orders?: Order[];
   }
 

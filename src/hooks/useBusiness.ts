@@ -12,15 +12,17 @@ export function useBusiness() {
    * @param formData Object with business fields (businessName, firstName, lastName, phone, etc.)
    * @returns The created API business object
    */
-  const createBusiness = useCallback(async (formData: Omit<LocalBusiness, '_id'>) => {
+  const createBusiness = useCallback(async (formData: Omit<LocalBusiness, '_id'> & { userId: string }) => {
     // API creation
     const resp = await client.models.Business.create({
       businessName: formData.businessName,
       firstName: formData.firstName,
       lastName: formData.lastName,
       phone: formData.phone,
+      userId: formData.userId,
       // add other fields as needed
     });
+    console.log('[API] Created business object:', resp.data);
     if (!resp.data) {
       throw new Error('API did not return any business data');
     }
@@ -30,6 +32,7 @@ export function useBusiness() {
       throw new Error('API did not return a valid business id');
     }
     const localBusiness: LocalBusiness = { _id: id, ...formData };
+    console.log('[LOCAL] Creating business object:', localBusiness);
     await addBusiness(localBusiness);
     return created;
   }, []);

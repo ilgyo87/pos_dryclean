@@ -21,11 +21,14 @@ const initialState = {
   businessName: '', firstName: '', lastName: '', address: '', city: '', state: '', zipCode: '', phone: '', email: '', website: ''
 };
 
+import { useAuthenticator } from '@aws-amplify/ui-react-native';
+
 const BusinessForm: React.FC<BusinessFormProps> = ({ visible, onClose, onSuccess }) => {
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { createBusiness } = useBusiness();
+  const { user } = useAuthenticator((context) => [context.user]);
 
   const handleChange = (field: keyof typeof initialState, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -40,7 +43,8 @@ const BusinessForm: React.FC<BusinessFormProps> = ({ visible, onClose, onSuccess
     setLoading(true);
     setError(null);
     try {
-      await createBusiness(form);
+      if (!user?.userId) throw new Error('No userId found');
+      await createBusiness({ ...form, userId: user.userId });
       handleReset();
       onClose();
       onSuccess?.();

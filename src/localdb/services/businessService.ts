@@ -8,7 +8,8 @@ export async function addBusiness(business: Business) {
   });
 }
 
-export async function getAllBusinesses() {
+export async function getFirstBusiness(userId: string): Promise<Business | undefined> {
   const realm = await getRealm();
-  return realm.objects('Business');
+  const list = realm.objects<Business>('Business').filtered('userId == $0', userId);
+  return list.length > 0 ? list[0] : undefined;
 }

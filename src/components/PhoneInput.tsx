@@ -31,7 +31,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
         {...rest}
       />
       {loading && checkValue !== '' && focused && <Text style={styles.helper}>Checking availability...</Text>}
-      {!loading && !available && <Text style={styles.inputError}>{error || 'Value unavailable'}</Text>}
+      {!loading && !available && <Text style={styles.inputError}>{error || 'Phone # unavailable'}</Text>}
       {!loading && available && checkValue !== '' && <Text style={styles.available}>Available</Text>}
     </View>
   );
