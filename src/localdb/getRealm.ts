@@ -1,5 +1,5 @@
 import Realm from 'realm';
-import { BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema, GarmentSchema } from './schemas';
+import { BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema } from './schemas';
 // DEV ONLY: Remove Realm file if schema error is likely
 import { resetRealmIfSchemaError } from './devRealmTools';
 
@@ -9,7 +9,7 @@ export async function getRealm(): Promise<Realm> {
   }
   const config: Realm.Configuration = {
     path: 'pos-dryclean.realm',
-    schema: [BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema, GarmentSchema],
+    schema: [BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema],
     schemaVersion: 1,
   };
   

@@ -19,7 +19,7 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
   useEffect(() => {
     refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refetch]);
+  }, [fetch]);
 
   if (isLoading) {
     return (

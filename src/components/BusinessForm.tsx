@@ -1,3 +1,4 @@
+// Simplified BusinessForm.tsx
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert, TextInput } from 'react-native';
 import { PhoneInput } from './PhoneInput';
@@ -8,7 +9,6 @@ import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
-// Amplify API client
 const client = generateClient<Schema>();
 
 interface BusinessFormProps {
@@ -23,12 +23,11 @@ const initialState = {
 
 export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFormProps) {
   const [form, setForm] = useState(initialState);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { user: authUser } = useAuthenticator((context) => [context.user]);
-  const { createBusiness } = useBusiness({
+  
+  // Use the hook with minimized parameters
+  const { createBusiness, isLoading, error } = useBusiness({
     userId: authUser?.userId,
-    refresh: 0, // or a real refresh value if you use one
     authUser,
   });
 
@@ -38,30 +37,28 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
 
   const handleReset = () => {
     setForm(initialState);
-    setError(null);
   };
 
   const handleCreate = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const userId = authUser?.userId;
-      if (!userId) {
-        setError('No user ID found.');
+      if (!authUser?.userId) {
+        Alert.alert('Error', 'No user ID found.');
         return;
       }
-      const formData = { ...form, userId };
-      await createBusiness(formData);
+      
+      // Let the hook handle all the business creation logic
+      await createBusiness({
+        ...form,
+        userId: authUser.userId
+      });
+      
       handleReset();
-      if (onSuccess) {
-        onSuccess(); // Triggers navigation in Navigation.tsx
-      }
+      if (onSuccess) onSuccess();
       onClose();
       Alert.alert('Success', 'Business created successfully!');
     } catch (err: any) {
-      setError(err.message || 'Failed to create business.');
-    } finally {
-      setLoading(false);
+      // Error is already handled by the hook
+      console.log('Error in form:', err);
     }
   };
 
@@ -89,7 +86,7 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
           onCreate={handleCreate}
           onReset={handleReset}
           onCancel={onClose}
-          isSubmitting={loading}
+          isSubmitting={isLoading}
           error={error}
           showCreate
           showReset

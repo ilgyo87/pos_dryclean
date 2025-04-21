@@ -1,3 +1,12 @@
+export const LocationSchema = {
+  name: 'Location',
+  embedded: true,
+  properties: {
+    lat: 'double',
+    long: 'double',
+  },
+};
+
 export const BusinessSchema = {
   name: 'Business',
   primaryKey: '_id',
@@ -11,11 +20,12 @@ export const BusinessSchema = {
     state: 'string?',
     zipCode: 'string?',
     phone: 'string',
-    coordinates: 'string?',
-    email: 'string?',
+    location: 'Location?',
+    email: 'string', // required
     website: 'string?',
     hours: 'string[]',
     logoUrl: 'string?',
+    logoSource: 'string?',
     userId: 'string?',
     orders: 'Order[]',
   },
@@ -26,16 +36,17 @@ export const CustomerSchema = {
   primaryKey: '_id',
   properties: {
     _id: 'string',
-    firstName: 'string',
-    lastName: 'string',
+    firstName: 'string', // required
+    lastName: 'string', // required
     address: 'string?',
     city: 'string?',
-    phone: 'string?',
+    state: 'string?',
+    zipCode: 'string?',
+    phone: 'string', // required
+    location: 'Location?',
     email: 'string?',
     businessId: 'string?',
     cognitoId: 'string?',
-    orders: 'Order[]',
-    garments: 'Garment[]',
   },
 };
 
@@ -57,8 +68,17 @@ export const ProductSchema = {
     _id: 'string',
     name: 'string',
     price: 'double',
+    discount: 'double?',
     description: 'string?',
-    category: 'Category?',
+    categoryId: 'string?',
+    businessId: 'string?',
+    customerId: 'string?',
+    customer: 'Customer?',
+    employeeId: 'string?',
+    orderId: 'string?',
+    orderItemId: 'string?',
+    starch: 'string?',
+    pressOnly: 'bool?',
   },
 };
 
@@ -67,22 +87,34 @@ export const OrderSchema = {
   primaryKey: '_id',
   properties: {
     _id: 'string',
-    customer: 'Customer?',
-    items: 'Product[]',
+    businessId: 'string',
+    business: 'Business?',
+    customerId: 'string',
+    employeeId: 'string',
+    items: 'OrderItem[]',
+    paymentMethod: 'string',
     total: 'double',
-    paymentMethod: 'string?',
-    status: 'string?',
-    createdAt: 'date',
+    status: 'string',
+    createdAt: 'date?',
   },
 };
 
-export const GarmentSchema = {
-  name: 'Garment',
+export const EmployeeSchema = {
+  name: 'Employee',
   primaryKey: '_id',
   properties: {
     _id: 'string',
-    name: 'string',
-    description: 'string?',
-    category: 'Category?',
+    firstName: 'string',
+    lastName: 'string',
+    address: 'string?',
+    city: 'string?',
+    state: 'string?',
+    zipCode: 'string?',
+    phone: 'string',
+    location: 'Location?',
+    email: 'string?',
+    businessId: 'string?',
+    cognitoId: 'string?',
+    pin: 'string?',
   },
 };
