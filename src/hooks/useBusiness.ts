@@ -7,40 +7,54 @@ import { Alert } from 'react-native';
 
 const client = generateClient<Schema>();
 
-export function useBusiness({ userId, refresh, authUser }: { userId: string | undefined, refresh: number, authUser: any }) {
+export function useBusiness({ userId, refresh, authUser }: {
+  userId: string | undefined,
+  refresh?: number,
+  authUser: any
+}) {
   const [business, setBusiness] = useState<LocalBusiness | undefined>();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch business (local + API sync)
-  const createBusiness = useCallback(async (formData: Omit<LocalBusiness, '_id'> & { userId: string, email: string, _id?: string }) => {
-    // Use ownerEmail from authUser or fallback to formData.email
-    const ownerEmail = authUser?.signInDetails?.loginId || formData.email || '';
-    // If _id is provided, skip API create (used for local sync from API), else create via API
-    let id = formData._id;
-    let created = undefined;
-    if (!id) {
-      const resp = await client.models.Business.create({
-        businessName: formData.businessName,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
-        userId: formData.userId,
-        email: ownerEmail,
-        // add other fields as needed
-      });
-      if (!resp.data) {
-        throw new Error('API did not return any business data');
-      }
-      created = resp.data;
-      id = created.id;
+  // Simplified createBusiness function that handles all state changes
+  const createBusiness = useCallback(async (formData: Omit<LocalBusiness, '_id'> & { userId: string, email?: string, _id?: string }) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Use ownerEmail from authUser or fallback to formData.email
+      const ownerEmail = authUser?.signInDetails?.loginId || formData.email || '';
+      // If _id is provided, skip API create (used for local sync from API), else create via API
+      let id = formData._id;
+      let created = undefined;
       if (!id) {
-        throw new Error('API did not return a valid business id');
+        const resp = await client.models.Business.create({
+          businessName: formData.businessName,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          userId: formData.userId,
+          email: ownerEmail,
+          // add other fields as needed
+        });
+        if (!resp.data) {
+          throw new Error('API did not return any business data');
+        }
+        created = resp.data;
+        id = created.id;
+        if (!id) {
+          throw new Error('API did not return a valid business id');
+        }
       }
+      const localBusiness: LocalBusiness = { _id: id, ...formData, email: ownerEmail };
+      await addBusiness(localBusiness);
+      return created || localBusiness;
+    } catch (err: any) {
+      let message = err?.message || String(err);
+      setError(message);
+      throw err; // Re-throw to allow form to handle it if needed
+    } finally {
+      setIsLoading(false);
     }
-    const localBusiness: LocalBusiness = { _id: id, ...formData, email: ownerEmail };
-    await addBusiness(localBusiness);
-    return created || localBusiness;
   }, [authUser]);
 
   const refetch = useCallback(async () => {

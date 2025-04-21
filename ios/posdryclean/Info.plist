@@ -70,5 +70,11 @@
     <string>Light</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
-  </dict>
+    <key>NSCameraUsageDescription</key>
+  <string>This app requires access to the camera for scanning and capturing images.</string>
+  <key>NSBluetoothAlwaysUsageDescription</key>
+  <string>This app uses Bluetooth to connect to devices such as printers and scanners.</string>
+  <key>NSBluetoothPeripheralUsageDescription</key>
+  <string>This app uses Bluetooth to connect to peripherals.</string>
+</dict>
 </plist>
