@@ -2,7 +2,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthUser } from "@aws-amplify/auth";
 import Dashboard from "../screens/Dashboard/Dashboard";
-import { CustomersScreen, OrdersScreen, ProductsScreen, EmployeesScreen } from '../screens/Categories';
+import { OrdersScreen, ProductsScreen, EmployeesScreen } from '../screens/Categories';
+import CustomersScreen from '../screens/Categories/Customers/CustomersScreen';
 import SettingsScreen from '../screens/Settings/SettingsScreen';
 import ReportsScreen from '../screens/Reports/ReportsScreen';
 

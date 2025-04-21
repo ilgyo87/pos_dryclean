@@ -7,10 +7,10 @@ import { Alert } from 'react-native';
 
 const client = generateClient<Schema>();
 
-export function useBusiness({ userId, refresh, authUser }: { 
-  userId: string | undefined, 
-  refresh?: number, 
-  authUser: any 
+export function useBusiness({ userId, refresh, authUser }: {
+  userId: string | undefined,
+  refresh?: number,
+  authUser: any
 }) {
   const [business, setBusiness] = useState<LocalBusiness | undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(false);

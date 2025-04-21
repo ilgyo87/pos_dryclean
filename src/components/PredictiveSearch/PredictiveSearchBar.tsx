@@ -34,10 +34,10 @@ const PredictiveSearchBar: React.FC<PredictiveSearchBarProps> = ({
         returnKeyType="search"
         {...restProps}
       />
-      
+
       {value !== '' && (
-        <TouchableOpacity 
-          style={styles.clearButton} 
+        <TouchableOpacity
+          style={styles.clearButton}
           onPress={handleClear}
           accessibilityLabel="Clear search"
         >

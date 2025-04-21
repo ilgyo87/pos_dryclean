@@ -47,12 +47,12 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
         Alert.alert('Error', 'No user ID found.');
         return;
       }
-      
+
       await createBusiness({
         ...form,
         userId: authUser.userId
       });
-      
+
       handleReset();
       if (onSuccess) onSuccess();
       onClose();

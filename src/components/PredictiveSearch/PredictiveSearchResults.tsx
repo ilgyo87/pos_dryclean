@@ -14,10 +14,10 @@ const PredictiveSearchResults = <T extends Record<string, any>>({
 }: PredictiveSearchResultsProps<T>) => {
   // Default renderer for items if no custom renderer provided
   const defaultRenderItem = ({ item }: { item: T }) => {
-    const displayName = item.name || item.title || item.label || 
-                        item.businessName || item.firstName || 
-                        JSON.stringify(item);
-    
+    const displayName = item.name || item.title || item.label ||
+      item.businessName || item.firstName ||
+      JSON.stringify(item);
+
     return (
       <TouchableOpacity
         style={styles.resultItem}

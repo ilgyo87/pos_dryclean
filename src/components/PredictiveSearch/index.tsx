@@ -63,7 +63,7 @@ const PredictiveSearch = <T extends Record<string, any>>({
         placeholder={placeholder}
         inputStyle={inputStyle}
       />
-      
+
       {showResults && filteredItems.length > 0 && (
         <PredictiveSearchResults<T>
           data={filteredItems}
