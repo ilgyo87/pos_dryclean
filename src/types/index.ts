@@ -1,80 +1,98 @@
 export interface Location {
-    lat: number;
-    long: number;
+  lat: number;
+  long: number;
+}
+
+export interface BusinessFormProps {
+  visible: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+}
+
+export interface BusinessFormState {
+  businessName: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
 }
 
 export interface Customer {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-    phone?: string;
-    email?: string;
-    coordinates?: Location;
-    businessId?: string;
-    cognitoId?: string;
-    orders?: Order[];
-    garments?: Garment[];
-  }
+  _id: string;
+  firstName: string;
+  lastName: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone: string;
+  location?: Location;
+  email?: string;
+  businessId?: string;
+  cognitoId?: string;
+} // Garment removed per backend
   
   export interface Business {
-    _id: string;
-    businessName: string;
-    firstName: string;
-    lastName: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-    phone: string;
-    coordinates?: Location;
-    email?: string;
-    website?: string;
-    hours?: string[];
-    logoUrl?: string;
-    userId: string;
-    orders?: Order[];
-  }
+  _id: string;
+  businessName: string;
+  firstName?: string;
+  lastName?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone: string;
+  location?: Location;
+  email: string;
+  website?: string;
+  hours?: string[];
+  logoUrl?: string;
+  logoSource?: string;
+  userId?: string;
+} // orders removed, logoSource added
 
   export interface Order {
-    _id: string;
-    customerId: string;
-    items: Product[];
-    total: number;
-    paymentMethod: string;
-    status: string;
-    createdAt: Date;
-  }
+  _id: string;
+  businessId: string;
+  business?: Business;
+  customerId: string;
+  employeeId: string;
+  items: OrderItem[];
+  paymentMethod: string;
+  total: number;
+  status: string;
+  createdAt?: Date;
+}
 
-  export interface Category {
-    _id: string;
-    name: string;
-    description?: string;
-    products?: Product[];
-  }
+  export interface OrderItem {
+  _id: string;
+  name: string;
+  description?: string;
+  price?: number;
+  discount?: number;
+  category?: string;
+  businessId?: string;
+  customerId?: string;
+  employeeId?: string;
+  orderId?: string;
+  orderIdHistory?: string[];
+  starch?: 'none' | 'light' | 'medium' | 'heavy';
+  pressOnly?: boolean;
+  order?: Order;
+}
 
-  export interface Product {
-    _id: string;
-    name: string;
-    price: number;
-    alteredPrice?: number;
-    dueDate?: Date;
-    imageUrl?: string;
-    imageSource?: string;
-    orderId?: string;
-    starch?: string;
-    pressOnly?: boolean;
-    description?: string;
-    notes?: string[];
-    categoryId: string;
-  }
-
-  export interface Garment {
-    _id: string;
-    name: string;
-    description: string;
-    customerId: string;
-  }
+  export interface Employee {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone: string;
+  location?: Location;
+  email?: string;
+  businessId?: string;
+  cognitoId?: string;
+  pin?: string;
+}

@@ -91,7 +91,7 @@ export const OrderSchema = {
     business: 'Business?',
     customerId: 'string',
     employeeId: 'string',
-    items: 'OrderItem[]',
+    items: 'Product[]',
     paymentMethod: 'string',
     total: 'double',
     status: 'string',

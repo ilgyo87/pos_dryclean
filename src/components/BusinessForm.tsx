@@ -8,28 +8,30 @@ import { useBusiness } from '../hooks/useBusiness';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import type { BusinessFormProps, BusinessFormState } from '../types';
+import { useAvailability } from '../hooks/useAvailability';
 
 const client = generateClient<Schema>();
 
-interface BusinessFormProps {
-  visible: boolean;
-  onClose: () => void;
-  onSuccess?: () => void;
-}
-
-const initialState = {
+const initialState: BusinessFormState = {
   businessName: '', firstName: '', lastName: '', phone: '', email: ''
 };
 
 export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFormProps) {
   const [form, setForm] = useState(initialState);
   const { user: authUser } = useAuthenticator((context) => [context.user]);
-  
-  // Use the hook with minimized parameters
   const { createBusiness, isLoading, error } = useBusiness({
     userId: authUser?.userId,
     authUser,
   });
+
+  const phoneAvailability = useAvailability(
+    form.phone.replace(/\D/g, '').length >= 10 ? form.phone : '',
+    async (val: string) => {
+      const resp = await client.models.Business.list({ filter: { phone: { eq: val } } });
+      return !!resp.data && resp.data.length > 0;
+    }
+  );
 
   const handleChange = (field: keyof typeof initialState, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -46,7 +48,6 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
         return;
       }
       
-      // Let the hook handle all the business creation logic
       await createBusiness({
         ...form,
         userId: authUser.userId
@@ -57,7 +58,6 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
       onClose();
       Alert.alert('Success', 'Business created successfully!');
     } catch (err: any) {
-      // Error is already handled by the hook
       console.log('Error in form:', err);
     }
   };
@@ -68,12 +68,13 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
         <Text style={styles.label}>Business Name</Text>
         <TextInput placeholder="Business Name" style={styles.input} value={form.businessName} onChangeText={(v: string) => handleChange('businessName', v)} />
         <Text style={styles.label}>Phone</Text>
+        {/* PhoneInput with availability check handled here for disabling create button */}
         <PhoneInput
           placeholder="Phone"
           style={styles.input}
           value={form.phone}
           onChangeText={v => handleChange('phone', v)}
-          checkFn={async val => {
+          checkFn={async (val: string) => {
             const resp = await client.models.Business.list({ filter: { phone: { eq: val } } });
             return !!resp.data && resp.data.length > 0;
           }}
@@ -91,6 +92,7 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
           showCreate
           showReset
           showCancel
+          disabled={!form.businessName || !form.phone || !phoneAvailability.available}
         />
       </View>
     </FormModal>

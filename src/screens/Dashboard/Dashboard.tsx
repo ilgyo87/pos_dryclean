@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native";
 import { useBusiness } from '../../hooks/useBusiness';
-import { useNavigation } from '@react-navigation/native';
 import { AuthUser } from "aws-amplify/auth";
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
+import BusinessForm from '../../components/BusinessForm';
+import CategoriesGrid from './CategoriesGrid';
+import { useNavigation } from '@react-navigation/native';
 
 export default function Dashboard({ user, refresh }: { user: AuthUser | null, refresh: number }) {
-
-  const navigation = useNavigation<any>();
+  const [showBusinessModal, setShowBusinessModal] = useState(false);
   const { user: authUser } = useAuthenticator((context) => [context.user]);
+  const navigation = useNavigation<any>();
 
   const { business, isLoading, error, refetch } = useBusiness({
     userId: user?.userId,
@@ -16,10 +18,11 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
     authUser,
   });
 
+  // Refetch business when refresh or user changes
   useEffect(() => {
     refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetch]);
+  }, [refresh, user?.userId]);
 
   if (isLoading) {
     return (
@@ -31,61 +34,75 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Dashboard</Text>
       {business ? (
-        <View>
-          <Text style={styles.businessName}>{business.businessName}</Text>
-          <Text>Address: {business.address}</Text>
-          <Text>Phone: {business.phone}</Text>
-          {/* categories */}
-          {(() => {
-            const counts = { customers: 0, orders: 0, products: 0, employees: 0 };
-            const categories = [
-              { id: 'customers', title: 'Customers', count: counts.customers },
-              { id: 'orders', title: 'Orders', count: counts.orders },
-              { id: 'products', title: 'Products', count: counts.products },
-              { id: 'employees', title: 'Team', count: counts.employees },
-            ];
-            return categories.map(cat => <Text key={cat.id}>{cat.title}: {cat.count}</Text>);
-          })()}
-        </View>
+        <>
+          <View style={styles.businessInfo}>
+            <Text style={styles.businessName}>{business.businessName}</Text>
+            <Text style={styles.businessDetail}>{business.address}</Text>
+            <Text style={styles.businessDetail}>{business.phone}</Text>
+          </View>
+          <CategoriesGrid
+            categories={[
+              {
+                id: 'customers',
+                title: 'Customers',
+                count: 0, // TODO: Replace with real count
+                onPress: () => navigation.navigate('Customers'),
+              },
+              {
+                id: 'orders',
+                title: 'Orders',
+                count: 0,
+                onPress: () => navigation.navigate('Orders'),
+              },
+              {
+                id: 'products',
+                title: 'Products',
+                count: 0,
+                onPress: () => navigation.navigate('Products'),
+              },
+              {
+                id: 'employees',
+                title: 'Team',
+                count: 0,
+                onPress: () => navigation.navigate('Employees'),
+              },
+              {
+                id: 'settings',
+                title: 'Settings',
+                count: 0,
+                onPress: () => navigation.navigate('Settings'),
+              },
+              {
+                id: 'reports',
+                title: 'Reports',
+                count: 0,
+                onPress: () => navigation.navigate('Reports'),
+              },
+            ]}
+          />
+        </> 
       ) : (
         <View>
           <Text>Business not created. Please create a business.</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('CreateBusiness')}>
+          <TouchableOpacity onPress={() => setShowBusinessModal(true)}>
             <Text style={styles.createButton}>Create Business</Text>
           </TouchableOpacity>
+          <BusinessForm
+            visible={showBusinessModal}
+            onClose={() => {
+              setShowBusinessModal(false);
+              setTimeout(refetch, 300); // Give modal time to close
+            }}
+            onSuccess={() => {
+              setShowBusinessModal(false);
+              setTimeout(refetch, 300); // Refetch after modal closes
+            }}
+          />
         </View>
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 16,
-  },
-  businessName: {
-    fontSize: 18,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  createButton: {
-    backgroundColor: '#007bff',
-    color: 'white',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    textAlign: 'center',
-    alignSelf: 'center',
-    marginTop: 10,
-  }
-});
+import styles from './Dashboard.styles';

@@ -1,15 +1,15 @@
 import Realm from 'realm';
-import { BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema } from './schemas';
+import { BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema, EmployeeSchema, LocationSchema } from './schemas';
 // DEV ONLY: Remove Realm file if schema error is likely
 import { resetRealmIfSchemaError } from './devRealmTools';
 
 export async function getRealm(): Promise<Realm> {
-  if (__DEV__) {
-    await resetRealmIfSchemaError();
-  }
+  // if (__DEV__) {
+  //   await resetRealmIfSchemaError();
+  // }
   const config: Realm.Configuration = {
     path: 'pos-dryclean.realm',
-    schema: [BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema],
+    schema: [BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema, EmployeeSchema, LocationSchema],
     schemaVersion: 1,
   };
   
