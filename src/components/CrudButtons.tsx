@@ -19,7 +19,7 @@ interface CrudButtonsProps {
   showUpdate?: boolean;
   showDelete?: boolean;
   showCancel?: boolean;
-  error?: string | null;
+
 }
 
 const CrudButtons: React.FC<CrudButtonsProps> = ({
@@ -40,15 +40,15 @@ const CrudButtons: React.FC<CrudButtonsProps> = ({
   showUpdate = false,
   showDelete = false,
   showCancel = true,
-  error,
+
 }) => (
   <View style={styles.buttonRow}>
-    {error ? <Text style={styles.error}>{error}</Text> : null}
+
     {showCancel && (
       <TouchableOpacity
-        style={[styles.button, styles.cancel, (isSubmitting || disabled) && styles.disabled]}
+        style={[styles.button, styles.cancel, isSubmitting && styles.disabled]}
         onPress={onCancel}
-        disabled={isSubmitting || disabled}
+        disabled={isSubmitting}
       >
         <Text style={styles.buttonText}>{cancelLabel}</Text>
       </TouchableOpacity>
@@ -64,9 +64,9 @@ const CrudButtons: React.FC<CrudButtonsProps> = ({
     )}
     {showReset && (
       <TouchableOpacity
-        style={[styles.button, styles.secondary, (isSubmitting || disabled) && styles.disabled]}
+        style={[styles.button, styles.secondary, isSubmitting && styles.disabled]}
         onPress={onReset}
-        disabled={isSubmitting || disabled}
+        disabled={isSubmitting}
       >
         <Text style={styles.buttonText}>{resetLabel}</Text>
       </TouchableOpacity>

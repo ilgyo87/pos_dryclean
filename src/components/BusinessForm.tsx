@@ -1,5 +1,5 @@
 // Simplified BusinessForm.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, TextInput } from 'react-native';
 import { PhoneInput } from './PhoneInput';
 import FormModal from './FormModal';
@@ -24,6 +24,12 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
     userId: authUser?.userId,
     authUser,
   });
+
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Error', error);
+    }
+  }, [error]);
 
   const phoneAvailability = useAvailability(
     form.phone.replace(/\D/g, '').length >= 10 ? form.phone : '',
@@ -58,16 +64,16 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
       onClose();
       Alert.alert('Success', 'Business created successfully!');
     } catch (err: any) {
-      console.log('Error in form:', err);
+      Alert.alert('Error', err.message);
     }
   };
 
   return (
     <FormModal visible={visible} onClose={onClose} title="Create Business">
       <View style={styles.form}>
-        <Text style={styles.label}>Business Name</Text>
+        <Text style={styles.label}>Business Name<Text style={{ color: 'red' }}> *</Text></Text>
         <TextInput placeholder="Business Name" style={styles.input} value={form.businessName} onChangeText={(v: string) => handleChange('businessName', v)} />
-        <Text style={styles.label}>Phone</Text>
+        <Text style={styles.label}>Phone<Text style={{ color: 'red' }}> *</Text></Text>
         {/* PhoneInput with availability check handled here for disabling create button */}
         <PhoneInput
           placeholder="Phone"
@@ -83,15 +89,16 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
         <TextInput placeholder="First Name" style={styles.input} value={form.firstName} onChangeText={(v: string) => handleChange('firstName', v)} />
         <Text style={styles.label}>Last Name</Text>
         <TextInput placeholder="Last Name" style={styles.input} value={form.lastName} onChangeText={(v: string) => handleChange('lastName', v)} />
+        <Text style={styles.requiredFields}>* Required fields</Text>
         <CrudButtons
           onCreate={handleCreate}
           onReset={handleReset}
           onCancel={onClose}
           isSubmitting={isLoading}
-          error={error}
           showCreate
           showReset
           showCancel
+          // Only disable the Create button (not Reset or Cancel)
           disabled={!form.businessName || !form.phone || !phoneAvailability.available}
         />
       </View>
@@ -103,4 +110,10 @@ const styles = StyleSheet.create({
   form: { width: '100%' },
   label: { fontWeight: '600', marginBottom: 4, textTransform: 'capitalize' },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 10 },
+  requiredFields: {
+    color: '#666',
+    fontSize: 12,
+    marginBottom: 12,
+    textAlign: 'right',
+  },
 });

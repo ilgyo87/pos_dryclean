@@ -6,6 +6,7 @@ import { OrdersScreen, ProductsScreen, EmployeesScreen } from '../screens/Catego
 import CustomersScreen from '../screens/Categories/Customers/CustomersScreen';
 import SettingsScreen from '../screens/Settings/SettingsScreen';
 import ReportsScreen from '../screens/Reports/ReportsScreen';
+import CheckoutScreen from '../screens/Checkout/CheckoutScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,6 +23,7 @@ export default function Navigation({ user, refresh }: { user: AuthUser, refresh:
         <Stack.Screen name="Employees" component={EmployeesScreen} options={{ title: 'Team' }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reports' }} />
+        <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ title: 'Checkout' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
