@@ -4,7 +4,6 @@ import { PhoneInput } from './PhoneInput';
 import FormModal from './FormModal';
 import CrudButtons from './CrudButtons';
 import { useBusiness } from '../hooks/useBusiness';
-import { v4 as uuidv4 } from 'uuid';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
@@ -18,12 +17,12 @@ interface BusinessFormProps {
 }
 
 const initialState = {
-  businessName: '', firstName: '', lastName: '', address: '', city: '', state: '', zipCode: '', phone: '', email: '', website: ''
+  businessName: '', firstName: '', lastName: '', phone: '', email: ''
 };
 
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 
-const BusinessForm: React.FC<BusinessFormProps> = ({ visible, onClose, onSuccess }) => {
+export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFormProps) {
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,17 +39,24 @@ const BusinessForm: React.FC<BusinessFormProps> = ({ visible, onClose, onSuccess
   };
 
   const handleCreate = async () => {
-    setLoading(true);
-    setError(null);
     try {
-      if (!user?.userId) throw new Error('No userId found');
-      await createBusiness({ ...form, userId: user.userId });
+      setLoading(true);
+      setError(null);
+      const userId = user?.userId;
+      if (!userId) {
+        setError('No user ID found.');
+        return;
+      }
+      const formData = { ...form, userId };
+      await createBusiness(formData);
       handleReset();
+      if (onSuccess) {
+        onSuccess(); // Triggers navigation in Navigation.tsx
+      }
       onClose();
-      onSuccess?.();
       Alert.alert('Success', 'Business created successfully!');
-    } catch (e: any) {
-      setError(e.message || 'Failed to create business');
+    } catch (err: any) {
+      setError(err.message || 'Failed to create business.');
     } finally {
       setLoading(false);
     }
@@ -96,5 +102,3 @@ const styles = StyleSheet.create({
   label: { fontWeight: '600', marginBottom: 4, textTransform: 'capitalize' },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginBottom: 10 },
 });
-
-export default BusinessForm;

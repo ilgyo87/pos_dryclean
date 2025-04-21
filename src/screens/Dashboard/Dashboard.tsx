@@ -1,23 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } from "react-native";
 import { getFirstBusiness, addBusiness } from '../../localdb/services/businessService';
-import Realm from 'realm';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { AuthUser } from "aws-amplify/auth";
+import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
 import { Business } from '../../types';
 
-import { useRoute } from '@react-navigation/native';
-
-export default function Dashboard({ user }: { user: AuthUser | null }) {
+export default function Dashboard({ user, refresh }: { user: AuthUser | null, refresh: number }) {
   const [business, setBusiness] = useState<Business | undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const navigation = useNavigation<any>();
-
   const client = generateClient<Schema>();
+
+  const { user: authUser } = useAuthenticator((context) => [context.user]);
+
+
+
   const fetchBusiness = useCallback(async () => {
+    console.log('fetchBusiness called');
     setIsLoading(true);
     try {
       if (!user?.userId) {
@@ -27,58 +30,55 @@ export default function Dashboard({ user }: { user: AuthUser | null }) {
       }
       let locals = await getFirstBusiness(user.userId);
       console.log('[Dashboard] getFirstBusiness result:', locals);
-      console.log('[Dashboard] userId:', user.userId);
       if (!locals) {
         // Try API fetch
-        const apiBiz = await client.models.Business.list({
+        const { data } = await client.models.Business.list({
           filter: { owner: { contains: user.userId } }
         });
-        console.log('[Dashboard] API business list:', apiBiz.data);
-        if (apiBiz.data.length > 0) {
-          const apiObj = apiBiz.data[0];
-          console.log('[Dashboard] Saving business with userId:', apiObj.owner ?? user.userId);
-          await addBusiness({
-            _id: apiObj.id,
-            businessName: apiObj.businessName ?? '',
-            firstName: apiObj.firstName ?? '',
-            lastName: apiObj.lastName ?? '',
-            phone: apiObj.phone ?? '',
-            userId: apiObj.owner ?? user.userId,
-            // Add any other fields your local schema expects
-          });
-          // Debug: print all local businesses
-          const realm = await Realm.open({ path: 'pos-dryclean.realm' });
-          const allBusinesses = realm.objects('Business');
-          console.log('[Dashboard] All local businesses (unfiltered):', JSON.stringify(allBusinesses, null, 2));
-          console.log('[Dashboard] Querying business with userId:', user.userId);
+        console.log('[Dashboard] API business list:', data);
+        if (data && data.length > 0) {
+          // Save to local DB
+          const ownerEmail = authUser?.signInDetails?.loginId || '';
+
+          for (const apiObj of data) {
+            await addBusiness({
+              _id: apiObj.id,
+              businessName: apiObj.businessName,
+              firstName: apiObj.firstName || '',
+              lastName: apiObj.lastName || '',
+              phone: apiObj.phone || '',
+              email: ownerEmail,
+              userId: apiObj.owner || user.userId,
+            });
+          }
+          // Re-query local
           locals = await getFirstBusiness(user.userId);
-          console.log('[Dashboard] getFirstBusiness (after sync) result:', locals);
         }
       }
-      if (locals) setBusiness(locals);
-      else setBusiness(undefined);
-    } catch (e) {
-      console.error('Error fetching local business:', e);
-      setBusiness(undefined);
+      setBusiness(locals);
+    } catch (err) {
+      let message = '';
+      if (typeof err === 'object' && err && 'message' in err) {
+        message = (err as any).message;
+      } else {
+        message = String(err);
+      }
+      console.error('[Dashboard] Error fetching business:', err, JSON.stringify(err));
+      Alert.alert('Error', `Failed to load business data. ${message}`);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.userId]);
+  }, [user?.userId, refresh]);
 
-    const route = useRoute();
-  const refresh = (route as any).params?.refresh;
-
-  // Initial fetch on mount and when refresh param changes
-  useEffect(() => { fetchBusiness(); }, [fetchBusiness, refresh]);
-  // Refetch when screen focus changes (for navigation-based flows)
-  useFocusEffect(
-    useCallback(() => { fetchBusiness(); }, [fetchBusiness])
-  );
+  useEffect(() => {
+    fetchBusiness();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchBusiness]);
 
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#007bff" />
       </View>
     );
   }
@@ -133,9 +133,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   createButton: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: 'blue',
-    marginBottom: 8,
+    backgroundColor: '#007bff', // or any color you prefer for the box
+    color: 'white', // text color
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5, // for rounded corners
+    textAlign: 'center',
+    alignSelf: 'center', // center the button itself
+    marginTop: 10, // some spacing from the text above
   }
 });

@@ -7,6 +7,11 @@ import Toast from 'react-native-toast-message';
 import Navigation from './components/Navigation';
 import SignOutButton from './components/SignOutButton';
 import outputs from '../amplify_outputs.json';
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'Sending `onAnimatedValueUpdate` with no listeners registered.',
+]);
 import type { Schema } from '../amplify/data/resource';
 import BusinessForm from './components/BusinessForm';
 
@@ -18,14 +23,13 @@ function AuthenticatedApp() {
   const userId = user?.userId;
   const [isBusinessAvailable, setIsBusinessAvailable] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     async function checkUserBusiness() {
       if (!userId) return;
-      
       try {
         setIsLoading(true);
-        
         const { data, errors } = await client.models.Business.list({
           filter: {
             userId: {
@@ -33,7 +37,6 @@ function AuthenticatedApp() {
             }
           }
         });
-        
         if (data && !errors) {
           setIsBusinessAvailable(data.length > 0);
         } else {
@@ -46,7 +49,6 @@ function AuthenticatedApp() {
         setIsLoading(false);
       }
     }
-    
     checkUserBusiness();
   }, [userId]);
 
@@ -54,12 +56,15 @@ function AuthenticatedApp() {
     <SafeAreaView style={{ flex: 1 }}>
       <SignOutButton />
       <View style={{ flex: 1 }}>
-        <Navigation user={user} />
+        <Navigation user={user} refresh={refresh} />
         {!isBusinessAvailable && !isLoading && (
           <BusinessForm
             visible={!isBusinessAvailable}
             onClose={() => setIsBusinessAvailable(true)}
-            onSuccess={() => setIsBusinessAvailable(true)}
+            onSuccess={() => {
+              setIsBusinessAvailable(true);
+              setRefresh((r) => r + 1);
+            }}
           />
         )}
       </View>

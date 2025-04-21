@@ -1,4 +1,4 @@
-import { getRealm } from '../index';
+import { getRealm } from '../getRealm';
 import { Customer } from '../../types';
 
 export async function addCustomer(customer: Customer) {
