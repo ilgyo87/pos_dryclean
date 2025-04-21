@@ -4,6 +4,7 @@ import { PhoneInput } from './PhoneInput';
 import FormModal from './FormModal';
 import CrudButtons from './CrudButtons';
 import { useBusiness } from '../hooks/useBusiness';
+import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 
@@ -20,14 +21,16 @@ const initialState = {
   businessName: '', firstName: '', lastName: '', phone: '', email: ''
 };
 
-import { useAuthenticator } from '@aws-amplify/ui-react-native';
-
 export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFormProps) {
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { createBusiness } = useBusiness();
-  const { user } = useAuthenticator((context) => [context.user]);
+  const { user: authUser } = useAuthenticator((context) => [context.user]);
+  const { createBusiness } = useBusiness({
+    userId: authUser?.userId,
+    refresh: 0, // or a real refresh value if you use one
+    authUser,
+  });
 
   const handleChange = (field: keyof typeof initialState, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -42,7 +45,7 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
     try {
       setLoading(true);
       setError(null);
-      const userId = user?.userId;
+      const userId = authUser?.userId;
       if (!userId) {
         setError('No user ID found.');
         return;
