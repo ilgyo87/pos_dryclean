@@ -1,25 +1,28 @@
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TextInputProps } from 'react-native';
-import { useAvailability } from '../hooks/useAvailability';
 
 interface EmailInputProps extends TextInputProps {
   value: string;
   onChangeText: (text: string) => void;
-  checkFn: (val: string) => Promise<boolean>;
+  // Instead of passing the check function, pass the availability state directly
+  isAvailable: boolean;
+  isLoading: boolean;
+  errorMessage: string | null;
 }
 
 export const EmailInput: React.FC<EmailInputProps> = ({
   value,
   onChangeText,
-  checkFn,
+  isAvailable,
+  isLoading,
+  errorMessage,
   style,
   ...rest
 }) => {
-  // Only trigger check when value looks like an email
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-  const checkValue = isValidEmail ? value : '';
   const [focused, setFocused] = useState(false);
-  const { available, loading, error } = useAvailability(checkValue, checkFn);
+  
+  // Check if email format is valid
+  const isValidFormat = value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   
   return (
     <View>
@@ -33,9 +36,22 @@ export const EmailInput: React.FC<EmailInputProps> = ({
         style={style}
         {...rest}
       />
-      {loading && checkValue !== '' && focused && <Text style={styles.helper}>Checking availability...</Text>}
-      {!loading && !available && <Text style={styles.inputError}>{error || 'Email unavailable'}</Text>}
-      {!loading && available && checkValue !== '' && <Text style={styles.available}>Available</Text>}
+      
+      {isLoading && value !== '' && focused && (
+        <Text style={styles.helper}>Checking availability...</Text>
+      )}
+      
+      {!isLoading && !isAvailable && value !== '' && (
+        <Text style={styles.inputError}>{errorMessage || 'Email already in use'}</Text>
+      )}
+      
+      {!isLoading && isAvailable && value !== '' && isValidFormat && (
+        <Text style={styles.available}>Available</Text>
+      )}
+      
+      {!isValidFormat && value !== '' && (
+        <Text style={styles.inputError}>Please enter a valid email</Text>
+      )}
     </View>
   );
 };

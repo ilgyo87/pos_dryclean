@@ -1,19 +1,24 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import FormModal from './../../../components/FormModal';
 import CrudButtons from './../../../components/CrudButtons';
 import type { Customer } from '../../../types';
-import { useCustomerForm } from './useCustomerForm';
 import { CustomerNameFields } from './CustomerNameFields';
 import { CustomerContactFields } from './CustomerContactFields';
 import { CustomerAddressFields } from './CustomerAddressFields';
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../../../amplify/data/resource';
+import { useAuthenticator } from '@aws-amplify/ui-react-native';
+import { addCustomer, getAllCustomers, updateCustomer, deleteCustomer } from '../../../localdb/services/customerService';
+
+const client = generateClient<Schema>();
 
 interface CustomerFormProps {
     visible: boolean;
     userId?: string;
     onClose: () => void;
     onSuccess?: (customer?: Customer) => void;
-    customer?: Customer | null; // New: for edit mode
+    customer?: Customer | null; // For edit mode
 }
 
 const initialState = {
@@ -34,18 +39,251 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     onSuccess,
     customer = null
 }) => {
-    const {
-        form,
-        loading,
-        phoneAvailability,
-        isPhoneValid,
-        emailAvailable,
-        handleChange,
-        handleReset,
-        handleDelete,
-        handleSubmit,
-        isValidEmail,
-    } = useCustomerForm({ visible, customer, userId, onClose, onSuccess });
+    const [form, setForm] = useState(initialState);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const { user: authUser } = useAuthenticator((context) => [context.user]);
+    
+    // Store original values for comparison when editing
+    const [originalPhone, setOriginalPhone] = useState('');
+    const [originalEmail, setOriginalEmail] = useState('');
+    
+    // Reset form when customer changes or modal visibility changes
+    useEffect(() => {
+        if (visible) {
+            if (customer) {
+                setForm({
+                    firstName: customer.firstName || '',
+                    lastName: customer.lastName || '',
+                    phone: customer.phone || '',
+                    email: customer.email || '',
+                    address: customer.address || '',
+                    city: customer.city || '',
+                    state: customer.state || '',
+                    zipCode: customer.zipCode || '',
+                });
+                setOriginalPhone((customer.phone || '').replace(/\D/g, ''));
+                setOriginalEmail(customer.email || '');
+            } else {
+                setForm(initialState);
+                setOriginalPhone('');
+                setOriginalEmail('');
+            }
+            setError(null);
+        }
+    }, [customer, visible]);
+
+    // Show error alert if error is set
+    useEffect(() => {
+        if (error) Alert.alert('Error', error);
+    }, [error]);
+    
+    const handleChange = (field: keyof typeof initialState, value: string) => {
+        setForm(prev => ({ ...prev, [field]: value }));
+    };
+    
+    const handleReset = () => {
+        if (customer) {
+            setForm({
+                firstName: customer.firstName || '',
+                lastName: customer.lastName || '',
+                phone: customer.phone || '',
+                email: customer.email || '',
+                address: customer.address || '',
+                city: customer.city || '',
+                state: customer.state || '',
+                zipCode: customer.zipCode || '',
+            });
+        } else {
+            setForm(initialState);
+        }
+        setError(null);
+    };
+    
+    const handleDelete = async () => {
+        Alert.alert(
+            'Delete Customer',
+            'Are you sure you want to delete this customer?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            setError(null);
+                            if (!customer) throw new Error('No customer to delete');
+                            // Hard delete from Realm/local
+                            await deleteCustomer(customer._id);
+                            if (onSuccess) onSuccess();
+                            onClose();
+                        } catch (err: any) {
+                            setError(err.message || 'Failed to delete customer');
+                        } finally {
+                            setLoading(false);
+                        }
+                    },
+                },
+            ]
+        );
+    };
+    
+    // Validate email format
+    const isValidEmail = (email: string) => {
+        return email ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) : true;
+    };
+    
+    // Phone number check function
+    const phoneCheckFn = async (val: string) => {
+        const cleanedInput = val.replace(/\D/g, '');
+        if (cleanedInput.length < 10) return false;
+        
+        // If editing and phone hasn't changed
+        if (customer && cleanedInput === originalPhone) {
+            return false; // Not in use by another customer
+        }
+        
+        const allCustomers = await getAllCustomers();
+        const phoneExists = Array.from(allCustomers)
+            .filter((c: any) => !customer || c._id !== customer._id)
+            .some((c: any) => {
+                const customerPhone = (c.phone || '').replace(/\D/g, '');
+                return customerPhone === cleanedInput;
+            });
+            
+        return phoneExists; // If true, phone is in use
+    };
+    
+    // Email check function
+    const emailCheckFn = async (val: string) => {
+        if (!val) return false;
+        
+        // If editing and email hasn't changed
+        if (customer && val === originalEmail) {
+            return false; // Not in use by another customer
+        }
+        
+        const allCustomers = await getAllCustomers();
+        const emailExists = Array.from(allCustomers)
+            .filter((c: any) => !customer || c._id !== customer._id)
+            .some((c: any) => (c.email || '').toLowerCase() === val.toLowerCase());
+            
+        return emailExists; // If true, email is in use
+    };
+    
+    const handleSubmit = async () => {
+        // Basic validation
+        if (!form.firstName || !form.lastName || !form.phone) {
+            setError('First name, last name, and phone are required');
+            return;
+        }
+        
+        const normalizedPhone = form.phone.replace(/\D/g, '');
+        if (normalizedPhone.length < 10) {
+            setError('Phone number must have at least 10 digits');
+            return;
+        }
+        
+        // Check phone availability (skip if unchanged during edit)
+        if (!(customer && normalizedPhone === originalPhone)) {
+            const phoneInUse = await phoneCheckFn(normalizedPhone);
+            if (phoneInUse) {
+                setError('Phone number is already in use');
+                return;
+            }
+        }
+        
+        // Check email if provided
+        if (form.email) {
+            if (!isValidEmail(form.email)) {
+                setError('Please enter a valid email address');
+                return;
+            }
+            
+            // Check email availability (skip if unchanged during edit)
+            if (!(customer && form.email === originalEmail)) {
+                const emailInUse = await emailCheckFn(form.email);
+                if (emailInUse) {
+                    setError('Email address is already in use');
+                    return;
+                }
+            }
+        }
+        
+        try {
+            setLoading(true);
+            setError(null);
+            
+            if (customer) {
+                // Update existing customer
+                await updateCustomer(customer._id, {
+                    firstName: form.firstName,
+                    lastName: form.lastName,
+                    phone: form.phone,
+                    email: form.email || '',
+                    address: form.address || '',
+                    city: form.city || '',
+                    state: form.state || '',
+                    zipCode: form.zipCode || '',
+                });
+                if (onSuccess) onSuccess();
+                onClose();
+            } else {
+                // Create new customer
+                const response = await client.models.Customer.create({
+                    firstName: form.firstName,
+                    lastName: form.lastName,
+                    phone: form.phone,
+                    email: form.email || undefined,
+                    address: form.address || undefined,
+                    city: form.city || undefined,
+                    state: form.state || undefined,
+                    zipCode: form.zipCode || undefined,
+                    businessId: userId,
+                    cognitoId: authUser?.userId || undefined,
+                });
+                
+                if (!response.data) throw new Error('Failed to create customer');
+                
+                const newCustomer: Customer = {
+                    _id: response.data.id,
+                    firstName: form.firstName,
+                    lastName: form.lastName,
+                    phone: form.phone,
+                    email: form.email || '',
+                    address: form.address || '',
+                    city: form.city || '',
+                    state: form.state || '',
+                    zipCode: form.zipCode || '',
+                    businessId: userId,
+                    cognitoId: authUser?.userId || undefined,
+                };
+                
+                await addCustomer(newCustomer);
+                if (onSuccess) onSuccess(newCustomer);
+                onClose();
+            }
+        } catch (err: any) {
+            setError(err.message || 'Error saving customer');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // Check if form is valid for enabling submit button
+    const isFormValid = () => {
+        const normalizedPhone = form.phone.replace(/\D/g, '');
+        const isPhoneValid = normalizedPhone.length >= 10;
+        const isEmailValid = !form.email || isValidEmail(form.email);
+        
+        return (
+            !!form.firstName &&
+            !!form.lastName &&
+            isPhoneValid &&
+            isEmailValid
+        );
+    };
 
     return (
         <FormModal visible={visible} onClose={onClose} title={customer ? "Edit Customer" : "Add New Customer"}>
@@ -59,9 +297,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     phone={form.phone}
                     email={form.email}
                     onChange={handleChange}
-                    phoneCheckFn={async () => true} // Placeholder, availability handled by useAvailability
-                    
-                    emailCheckFn={async () => true} // Placeholder, add real check if needed
+                    phoneCheckFn={phoneCheckFn}
+                    emailCheckFn={emailCheckFn}
                 />
                 <CustomerAddressFields
                     address={form.address}
@@ -83,15 +320,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     showDelete={!!customer}
                     showReset
                     showCancel
-                    // Only disable the create/update button, never cancel/reset
-                    disabled={
-                        !form.firstName ||
-                        !form.lastName ||
-                        !form.phone ||
-                        !isPhoneValid ||
-                        !phoneAvailability.available ||
-                        (form.email ? !isValidEmail(form.email) || !emailAvailable : false)
-                    }
+                    disabled={!isFormValid()}
                 />
             </View>
         </FormModal>
