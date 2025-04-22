@@ -5,6 +5,10 @@
  * It uses a try-catch to handle cases where the image doesn't exist
  */
 export const getGarmentImage = (imageName: string) => {
+    // Guard for undefined or empty imageName
+    if (!imageName || typeof imageName !== 'string') {
+      imageName = 'default';
+    }
     // Make sure the name is safe for require by cleaning it
     const cleanImageName = imageName
       .toLowerCase()
@@ -91,6 +95,7 @@ export const getGarmentImage = (imageName: string) => {
         case 'zipper':
           return require('../assets/garments/zipper.png');
         case 'default':
+          return require('../assets/garments/tshirt.png');
         default:
           return require('../assets/garments/tshirt.png');
       }
