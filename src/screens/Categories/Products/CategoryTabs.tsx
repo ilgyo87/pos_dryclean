@@ -9,23 +9,22 @@ import {
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-interface Category {
-  id: string;
-  name: string;
-}
+import type { Category } from '../../../types';
 
 interface CategoryTabsProps {
   categories: Category[];
   selectedCategory: string | null;
   onSelectCategory: (categoryId: string) => void;
   onAddCategory: () => void;
-}
+  onEditCategory?: (category: Category) => void;
+} 
 
 const CategoryTabs: React.FC<CategoryTabsProps> = ({
   categories,
   selectedCategory,
   onSelectCategory,
   onAddCategory,
+  onEditCategory,
 }) => {
   return (
     <View style={styles.categoriesContainer}>
@@ -35,13 +34,14 @@ const CategoryTabs: React.FC<CategoryTabsProps> = ({
         contentContainerStyle={styles.categoriesScrollContent}
       >
         {categories.map((category) => {
-          const isSelected = category.id === selectedCategory;
+          const isSelected = category._id === selectedCategory;
           
           return (
             <TouchableOpacity
-              key={category.id}
+              key={category._id}
               style={[styles.categoryTab, isSelected && styles.selectedCategoryTab]}
-              onPress={() => onSelectCategory(category.id)}
+              onPress={() => onSelectCategory(category._id)}
+              onLongPress={() => onEditCategory?.(category)}
             >
               <Text style={[styles.categoryText, isSelected && styles.selectedCategoryText]}>
                 {category.name}

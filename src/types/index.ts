@@ -17,6 +17,23 @@ export interface BusinessFormState {
   email: string;
 }
 
+export interface Category {
+  _id: string;
+  name: string;
+  color?: string;
+  businessId?: string;
+}
+
+export interface Product {
+  imageName?: string;
+  _id: string;
+  name: string;
+  description?: string;
+  price?: number;
+  categoryId: string;
+  businessId?: string;
+}
+
 export interface Customer {
   _id: string;
   firstName: string;

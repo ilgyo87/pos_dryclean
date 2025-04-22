@@ -1,55 +1,24 @@
-import { useState, useCallback, useEffect } from 'react';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
-import { addCategory, getAllCategories, getCategoriesByBusinessId } from '../localdb/services/categoryService';
-import type { Category } from '../types';
-import { Alert } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { Category } from '../types';
+import { getAllCategories, addCategory, updateCategory, deleteCategory } from '../localdb/services/categoryService';
 
-const client = generateClient<Schema>();
-
-export function useCategories(businessId?: string) {
+export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchCategories = useCallback(async () => {
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
     try {
-      if (businessId) {
-        const realmResults = await getCategoriesByBusinessId(businessId);
-        // Realm objects need to be mapped to plain JS objects
-        const categoryData: Category[] = Array.from(realmResults).map((item: any) => ({
-          _id: item._id,
-          name: item.name,
-          description: item.description || '',
-          businessId: item.businessId,
-          imageUrl: item.imageUrl || '',
-          imageSource: item.imageSource || '',
-          price: item.price || 0,
-        }));
-        setCategories(categoryData);
-      } else {
-        const realmResults = await getAllCategories();
-        // Realm objects need to be mapped to plain JS objects
-        const categoryData: Category[] = Array.from(realmResults).map((item: any) => ({
-          _id: item._id,
-          name: item.name,
-          description: item.description || '',
-          businessId: item.businessId,
-          imageUrl: item.imageUrl || '',
-          imageSource: item.imageSource || '',
-          price: item.price || 0,
-        }));
-        setCategories(categoryData);
-      }
+      const results = await getAllCategories();
+      setCategories(Array.from(results).map((item: any) => ({ ...item })));
     } catch (err: any) {
       setError(err.message || 'Failed to fetch categories');
-      console.error('Error fetching categories:', err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [businessId]);
+  }, []);
 
   // Initial fetch
   useEffect(() => {
@@ -57,50 +26,56 @@ export function useCategories(businessId?: string) {
   }, [fetchCategories]);
 
   // Create a new category
-  const createCategory = async (categoryData: Omit<Category, '_id'>) => {
+  const createCategory = async (category: Category) => {
+    setLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      // Create category in Amplify data
-      const response = await client.models.Category.create({
-        name: categoryData.name,
-        description: categoryData.description,
-        price: categoryData.price,
-        imageUrl: categoryData.imageUrl,
-        businessId: categoryData.businessId,
-      });
-
-      if (!response.data) {
-        throw new Error('Failed to create category in Amplify');
-      }
-
-      // Create in local Realm DB
-      const newCategory: Category = {
-        _id: response.data.id,
-        name: categoryData.name,
-        description: categoryData.description || '',
-        businessId: categoryData.businessId,
-        imageUrl: categoryData.imageUrl || '',
-        imageSource: categoryData.imageSource || '',
-        price: categoryData.price || 0,
-      };
-
-      await addCategory(newCategory);
-      await fetchCategories(); // Refresh the list
-      return newCategory;
+      await addCategory(category);
+      await fetchCategories();
     } catch (err: any) {
-      setError(err.message || 'Failed to create category');
-      Alert.alert('Error', `Failed to create category: ${err.message}`);
-      throw err;
+      setError(err.message || 'Failed to add category');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
+  const editCategory = async (id: string, updates: Partial<Category>) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await updateCategory(id, updates);
+      await fetchCategories();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update category');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeCategory = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await deleteCategory(id);
+      await fetchCategories();
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete category');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
   return {
     categories,
-    isLoading,
+    loading,
     error,
-    refetch: fetchCategories,
+    fetchCategories,
     createCategory,
+    editCategory,
+    removeCategory,
   };
 }

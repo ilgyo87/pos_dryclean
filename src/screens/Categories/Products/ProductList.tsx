@@ -1,4 +1,4 @@
-// src/components/Products/ProductList.tsx
+// src/screens/Categories/Products/ProductList.tsx
 import React from 'react';
 import {
   View,
@@ -6,20 +6,12 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { Image } from 'react-native';
 import { getGarmentImage } from '../../../utils/ImageMapping';
-import ProductPlaceholder from './ProductPlaceholder';
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image?: string;
-  description?: string;
-  categoryId: string;
-}
+import type { Product } from '../../../types';
 
 interface ProductListProps {
   products: Product[];
@@ -35,27 +27,31 @@ const ProductList: React.FC<ProductListProps> = ({
   onEditProduct,
 }) => {
   const renderProductItem = ({ item }: { item: Product }) => {
-    // Try to get the image, fallback to placeholder if not available
-    const imageSource = getGarmentImage(item.image || '');
-    
     return (
       <TouchableOpacity 
         style={styles.productItem}
         onPress={() => onEditProduct(item)}
       >
         <View style={styles.productImageContainer}>
-          {imageSource ? (
-            <Image 
-              source={imageSource}
-              style={styles.productImage}
+          {item.imageName ? (
+            <Image
+              source={getGarmentImage(item.imageName)}
+              style={{ width: 40, height: 40 }}
+              resizeMode="contain"
             />
           ) : (
-            <ProductPlaceholder categoryId={item.categoryId} size={26} />
+            <Image
+              source={getGarmentImage('default')}
+              style={{ width: 40, height: 40 }}
+              resizeMode="contain"
+            />
           )}
         </View>
         <View style={styles.productInfo}>
           <Text style={styles.productName}>{item.name}</Text>
-          <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
+          <Text style={styles.productPrice}>
+  {item.price !== undefined ? `$${item.price.toFixed(2)}` : 'N/A'}
+</Text>
         </View>
         <TouchableOpacity 
           style={styles.editButton}
@@ -85,7 +81,7 @@ const ProductList: React.FC<ProductListProps> = ({
       <FlatList
         data={products}
         renderItem={renderProductItem}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item._id}
         contentContainerStyle={styles.productsList}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -150,16 +146,10 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 8,
-    backgroundColor: '#f9f9f9',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     overflow: 'hidden',
-  },
-  productImage: {
-    width: 42,
-    height: 42,
-    resizeMode: 'contain',
   },
   productInfo: {
     flex: 1,

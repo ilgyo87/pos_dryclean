@@ -80,6 +80,8 @@ export const getGarmentImage = (imageName: string) => {
           return require('../assets/garments/take-in.png');
         case 'tshirt':
           return require('../assets/garments/tshirt.png');
+        case 't-shirt':
+          return require('../assets/garments/t-shirt.png');
         case 'waist':
           return require('../assets/garments/waist.png');
         case 'washing-clothes':
@@ -94,8 +96,6 @@ export const getGarmentImage = (imageName: string) => {
           return require('../assets/garments/woman-suit.png');
         case 'zipper':
           return require('../assets/garments/zipper.png');
-        case 'default':
-          return require('../assets/garments/tshirt.png');
         default:
           return require('../assets/garments/tshirt.png');
       }

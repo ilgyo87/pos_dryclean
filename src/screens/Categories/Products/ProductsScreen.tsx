@@ -11,91 +11,89 @@ import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import CategoryTabs from '../Products/CategoryTabs';
 import ProductList from '../Products/ProductList';
 import DefaultServicesButton from '../Products/DefaultServicesButton';
+import CategoryForm from '../Products/CategoryForm';
+import ProductForm from '../Products/ProductForm';
+import { useCategories } from '../../../hooks/useCategories';
+import { useProducts } from '../../../hooks/useProducts';
+import type { Category, Product } from '../../../types';
 
-// Define types
-interface Category {
-  id: string;
-  name: string;
-}
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image?: string;
-  description?: string;
-  categoryId: string;
-}
-
-// Mock data for demo purposes
-const mockCategories: Category[] = [
-  { id: '1', name: 'Shirts' },
-  { id: '2', name: 'Pants' },
-  { id: '3', name: 'Dresses' },
-  { id: '4', name: 'Suits' },
-  { id: '5', name: 'Coats' }
-];
-
-const mockProducts: Product[] = [
-  { id: '1', name: 'Dress Shirt', price: 4.99, categoryId: '1', image: 'dress_shirt' },
-  { id: '2', name: 'T-Shirt', price: 3.99, categoryId: '1', image: 'tshirt' },
-  { id: '3', name: 'Polo', price: 4.49, categoryId: '1', image: 'polo' },
-  { id: '4', name: 'Jeans', price: 6.99, categoryId: '2', image: 'jeans' },
-  { id: '5', name: 'Slacks', price: 6.49, categoryId: '2', image: 'slacks' },
-  { id: '6', name: 'Khakis', price: 5.99, categoryId: '2', image: 'khakis' },
-  { id: '7', name: 'Cocktail Dress', price: 14.99, categoryId: '3', image: 'cocktail_dress' },
-  { id: '8', name: 'Evening Gown', price: 18.99, categoryId: '3', image: 'evening_gown' },
-  { id: '9', name: 'Business Suit', price: 19.99, categoryId: '4', image: 'business_suit' },
-  { id: '10', name: 'Tuxedo', price: 24.99, categoryId: '4', image: 'tuxedo' },
-  { id: '11', name: 'Winter Coat', price: 16.99, categoryId: '5', image: 'winter_coat' },
-  { id: '12', name: 'Rain Coat', price: 12.99, categoryId: '5', image: 'rain_coat' }
-];
 
 const ProductsScreen: React.FC = () => {
+  const { categories, loading: loadingCategories, createCategory, editCategory, removeCategory, fetchCategories } = useCategories();
+  const { products, loading: loadingProducts, createProduct, editProduct, removeProduct, fetchProducts } = useProducts();
+
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
-  const [products, setProducts] = useState<Product[]>([]);
-  const { user } = useAuthenticator((context) => [context.user]);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
-    // Set the first category as selected when component mounts
     if (categories.length > 0 && !selectedCategory) {
-      setSelectedCategory(categories[0].id);
+      setSelectedCategory(categories[0]._id);
     }
   }, [categories, selectedCategory]);
 
-  useEffect(() => {
-    // Filter products based on the selected category
-    if (selectedCategory) {
-      setProducts(mockProducts.filter(product => product.categoryId === selectedCategory));
-    } else {
-      setProducts([]);
-    }
-  }, [selectedCategory]);
+  const filteredProducts = selectedCategory
+    ? products.filter(product => product.categoryId === selectedCategory)
+    : [];
 
   const handleAddDefaultServices = () => {
     // Placeholder for future implementation
     Alert.alert("Success", "Default services added successfully!");
   };
 
+  // CATEGORY HANDLERS
   const handleAddCategory = () => {
-    Alert.alert("Add Category", "This feature will be implemented soon!");
+    setEditingCategory(null);
+    setShowCategoryForm(true);
+  };
+  const handleEditCategory = (category: Category) => {
+    setEditingCategory(category);
+    setShowCategoryForm(true);
+  };
+  const handleCategoryFormSuccess = (cat?: Category) => {
+    setShowCategoryForm(false);
+    fetchCategories();
+    if (cat && !selectedCategory) setSelectedCategory(cat._id);
   };
 
+  // PRODUCT HANDLERS
   const handleAddProduct = () => {
-    Alert.alert("Add Product", "This feature will be implemented soon!");
+    setEditingProduct(null);
+    setShowProductForm(true);
   };
-
   const handleEditProduct = (product: Product) => {
-    Alert.alert("Edit Product", `Editing ${product.name} (ID: ${product.id})`);
+    setEditingProduct(product);
+    setShowProductForm(true);
+  };
+  const handleProductFormSuccess = () => {
+    setShowProductForm(false);
+    fetchProducts();
   };
 
   return (
     <View style={styles.container}>
+      {/* Category Modal */}
+      <CategoryForm
+        visible={showCategoryForm}
+        onClose={() => setShowCategoryForm(false)}
+        onSuccess={handleCategoryFormSuccess}
+        category={editingCategory}
+      />
+      {/* Product Modal */}
+      <ProductForm
+        visible={showProductForm}
+        onClose={() => setShowProductForm(false)}
+        onSuccess={handleProductFormSuccess}
+        product={editingProduct}
+        categories={categories}
+      />
       {/* Categories Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Services</Text>
-        <DefaultServicesButton onPress={handleAddDefaultServices} />
+
       </View>
 
       {/* Categories Tabs */}
@@ -104,6 +102,7 @@ const ProductsScreen: React.FC = () => {
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
         onAddCategory={handleAddCategory}
+        onEditCategory={handleEditCategory}
       />
 
       {/* Products Content Area */}
@@ -115,6 +114,7 @@ const ProductsScreen: React.FC = () => {
               You don't have any services set up yet. You can add services manually or use our
               predefined templates for common dry cleaning services.
             </Text>
+
             <TouchableOpacity 
               style={styles.emptyStateButton}
               onPress={handleAddDefaultServices}
@@ -124,9 +124,9 @@ const ProductsScreen: React.FC = () => {
           </View>
         ) : (
           <ProductList
-            products={products}
+            products={filteredProducts}
             categoryName={selectedCategory 
-              ? categories.find(c => c.id === selectedCategory)?.name || ""
+              ? categories.find(c => c._id === selectedCategory)?.name || ""
               : ""}
             onAddProduct={handleAddProduct}
             onEditProduct={handleEditProduct}
