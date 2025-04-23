@@ -250,6 +250,9 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
               onUpdateOptions={handleUpdateOptions}
               total={calculateTotal()}
               onCheckout={handleCheckout}
+              businessId={employeeId || ''}
+              customerId={customer._id || ''}
+              employeeId={employeeId || ''}
             />
           </View>
         </View>
@@ -287,6 +290,9 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
               onUpdateOptions={handleUpdateOptions}
               total={calculateTotal()}
               onCheckout={handleCheckout}
+              businessId={employeeId || ''}
+              customerId={customer._id || ''}
+              employeeId={employeeId || ''}
             />
           </View>
         </View>
