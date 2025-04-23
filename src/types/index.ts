@@ -32,6 +32,7 @@ export interface Product {
   price?: number;
   categoryId: string;
   businessId?: string;
+  starch?: string;
 }
 
 export interface Customer {

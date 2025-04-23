@@ -32,7 +32,7 @@ const initialState = {
     city: '',
     state: '',
     zipCode: '',
-    imageName: '',
+
 };
 
 const CustomerForm: React.FC<CustomerFormProps> = ({
@@ -42,7 +42,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     onSuccess,
     customer = null
 }) => {
-    const [imagePickerVisible, setImagePickerVisible] = useState(false);
+
     const [form, setForm] = useState(initialState);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -65,7 +65,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     city: customer.city || '',
                     state: customer.state || '',
                     zipCode: customer.zipCode || '',
-                    imageName: customer.imageName || '',
+
                 });
                 setOriginalPhone((customer.phone || '').replace(/\D/g, ''));
                 setOriginalEmail(customer.email || '');
@@ -98,7 +98,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 city: customer.city || '',
                 state: customer.state || '',
                 zipCode: customer.zipCode || '',
-                imageName: customer.imageName || '',
+
             });
         } else {
             setForm(initialState);
@@ -232,7 +232,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     city: form.city || '',
                     state: form.state || '',
                     zipCode: form.zipCode || '',
-                    imageName: form.imageName || '',
                 });
                 if (onSuccess) onSuccess();
                 onClose();
@@ -251,7 +250,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         zipCode: form.zipCode || '',
                         businessId: userId,
                         cognitoId: authUser?.userId || undefined,
-                        imageName: form.imageName || '',
+
                     };
                     console.log('[CUSTOMER][LOCAL] Creating customer in local DB:', JSON.stringify(newCustomer));
                     await addCustomer(newCustomer);
@@ -289,37 +288,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     onChange={handleChange}
                 />
                 <View>
-                    <Text style={styles.label}>Image</Text>
-                    <TouchableOpacity
-                      style={{
-                        borderWidth: 1,
-                        borderColor: '#ccc',
-                        borderRadius: 8,
-                        padding: 10,
-                        marginBottom: 10,
-                        backgroundColor: '#f5f5f5',
-                        alignItems: 'center',
-                      }}
-                      onPress={() => setImagePickerVisible(true)}
-                    >
-                      <Text>{form.imageName ? 'Change Image' : 'Pick an Image'}</Text>
-                    </TouchableOpacity>
-                    <ImagePicker
-                      value={form.imageName}
-                      onChange={(imageName: string) => {
-                        handleChange('imageName', imageName);
-                        setImagePickerVisible(false);
-                      }}
-                      visible={imagePickerVisible}
-                      onClose={() => setImagePickerVisible(false)}
-                    />
-                    {form.imageName ? (
-                      <Image
-                        source={getGarmentImage(form.imageName)}
-                        style={{ width: 60, height: 60, alignSelf: 'center', marginBottom: 10 }}
-                        resizeMode="contain"
-                      />
-                    ) : null}
+
                 </View>
                 <CustomerContactFields
                     phone={form.phone}

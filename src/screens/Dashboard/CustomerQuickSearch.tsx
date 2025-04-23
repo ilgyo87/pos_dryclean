@@ -16,6 +16,7 @@ const CustomerQuickSearch = forwardRef<any, any>((props, ref) => {
   const [preFillPhone, setPreFillPhone] = useState('');
   const navigation = useNavigation<any>();
   const { customers, isLoading } = useCustomers();
+  console.log('[DEBUG] Loaded customers:', customers);
   const inputRef = useRef<TextInput>(null);
 
   useImperativeHandle(ref, () => ({

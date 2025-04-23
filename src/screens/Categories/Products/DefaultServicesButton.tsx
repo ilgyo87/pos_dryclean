@@ -74,7 +74,7 @@ const DEFAULT_SERVICES = [
 ];
 
 const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplete, businessId }) => {
-  console.log('[DefaultServicesButton] businessId:', businessId);
+
   if (!businessId) {
     console.warn('[DefaultServicesButton] Rendered without a businessId! Button will be disabled.');
   }
@@ -95,14 +95,14 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
         let categoryId = category ? category._id : uuidv4();
         if (!category) {
           await createCategory({ _id: categoryId, name: cat.name, businessId });
-          console.log(`[DefaultServicesButton] Created category: ${cat.name} (id: ${categoryId})`);
+
           await fetchCategories();
           category = categories.find(
             (c) => c.name.trim().toLowerCase() === cat.name.trim().toLowerCase()
           );
           categoryId = category ? category._id : categoryId;
         } else {
-          console.log(`[DefaultServicesButton] Category already exists: ${cat.name} (id: ${categoryId})`);
+
         }
         for (const prod of cat.products) {
           const availableImages = [
@@ -127,7 +127,7 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
             businessId,
           };
           await createProduct(prodObj);
-          console.log(`[DefaultServicesButton] Created product: ${prodObj.name} (id: ${prodObj._id}) in category: ${cat.name} (categoryId: ${categoryId}), image: ${imageKey}, price: ${prodObj.price}`);
+
         }
       }
       await fetchCategories();

@@ -31,7 +31,7 @@ interface ProductsScreenProps {
 }
 
 const ProductsScreen: React.FC<ProductsScreenProps> = ({ business, employeeId, firstName, lastName }) => {
-  console.log('[ProductsScreen] Received business:', business);
+
   const { categories, loading: loadingCategories, createCategory, editCategory, removeCategory, fetchCategories } = useCategories();
   const { products, loading: loadingProducts, createProduct, editProduct, removeProduct, fetchProducts } = useProducts();
 

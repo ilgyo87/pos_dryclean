@@ -81,6 +81,7 @@ export const ProductSchema = {
     pressOnly: 'bool?',
     imageName: 'string?',
     imageUrl: 'string?',
+    notes: 'string[]',
   },
 };
 
