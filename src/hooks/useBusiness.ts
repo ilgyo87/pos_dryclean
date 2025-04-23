@@ -12,7 +12,7 @@ export function useBusiness({ userId, refresh, authUser }: {
   refresh?: number,
   authUser: any
 }) {
-  console.log('[useBusiness] INIT userId:', userId, 'authUser:', authUser);
+  
 
   const [business, setBusiness] = useState<LocalBusiness | undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(false);

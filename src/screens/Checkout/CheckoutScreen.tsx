@@ -10,7 +10,13 @@ interface CheckoutScreenRouteParams {
 
 type CheckoutScreenRouteProp = RouteProp<{ Checkout: CheckoutScreenRouteParams }, 'Checkout'>;
 
-const CheckoutScreen: React.FC = () => {
+interface CheckoutScreenProps {
+  employeeId?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, lastName }) => {
   const route = useRoute<CheckoutScreenRouteProp>();
   const { customer } = route.params;
 

@@ -25,9 +25,12 @@ import type { Business } from '../../../types';
 
 interface ProductsScreenProps {
   business?: Business;
+  employeeId?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
-const ProductsScreen: React.FC<ProductsScreenProps> = ({ business }) => {
+const ProductsScreen: React.FC<ProductsScreenProps> = ({ business, employeeId, firstName, lastName }) => {
   console.log('[ProductsScreen] Received business:', business);
   const { categories, loading: loadingCategories, createCategory, editCategory, removeCategory, fetchCategories } = useCategories();
   const { products, loading: loadingProducts, createProduct, editProduct, removeProduct, fetchProducts } = useProducts();

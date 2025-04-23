@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useImperativeHandle, forwardRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Keyboard, StyleSheet, Modal, Pressable, Dimensions, TextInput, Button } from 'react-native';
 import CustomerSearchBar from '../Categories/Customers/CustomerSearchBar';
 import CustomerForm from '../Categories/Customers/CustomerForm';
@@ -8,7 +8,8 @@ import { useNavigation } from '@react-navigation/native';
 
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-const CustomerQuickSearch: React.FC = () => {
+
+const CustomerQuickSearch = forwardRef<any, any>((props, ref) => {
   const [search, setSearch] = useState('');
   const [focused, setFocused] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -16,6 +17,12 @@ const CustomerQuickSearch: React.FC = () => {
   const navigation = useNavigation<any>();
   const { customers, isLoading } = useCustomers();
   const inputRef = useRef<TextInput>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      inputRef.current?.focus();
+    },
+  }));
 
   // Filtering logic matches CustomersScreen
   const filtered = useMemo(() => {
@@ -133,7 +140,7 @@ const CustomerQuickSearch: React.FC = () => {
       />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   overlayBg: {

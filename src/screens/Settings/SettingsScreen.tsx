@@ -1,7 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-const SettingsScreen = () => (
+interface SettingsScreenProps {
+  employeeId?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ employeeId, firstName, lastName }) => (
   <View style={styles.container}>
     <Text style={styles.title}>Settings</Text>
   </View>

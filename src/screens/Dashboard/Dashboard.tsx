@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native";
 import { useBusiness } from '../../hooks/useBusiness';
 import { AuthUser } from "aws-amplify/auth";
@@ -6,9 +6,16 @@ import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import BusinessForm from '../../components/BusinessForm';
 import CategoriesGrid from './CategoriesGrid';
 import CustomerQuickSearch from './CustomerQuickSearch';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 export default function Dashboard({ user, refresh }: { user: AuthUser | null, refresh: number }) {
+  const customerQuickSearchRef = useRef<{ focus: () => void }>(null);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      customerQuickSearchRef.current?.focus();
+    }, [])
+  );
   const [showBusinessModal, setShowBusinessModal] = useState(false);
   const { user: authUser } = useAuthenticator((context) => [context.user]);
   const navigation = useNavigation<any>();
@@ -42,7 +49,7 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
             <Text style={styles.businessDetail}>{business.address}</Text>
             <Text style={styles.businessDetail}>{business.phone}</Text>
           </View>
-          <CustomerQuickSearch />
+          <CustomerQuickSearch ref={customerQuickSearchRef} />
           <CategoriesGrid
             categories={[
               {

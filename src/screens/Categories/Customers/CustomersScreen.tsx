@@ -9,7 +9,13 @@ import { Customer } from '../../../types';
 import { useCustomers } from '../../../hooks/useCustomers';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 
-export default function CustomersScreen() {
+interface CustomersScreenProps {
+  employeeId?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export default function CustomersScreen({ employeeId, firstName, lastName }: CustomersScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const { customers, isLoading, error, refetch } = useCustomers();
