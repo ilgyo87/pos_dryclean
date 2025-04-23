@@ -76,7 +76,6 @@ export const ProductSchema = {
     categoryId: 'string?',
     businessId: 'string?',
     customerId: 'string?',
-    customer: 'Customer?',
     employeeId: 'string?',
     orderId: 'string?',
     orderItemId: 'string?',

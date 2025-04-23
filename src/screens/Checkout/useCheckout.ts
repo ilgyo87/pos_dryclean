@@ -1,9 +1,10 @@
+// Updated useCheckout.ts with proper Realm implementation
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Realm from 'realm';
 import { OrderSchema, ProductSchema } from '../../localdb/schemas';
-import { Product } from '../../types';
 import { OrderItem } from './OrderSummary';
+import { Alert } from 'react-native';
 
 export interface CheckoutParams {
   items: OrderItem[];
@@ -12,37 +13,73 @@ export interface CheckoutParams {
   businessId: string;
   customerId: string;
   employeeId: string;
+  pickupDate?: Date | null;
+  notifications?: {
+    printReceipt: boolean;
+    notifyTxt: boolean;
+    notifyEmail: boolean;
+  };
 }
 
 export default function useCheckout() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const checkout = async ({ items, total, paymentMethod, businessId, customerId, employeeId }: CheckoutParams) => {
+  const checkout = async ({
+    items,
+    total,
+    paymentMethod,
+    businessId,
+    customerId,
+    employeeId,
+    pickupDate,
+    notifications,
+  }: CheckoutParams) => {
     setSaving(true);
     setError(null);
+    
     try {
+      console.log('[CHECKOUT] Starting checkout process');
+      console.log('[CHECKOUT] Items:', JSON.stringify(items));
+      
       const now = new Date();
       const orderId = uuidv4();
-      let productList: OrderItem[] = [];
+      let productList: any[] = [];
+      
+      // Create separate product entries for each quantity
       items.forEach(item => {
         for (let i = 0; i < (item.quantity || 1); i++) {
           const productId = uuidv4();
           const orderItemId = uuidv4();
-          productList.push({
-            ...item,
+          
+          const newProduct = {
             _id: productId,
+            name: item.name,
+            price: item.price || 0,
+            discount: item.discount || 0,
+            additionalPrice: item.additionalPrice || 0,
+            description: item.description || '',
+            categoryId: item.categoryId || '',
+            businessId,
+            customerId,
+            employeeId,
             orderId,
             orderItemId,
-            employeeId,
-            customerId,
-            businessId,
+            starch: item.options?.starch || 'none',
+            pressOnly: item.options?.pressOnly || false,
+            imageName: item.imageName || '',
+            imageUrl: item.imageUrl || '',
+            notes: item.options?.notes ? [item.options.notes] : [],
             status: 'CREATED',
             createdAt: now,
             updatedAt: now,
-          });
+          };
+          
+          productList.push(newProduct);
+          console.log(`[CHECKOUT] Creating product ${i+1} of ${item.quantity} for ${item.name}`);
         }
       });
+      
       const orderObj = {
         _id: orderId,
         businessId,
@@ -50,24 +87,52 @@ export default function useCheckout() {
         employeeId,
         items: productList,
         paymentMethod,
+        additionalPrice: 0,
+        discount: 0,
         total,
         notes: [],
+        pickupDate: pickupDate || undefined,
         status: 'CREATED',
         createdAt: now,
         updatedAt: now,
       };
-      const realm = await Realm.open({ schema: [OrderSchema, ProductSchema] });
+      
+      console.log('[CHECKOUT] Opening Realm');
+      const realm = await Realm.open({ 
+        schema: [OrderSchema, ProductSchema],
+        schemaVersion: 1,
+      });
+      
+      console.log('[CHECKOUT] Writing to Realm');
       realm.write(() => {
-        productList.forEach(prod => realm.create('Product', prod));
+        console.log('[CHECKOUT] Creating products');
+        productList.forEach(prod => {
+          console.log(`[CHECKOUT] Creating product: ${prod.name} (${prod._id})`);
+          realm.create('Product', prod);
+        });
+        
+        console.log('[CHECKOUT] Creating order');
         realm.create('Order', orderObj);
       });
+      
+      console.log('[CHECKOUT] Closing Realm');
       realm.close();
+      
+      console.log('[CHECKOUT] Checkout complete');
+      console.log('[CHECKOUT] Order:', JSON.stringify(orderObj));
+      
       setSaving(false);
-      return { order: orderObj, products: productList };
+      return { 
+        order: orderObj, 
+        products: productList,
+        success: true 
+      };
     } catch (e: any) {
+      console.error('[CHECKOUT] Error during checkout:', e);
       setError(e.message || 'Unknown error');
       setSaving(false);
-      throw e;
+      Alert.alert('Checkout Error', e.message || 'An error occurred while processing your order.');
+      return { success: false, error: e.message };
     }
   };
 

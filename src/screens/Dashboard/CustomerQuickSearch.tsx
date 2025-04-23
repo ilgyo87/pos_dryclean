@@ -134,7 +134,13 @@ const CustomerQuickSearch = forwardRef<any, any>((props, ref) => {
           setSearch('');
           setFocused(false);
           if (createdCustomer) {
-            navigation.navigate('Checkout', { customer: createdCustomer });
+            navigation.navigate('Checkout', {
+  customer: {
+    ...createdCustomer,
+    createdAt: createdCustomer.createdAt ? new Date(createdCustomer.createdAt).toISOString() : null,
+    updatedAt: createdCustomer.updatedAt ? new Date(createdCustomer.updatedAt).toISOString() : null,
+  }
+});
           }
         }}
         customer={preFillPhone ? { phone: preFillPhone } as Customer : undefined}

@@ -1,3 +1,4 @@
+// Updated OrderItemRow.tsx to integrate with payment modal
 import React, { useState } from 'react';
 import {
   View,
@@ -6,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ListRenderItem,
+  Alert,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Product } from '../../types';
@@ -14,7 +16,6 @@ import useCheckout from './useCheckout';
 import styles from './OrderSummary.styles';
 import OrderItemRow from './OrderItemRow';
 import OptionsModal from './OptionsModal';
-
 
 export interface OrderItem extends Product {
   quantity: number;
@@ -34,6 +35,7 @@ interface OrderSummaryProps {
   businessId: string;
   customerId: string;
   employeeId: string;
+  pickupDate?: Date | null;
 }
 
 function starchShortCode(starch?: 'none' | 'light' | 'medium' | 'heavy') {
@@ -57,25 +59,16 @@ function hashString(str: string): string {
   return Math.abs(hash).toString();
 }
 
-// Returns a background color style for each starch type
-function starchBoxColor(starch: 'light' | 'medium' | 'heavy' | 'none') {
-  switch (starch) {
-    case 'light': return { backgroundColor: '#e0f7fa', borderColor: '#00bcd4' };
-    case 'medium': return { backgroundColor: '#fff9c4', borderColor: '#fbc02d' };
-    case 'heavy': return { backgroundColor: '#ffebee', borderColor: '#d32f2f' };
-    default: return { backgroundColor: '#f0f0f0', borderColor: '#ccc' };
-  }
-}
-
 const OrderSummary: React.FC<OrderSummaryProps> = ({
-  items = [], // Default to empty array if items is undefined
+  items = [], 
   onUpdateQuantity,
   onUpdateOptions,
   total,
   onCheckout,
-  businessId, // <-- pass these in via props or context
+  businessId,
   customerId,
-  employeeId
+  employeeId,
+  pickupDate
 }) => {
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
@@ -93,27 +86,51 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const { checkout, saving } = useCheckout();
 
   // Open payment modal on checkout
-  const handleCheckout = () => setShowPaymentModal(true);
+  const handleCheckout = () => {
+    if (items.length === 0) {
+      Alert.alert('Error', 'Please add items to your order before checkout.');
+      return;
+    }
+    
+    if (!pickupDate) {
+      Alert.alert('Error', 'Please select a pickup date and time.');
+      return;
+    }
+    
+    setShowPaymentModal(true);
+  };
 
   // Confirm payment: use the custom hook
   const handleConfirmPayment = async () => {
     try {
-      await checkout({
+      const result = await checkout({
         items,
         total,
         paymentMethod,
         businessId,
         customerId,
         employeeId,
+        pickupDate,
+        notifications: {
+          printReceipt,
+          notifyTxt,
+          notifyEmail
+        }
       });
-      setShowPaymentModal(false);
-      if (onCheckout) onCheckout();
+      
+      if (result && result.success) {
+        setShowPaymentModal(false);
+        Alert.alert(
+          'Order Created',
+          'Your order has been successfully created.',
+          [{ text: 'OK', onPress: onCheckout }]
+        );
+      }
     } catch (e) {
-      // Optionally show error
+      // Error is handled in the checkout hook
+      console.error('Payment confirmation error:', e);
     }
   };
-
-
   
   const handleEditItem = (item: OrderItem) => {
     const optionsStr = item.options ? JSON.stringify(item.options) : '';
@@ -187,17 +204,17 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       </View>
 
       <OptionsModal
-          visible={showOptionsModal}
-          onClose={() => setShowOptionsModal(false)}
-          onSelectStarch={(level) => {
-            if (editingItem) {
-              const itemKey = (editingItem as any)._key || (editingItem.options ? `${editingItem._id}_${hashString(JSON.stringify(editingItem.options))}` : editingItem._id);
-              onUpdateOptions(itemKey, { ...editingItem.options, starch: level });
-              setShowOptionsModal(false);
-              setEditingItem(null);
-            }
-          }}
-        />
+        visible={showOptionsModal}
+        onClose={() => setShowOptionsModal(false)}
+        onSelectStarch={(level) => {
+          if (editingItem) {
+            const itemKey = (editingItem as any)._key || (editingItem.options ? `${editingItem._id}_${hashString(JSON.stringify(editingItem.options))}` : editingItem._id);
+            onUpdateOptions(itemKey, { ...editingItem.options, starch: level });
+            setShowOptionsModal(false);
+            setEditingItem(null);
+          }
+        }}
+      />
 
       <PaymentModal
         visible={showPaymentModal}

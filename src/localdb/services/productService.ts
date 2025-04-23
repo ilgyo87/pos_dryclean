@@ -7,17 +7,23 @@ export async function addProduct(product: Product) {
   realm.write(() => {
     createdProduct = realm.create('Product', product);
   });
-  return createdProduct;
+  return mapProduct(createdProduct);
+}
+
+function mapProduct(item: any) {
+  return { ...item };
 }
 
 export async function getAllProducts() {
   const realm = await getRealm();
-  return realm.objects('Product');
+  const products = realm.objects('Product');
+  return products.map(mapProduct);
 }
 
 export async function getProductById(id: string) {
   const realm = await getRealm();
-  return realm.objectForPrimaryKey('Product', id);
+  const product = realm.objectForPrimaryKey('Product', id);
+  return product ? mapProduct(product) : null;
 }
 
 export async function updateProduct(id: string, updates: Partial<Product>) {
@@ -51,10 +57,12 @@ export async function deleteProduct(id: string) {
 
 export async function getProductsByCategoryId(categoryId: string) {
   const realm = await getRealm();
-  return realm.objects<Product>('Product').filtered('categoryId == $0', categoryId);
+  const products = realm.objects('Product').filtered('categoryId == $0', categoryId);
+  return products.map(mapProduct);
 }
 
 export async function getProductsByBusinessId(businessId: string) {
   const realm = await getRealm();
-  return realm.objects<Product>('Product').filtered('businessId == $0', businessId);
+  const products = realm.objects('Product').filtered('businessId == $0', businessId);
+  return products.map(mapProduct);
 }

@@ -1,3 +1,4 @@
+// Updated CheckoutScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Dimensions, SafeAreaView, Alert } from 'react-native';
 import { RouteProp, useRoute, useNavigation, NavigationProp, ParamListBase } from '@react-navigation/native';
@@ -92,20 +93,21 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
         : undefined;
       const options = {
         starch,
-        pressOnly: (product as any).pressOnly,
-        notes: (product as any).notes,
+        pressOnly: Boolean(product.pressOnly),
+        notes: '',
       };
+
+      // Generate unique key for this product configuration
+      const optionsStr = JSON.stringify(options);
+      const itemKey = `${product._id}_${hashString(optionsStr)}`;
+      
       // Find an existing item with the same _id and the same options
       const existingItemIndex = prevItems.findIndex(item => {
-        if (item._id !== product._id) return false;
-        // Compare options deeply
-        const itemOptions = item.options || {};
-        return (
-          itemOptions.starch === options.starch &&
-          itemOptions.pressOnly === options.pressOnly &&
-          itemOptions.notes === options.notes
-        );
+        const currentOptionsStr = item.options ? JSON.stringify(item.options) : '';
+        const currentKey = `${item._id}_${hashString(currentOptionsStr)}`;
+        return currentKey === itemKey;
       });
+      
       if (existingItemIndex >= 0) {
         // Increment quantity if found
         const updatedItems = [...prevItems];
@@ -124,6 +126,18 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     });
   };
 
+  // Hash function for generating unique keys
+  function hashString(str: string): string {
+    let hash = 0, i, chr;
+    if (str.length === 0) return '0';
+    for (i = 0; i < str.length; i++) {
+      chr = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + chr;
+      hash |= 0; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString();
+  }
+
   // Update item quantity
   const handleUpdateQuantity = (productId: string, quantity: number) => {
     setOrderItems(prevItems => {
@@ -139,7 +153,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     });
   };
   
-  // Update item options
+  // Update item options by key
   const handleUpdateOptions = (itemKey: string, update: any) => {
     setOrderItems(prevItems =>
       prevItems.map(item => {
@@ -152,17 +166,6 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     );
   };
 
-  function hashString(str: string): string {
-    let hash = 0, i, chr;
-    if (str.length === 0) return '0';
-    for (i = 0; i < str.length; i++) {
-      chr = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + chr;
-      hash |= 0; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString();
-  }
-
   // Calculate total price
   const calculateTotal = () => {
     return orderItems.reduce((total, item) => {
@@ -171,45 +174,14 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     }, 0);
   };
 
-  // Handle checkout process
-  const handleCheckout = () => {
-    if (orderItems.length === 0) {
-      Alert.alert("Error", "Please add items to the order");
-      return;
-    }
+  // Handle checkout process completion
+  const handleCheckoutComplete = () => {
+    // Reset order state
+    setOrderItems([]);
+    setPickupDate(null);
     
-    if (!pickupDate) {
-      Alert.alert("Error", "Please select a pickup date and time");
-      return;
-    }
-    
-    // Implement checkout logic here
-    const orderDetails = {
-      customer,
-      items: orderItems,
-      total: calculateTotal(),
-      pickupDate,
-      employeeId: employeeId || 'unknown',
-      employee: employeeId ? { firstName, lastName } : undefined,
-      dateCreated: new Date(),
-      status: 'pending'
-    };
-    
-    console.log('Checkout with:', orderDetails);
-    
-    Alert.alert(
-      "Order Placed",
-      `Order for ${customer.firstName} ${customer.lastName} placed successfully! Pickup scheduled for ${pickupDate ? pickupDate.toLocaleString() : 'not specified'}.`,
-      [
-        { 
-          text: "OK", 
-          onPress: () => navigation.goBack()
-        }
-      ]
-    );
-    
-    // Navigate back to dashboard 
-    // navigation.navigate('Receipt', { orderDetails });
+    // Navigate back to dashboard
+    navigation.goBack();
   };
   
   return (
@@ -249,10 +221,11 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
               onUpdateQuantity={handleUpdateQuantity}
               onUpdateOptions={handleUpdateOptions}
               total={calculateTotal()}
-              onCheckout={handleCheckout}
-              businessId={employeeId || ''}
-              customerId={customer._id || ''}
+              onCheckout={handleCheckoutComplete}
+              businessId={customer.businessId || ''}
+              customerId={customer._id}
               employeeId={employeeId || ''}
+              pickupDate={pickupDate}
             />
           </View>
         </View>
@@ -289,10 +262,11 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
               onUpdateQuantity={handleUpdateQuantity}
               onUpdateOptions={handleUpdateOptions}
               total={calculateTotal()}
-              onCheckout={handleCheckout}
-              businessId={employeeId || ''}
-              customerId={customer._id || ''}
+              onCheckout={handleCheckoutComplete}
+              businessId={customer.businessId || ''}
+              customerId={customer._id}
               employeeId={employeeId || ''}
+              pickupDate={pickupDate}
             />
           </View>
         </View>

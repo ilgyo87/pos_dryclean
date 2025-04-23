@@ -10,9 +10,14 @@ export async function addCategory(category: Category) {
   return createdCategory;
 }
 
+function mapCategory(item: any) {
+  return { ...item };
+}
+
 export async function getAllCategories() {
   const realm = await getRealm();
-  return realm.objects('Category');
+  const categories = realm.objects('Category');
+  return categories.map(mapCategory);
 }
 
 export async function getCategoryById(id: string) {
@@ -52,5 +57,6 @@ export async function deleteCategory(id: string) {
 // Get categories by business ID
 export async function getCategoriesByBusinessId(businessId: string) {
   const realm = await getRealm();
-  return realm.objects<Category>('Category').filtered('businessId == $0', businessId);
+  const categories = realm.objects('Category').filtered('businessId == $0', businessId);
+  return categories.map(mapCategory);
 }

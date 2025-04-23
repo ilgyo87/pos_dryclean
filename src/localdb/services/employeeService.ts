@@ -7,19 +7,25 @@ export async function addEmployee(employee: Employee) {
   realm.write(() => {
     createdEmployee = realm.create('Employee', employee);
   });
-  console.log('[EMPLOYEE][LOCAL] Created employee in Realm:', JSON.stringify(employee));
-  console.log('[EMPLOYEE][LOCAL] Realm object:', JSON.stringify(createdEmployee));
-  return createdEmployee;
+  const jsEmployee = mapEmployee(createdEmployee);
+  console.log('[EMPLOYEE][LOCAL] Created employee in Realm:', JSON.stringify(jsEmployee));
+  return jsEmployee;
+}
+
+function mapEmployee(item: any) {
+  return { ...item };
 }
 
 export async function getAllEmployees() {
   const realm = await getRealm();
-  return realm.objects('Employee');
+  const employees = realm.objects('Employee');
+  return employees.map(mapEmployee);
 }
 
 export async function getEmployeeById(id: string) {
   const realm = await getRealm();
-  return realm.objectForPrimaryKey('Employee', id);
+  const employee = realm.objectForPrimaryKey('Employee', id);
+  return employee ? mapEmployee(employee) : null;
 }
 
 export async function updateEmployee(id: string, updates: Partial<Employee>) {
@@ -35,7 +41,7 @@ export async function updateEmployee(id: string, updates: Partial<Employee>) {
       updatedEmployee = employee;
     }
   });
-  return updatedEmployee;
+  return updatedEmployee ? mapEmployee(updatedEmployee) : null;
 }
 
 export async function deleteEmployee(id: string) {
