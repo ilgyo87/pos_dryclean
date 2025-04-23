@@ -1,5 +1,6 @@
 // src/screens/Categories/ProductsScreen.tsx
 import React, { useState, useEffect } from 'react';
+import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { 
   View, 
   Text, 
@@ -7,10 +8,11 @@ import {
   TouchableOpacity, 
   Alert 
 } from 'react-native';
-import { useAuthenticator } from '@aws-amplify/ui-react-native';
+
 import CategoryTabs from '../Products/CategoryTabs';
 import ProductList from '../Products/ProductList';
 import DefaultServicesButton from '../Products/DefaultServicesButton';
+import { useBusiness } from '../../../hooks/useBusiness';
 import CategoryForm from '../Products/CategoryForm';
 import ProductForm from '../Products/ProductForm';
 import { useCategories } from '../../../hooks/useCategories';
@@ -19,9 +21,17 @@ import type { Category, Product } from '../../../types';
 
 
 
-const ProductsScreen: React.FC = () => {
+import type { Business } from '../../../types';
+
+interface ProductsScreenProps {
+  business?: Business;
+}
+
+const ProductsScreen: React.FC<ProductsScreenProps> = ({ business }) => {
+  console.log('[ProductsScreen] Received business:', business);
   const { categories, loading: loadingCategories, createCategory, editCategory, removeCategory, fetchCategories } = useCategories();
   const { products, loading: loadingProducts, createProduct, editProduct, removeProduct, fetchProducts } = useProducts();
+
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -30,10 +40,13 @@ const ProductsScreen: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
-    if (categories.length > 0 && !selectedCategory) {
+    if (
+      categories.length > 0 &&
+      (!selectedCategory || !categories.find(c => c._id === selectedCategory))
+    ) {
       setSelectedCategory(categories[0]._id);
     }
-  }, [categories, selectedCategory]);
+  }, [categories]);
 
   const filteredProducts = selectedCategory
     ? products.filter(product => product.categoryId === selectedCategory)
@@ -115,12 +128,13 @@ const ProductsScreen: React.FC = () => {
               predefined templates for common dry cleaning services.
             </Text>
 
-            <TouchableOpacity 
-              style={styles.emptyStateButton}
-              onPress={handleAddDefaultServices}
-            >
-              <Text style={styles.emptyStateButtonText}>Add Default Services</Text>
-            </TouchableOpacity>
+            <DefaultServicesButton 
+              businessId={business?._id}
+              onComplete={async () => {
+                await fetchCategories();
+                await fetchProducts();
+              }}
+            />
           </View>
         ) : (
           <ProductList

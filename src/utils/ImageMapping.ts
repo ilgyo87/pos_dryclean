@@ -4,104 +4,56 @@
  * This function safely loads an image from assets
  * It uses a try-catch to handle cases where the image doesn't exist
  */
+const images: Record<string, any> = {
+  blankets: require('../../assets/garments/blankets.png'),
+  blazer: require('../../assets/garments/blazer.png'),
+  'boxed-shirts': require('../../assets/garments/boxed-shirts.png'),
+  buttons: require('../../assets/garments/buttons.png'),
+  'clothes-cut': require('../../assets/garments/clothes-cut.png'),
+  comforter: require('../../assets/garments/comforter.png'),
+  curtain: require('../../assets/garments/curtain.png'),
+  'dress-shirt': require('../../assets/garments/dress-shirt.png'),
+  dress: require('../../assets/garments/dress.png'),
+  hem: require('../../assets/garments/hem.png'),
+  jacket: require('../../assets/garments/jacket.png'),
+  jeans: require('../../assets/garments/jeans.png'),
+  jersey: require('../../assets/garments/jersey.png'),
+  'kids-clothes': require('../../assets/garments/kids-clothes.png'),
+  'leather-jacket': require('../../assets/garments/leather-jacket.png'),
+  pants: require('../../assets/garments/pants.png'),
+  patch: require('../../assets/garments/patch.png'),
+  pillow: require('../../assets/garments/pillow.png'),
+  polo: require('../../assets/garments/polo.png'),
+  rug: require('../../assets/garments/rug.png'),
+  sari: require('../../assets/garments/sari.png'),
+  sewing: require('../../assets/garments/sewing.png'),
+  'shirt-cut': require('../../assets/garments/shirt-cut.png'),
+  shoes: require('../../assets/garments/shoes.png'),
+  skirt: require('../../assets/garments/skirt.png'),
+  socks: require('../../assets/garments/socks.png'),
+  suit: require('../../assets/garments/suit.png'),
+  'take-in': require('../../assets/garments/take-in.png'),
+  tshirt: require('../../assets/garments/tshirt.png'),
+  't-shirt': require('../../assets/garments/t-shirt.png'),
+  waist: require('../../assets/garments/waist.png'),
+  'washing-clothes': require('../../assets/garments/washing-clothes.png'),
+  'wedding-dress': require('../../assets/garments/wedding-dress.png'),
+  'winter-coat': require('../../assets/garments/winter-coat.png'),
+  'winter-hat': require('../../assets/garments/winter-hat.png'),
+  'woman-suit': require('../../assets/garments/woman-suit.png'),
+  zipper: require('../../assets/garments/zipper.png'),
+  default: require('../../assets/garments/t-shirt.png'),
+};
+
 export const getGarmentImage = (imageName: string) => {
-    // Guard for undefined or empty imageName
-    if (!imageName || typeof imageName !== 'string') {
-      imageName = 'default';
-    }
-    // Make sure the name is safe for require by cleaning it
-    const cleanImageName = imageName
-      .toLowerCase()
-      .replace(/[^a-z0-9_]/g, '_');
-    
-    try {
-      // Try to dynamically load the image, falling back to a default
-      // if it doesn't exist
-      let image = null;
-      
-      // This looks verbose, but we need to handle each possible image explicitly
-      // because require() in React Native needs static strings
-      switch (cleanImageName) {
-        case 'blankets':
-          return require('../assets/garments/blankets.png');
-        case 'blazer':
-          return require('../assets/garments/blazer.png');
-        case 'boxed-shirts':
-          return require('../assets/garments/boxed-shirts.png');
-        case 'buttons':
-          return require('../assets/garments/buttons.png');
-        case 'clothes-cut':
-          return require('../assets/garments/clothes-cut.png');
-        case 'comforter':
-          return require('../assets/garments/comforter.png');
-        case 'curtain':
-          return require('../assets/garments/curtain.png');
-        case 'dress-shirt':
-          return require('../assets/garments/dress-shirt.png');
-        case 'dress':
-          return require('../assets/garments/dress.png');
-        case 'hem':
-          return require('../assets/garments/hem.png');
-        case 'jacket':
-          return require('../assets/garments/jacket.png');
-        case 'jeans':
-          return require('../assets/garments/jeans.png');
-        case 'jersey':
-          return require('../assets/garments/jersey.png');
-        case 'kids-clothes':
-          return require('../assets/garments/kids-clothes.png');
-        case 'leather-jacket':
-          return require('../assets/garments/leather-jacket.png');
-        case 'pants':
-          return require('../assets/garments/pants.png');
-        case 'patch':
-          return require('../assets/garments/patch.png');
-        case 'pillow':
-          return require('../assets/garments/pillow.png');
-        case 'polo':
-          return require('../assets/garments/polo.png');
-        case 'rug':
-          return require('../assets/garments/rug.png');
-        case 'sari':
-          return require('../assets/garments/sari.png');
-        case 'sewing':
-          return require('../assets/garments/sewing.png');
-        case 'shirt-cut':
-          return require('../assets/garments/shirt-cut.png');
-        case 'shoes':
-          return require('../assets/garments/shoes.png');
-        case 'skirt':
-          return require('../assets/garments/skirt.png');
-        case 'socks':
-          return require('../assets/garments/socks.png');
-        case 'suit':
-          return require('../assets/garments/suit.png');
-        case 'take-in':
-          return require('../assets/garments/take-in.png');
-        case 'tshirt':
-          return require('../assets/garments/tshirt.png');
-        case 't-shirt':
-          return require('../assets/garments/t-shirt.png');
-        case 'waist':
-          return require('../assets/garments/waist.png');
-        case 'washing-clothes':
-          return require('../assets/garments/washing-clothes.png');
-        case 'wedding-dress':
-          return require('../assets/garments/wedding-dress.png');
-        case 'winter-coat':
-          return require('../assets/garments/winter-coat.png');
-        case 'winter-hat':
-          return require('../assets/garments/winter-hat.png');
-        case 'woman-suit':
-          return require('../assets/garments/woman-suit.png');
-        case 'zipper':
-          return require('../assets/garments/zipper.png');
-        default:
-          return require('../assets/garments/tshirt.png');
-      }
-    } catch (error) {
-      // If image loading fails, return null to use a fallback
-      console.log(`Failed to load image: ${imageName}`, error);
-      return null;
-    }
-  };
+  try {
+    if (!imageName || typeof imageName !== 'string') return images.default;
+    // Accept both dashes and underscores in keys
+    const cleanImageName = imageName.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    return images[cleanImageName] || images.default;
+  } catch (error) {
+    // If image loading fails, return null to use a fallback
+    console.log(`Failed to load image: ${imageName}`, error);
+    return null;
+  }
+}

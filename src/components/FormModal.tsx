@@ -42,7 +42,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalContent: {
-    width: width * 0.85,
+    width: '95%',
+    maxWidth: 500,
     maxHeight: height * 0.9,
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -54,6 +55,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     alignItems: 'stretch',
     justifyContent: 'flex-start',
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',

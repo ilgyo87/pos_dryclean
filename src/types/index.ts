@@ -47,6 +47,7 @@ export interface Customer {
   email?: string;
   businessId?: string;
   cognitoId?: string;
+  imageName?: string;
 } // Garment removed per backend
   
   export interface Business {

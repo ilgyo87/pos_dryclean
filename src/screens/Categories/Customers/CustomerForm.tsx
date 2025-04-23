@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Image } from 'react-native';
 import FormModal from './../../../components/FormModal';
 import CrudButtons from './../../../components/CrudButtons';
 import type { Customer } from '../../../types';
@@ -10,6 +10,8 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../../amplify/data/resource';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { addCustomer, getAllCustomers, updateCustomer, deleteCustomer } from '../../../localdb/services/customerService';
+import ImagePicker from '../../../components/ImagePicker';
+import { getGarmentImage } from '../../../utils/ImageMapping';
 
 const client = generateClient<Schema>();
 
@@ -30,6 +32,7 @@ const initialState = {
     city: '',
     state: '',
     zipCode: '',
+    imageName: '',
 };
 
 const CustomerForm: React.FC<CustomerFormProps> = ({
@@ -39,6 +42,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     onSuccess,
     customer = null
 }) => {
+    const [imagePickerVisible, setImagePickerVisible] = useState(false);
     const [form, setForm] = useState(initialState);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -61,6 +65,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     city: customer.city || '',
                     state: customer.state || '',
                     zipCode: customer.zipCode || '',
+                    imageName: customer.imageName || '',
                 });
                 setOriginalPhone((customer.phone || '').replace(/\D/g, ''));
                 setOriginalEmail(customer.email || '');
@@ -93,6 +98,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 city: customer.city || '',
                 state: customer.state || '',
                 zipCode: customer.zipCode || '',
+                imageName: customer.imageName || '',
             });
         } else {
             setForm(initialState);
@@ -226,46 +232,35 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     city: form.city || '',
                     state: form.state || '',
                     zipCode: form.zipCode || '',
+                    imageName: form.imageName || '',
                 });
                 if (onSuccess) onSuccess();
                 onClose();
             } else {
-                // Create new customer
-                const response = await client.models.Customer.create({
-                    firstName: form.firstName,
-                    lastName: form.lastName,
-                    phone: form.phone,
-                    email: form.email || undefined,
-                    address: form.address || undefined,
-                    city: form.city || undefined,
-                    state: form.state || undefined,
-                    zipCode: form.zipCode || undefined,
-                    businessId: userId,
-                    cognitoId: authUser?.userId || undefined,
-                });
-                
-                if (!response.data) throw new Error('Failed to create customer');
-                
-                const newCustomer: Customer = {
-                    _id: response.data.id,
-                    firstName: form.firstName,
-                    lastName: form.lastName,
-                    phone: form.phone,
-                    email: form.email || '',
-                    address: form.address || '',
-                    city: form.city || '',
-                    state: form.state || '',
-                    zipCode: form.zipCode || '',
-                    businessId: userId,
-                    cognitoId: authUser?.userId || undefined,
-                };
-                
-                await addCustomer(newCustomer);
-                if (onSuccess) onSuccess(newCustomer);
-                onClose();
+                // Create new customer (local DB only, no API call)
+                try {
+                    const newCustomer: Customer = {
+                        _id: Date.now().toString(), // Generate a unique ID for local use
+                        firstName: form.firstName,
+                        lastName: form.lastName,
+                        phone: form.phone,
+                        email: form.email || '',
+                        address: form.address || '',
+                        city: form.city || '',
+                        state: form.state || '',
+                        zipCode: form.zipCode || '',
+                        businessId: userId,
+                        cognitoId: authUser?.userId || undefined,
+                        imageName: form.imageName || '',
+                    };
+                    console.log('[CUSTOMER][LOCAL] Creating customer in local DB:', JSON.stringify(newCustomer));
+                    await addCustomer(newCustomer);
+                    if (onSuccess) onSuccess(newCustomer);
+                    onClose();
+                } catch (err: any) {
+                    setError(err.message || 'Error saving customer');
+                }
             }
-        } catch (err: any) {
-            setError(err.message || 'Error saving customer');
         } finally {
             setLoading(false);
         }
@@ -293,6 +288,39 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     lastName={form.lastName}
                     onChange={handleChange}
                 />
+                <View>
+                    <Text style={styles.label}>Image</Text>
+                    <TouchableOpacity
+                      style={{
+                        borderWidth: 1,
+                        borderColor: '#ccc',
+                        borderRadius: 8,
+                        padding: 10,
+                        marginBottom: 10,
+                        backgroundColor: '#f5f5f5',
+                        alignItems: 'center',
+                      }}
+                      onPress={() => setImagePickerVisible(true)}
+                    >
+                      <Text>{form.imageName ? 'Change Image' : 'Pick an Image'}</Text>
+                    </TouchableOpacity>
+                    <ImagePicker
+                      value={form.imageName}
+                      onChange={(imageName: string) => {
+                        handleChange('imageName', imageName);
+                        setImagePickerVisible(false);
+                      }}
+                      visible={imagePickerVisible}
+                      onClose={() => setImagePickerVisible(false)}
+                    />
+                    {form.imageName ? (
+                      <Image
+                        source={getGarmentImage(form.imageName)}
+                        style={{ width: 60, height: 60, alignSelf: 'center', marginBottom: 10 }}
+                        resizeMode="contain"
+                      />
+                    ) : null}
+                </View>
                 <CustomerContactFields
                     phone={form.phone}
                     email={form.email}

@@ -7,6 +7,8 @@ export async function addCustomer(customer: Customer) {
   realm.write(() => {
     createdCustomer = realm.create('Customer', customer);
   });
+  console.log('[CUSTOMER][LOCAL] Created customer in Realm:', JSON.stringify(customer));
+  console.log('[CUSTOMER][LOCAL] Realm object:', JSON.stringify(createdCustomer));
   return createdCustomer;
 }
 

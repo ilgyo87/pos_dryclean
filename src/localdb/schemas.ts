@@ -79,6 +79,8 @@ export const ProductSchema = {
     orderItemId: 'string?',
     starch: 'string?',
     pressOnly: 'bool?',
+    imageName: 'string?',
+    imageUrl: 'string?',
   },
 };
 

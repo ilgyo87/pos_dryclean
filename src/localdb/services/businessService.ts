@@ -10,11 +10,9 @@ export async function addBusiness(business: Business) {
   console.log('[DEBUG] All businesses in Realm after write:', JSON.stringify(all));
 }
 
-export async function getFirstBusiness(userId: string): Promise<Business | undefined> {
+export async function getFirstBusiness(): Promise<Business | undefined> {
   const realm = await getRealm();
   const all = realm.objects<Business>('Business');
   console.log('[DEBUG] All businesses in Realm (from getFirstBusiness):', JSON.stringify(all));
-  const list = realm.objects<Business>('Business').filtered('userId == $0', userId);
-  console.log('[DEBUG] getFirstBusiness filtered list:', JSON.stringify(list), 'for userId:', userId);
-  return list.length > 0 ? list[0] : undefined;
+  return all.length > 0 ? all[0] : undefined;
 }

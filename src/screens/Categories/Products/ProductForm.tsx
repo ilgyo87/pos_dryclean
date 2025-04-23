@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
+import ImagePicker from '../../../components/ImagePicker';
+import { getGarmentImage } from '../../../utils/ImageMapping';
 import FormModal from '../../../components/FormModal';
 import CrudButtons from '../../../components/CrudButtons';
 import type { Product, Category } from '../../../types';
@@ -35,6 +37,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   onSuccess,
   product = null,
 }) => {
+  const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [form, setForm] = useState(initialState);
   const [error, setError] = useState<string | null>(null);
   const { createProduct, editProduct, removeProduct, loading: productsLoading, error: productsError } = useProducts();
@@ -156,91 +159,108 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   return (
     <FormModal visible={visible} onClose={onClose} title={product ? 'Edit Product' : 'Add New Product'}>
-      <View style={styles.form}>
-        <Text style={styles.label}>Name *</Text>
-        <TextInput
-          style={styles.input}
-          value={form.name}
-          onChangeText={text => handleChange('name', text)}
-          placeholder="Product Name"
-        />
-        <Text style={styles.label}>Category *</Text>
-        <Text style={styles.label}>Category</Text>
-        <View style={styles.radioGroup}>
-          {categories.map(cat => (
-            <TouchableOpacity
-              key={cat._id}
-              style={[
-                styles.radioButton,
-                form.categoryId === cat._id && styles.radioButtonSelected,
-              ]}
-              onPress={() => handleChange('categoryId', cat._id)}
-            >
-              <View style={[
-                styles.radioOuter,
-                form.categoryId === cat._id && styles.radioOuterSelected,
-              ]}>
-                {form.categoryId === cat._id && <View style={styles.radioInner} />}
-              </View>
-              <Text style={styles.radioLabel}>{cat.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <Text style={styles.label}>Price *</Text>
-        <TextInput
-          style={styles.input}
-          value={form.price}
-          onChangeText={text => handleChange('price', text)}
-          placeholder="Price"
-          keyboardType="numeric"
-        />
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, { height: 60 }]}
-          value={form.description}
-          onChangeText={text => handleChange('description', text)}
-          placeholder="Description (optional)"
-          multiline
-        />
-        <Text style={styles.label}>Image</Text>
-        <ImagePicker
-          value={form.imageName}
-          onChange={imageName => handleChange('imageName', imageName)}
-        />
-        {form.imageName ? (
-          <Image
-            source={getGarmentImage(form.imageName)}
-            style={{ width: 60, height: 60, alignSelf: 'center', marginBottom: 10 }}
-            resizeMode="contain"
+      <ScrollView contentContainerStyle={styles.scrollContent} style={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+        <View style={styles.form}>
+          <Text style={styles.label}>Name *</Text>
+          <TextInput
+            style={styles.input}
+            value={form.name}
+            onChangeText={text => handleChange('name', text)}
+            placeholder="Product Name"
           />
-        ) : null}
-        <Text style={styles.requiredFields}>* Required fields</Text>
-        <CrudButtons
-          onCreate={!product ? handleSubmit : undefined}
-          onUpdate={product ? handleSubmit : undefined}
-          onDelete={product ? handleDelete : undefined}
-          onReset={handleReset}
-          onCancel={onClose}
-          isSubmitting={loading}
-          showCreate={!product}
-          showUpdate={!!product}
-          showDelete={!!product}
-          showReset
-          showCancel
-          disabled={!isFormValid()}
-        />
-      </View>
+          <Text style={styles.label}>Price *</Text>
+          <TextInput
+            style={styles.input}
+            value={form.price}
+            onChangeText={text => handleChange('price', text)}
+            placeholder="Price"
+            keyboardType="numeric"
+          />
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={[styles.input, { height: 60 }]}
+            value={form.description}
+            onChangeText={text => handleChange('description', text)}
+            placeholder="Description (optional)"
+            multiline
+          />
+          <Text style={styles.label}>Image</Text>
+          <TouchableOpacity
+            style={{
+              borderWidth: 1,
+              borderColor: '#ccc',
+              borderRadius: 8,
+              padding: 10,
+              marginBottom: 10,
+              backgroundColor: '#f5f5f5',
+              alignItems: 'center',
+            }}
+            onPress={() => setImagePickerVisible(true)}
+          >
+            <Text>{form.imageName ? 'Change Image' : 'Pick an Image'}</Text>
+          </TouchableOpacity>
+          <ImagePicker
+            value={form.imageName}
+            onChange={imageName => {
+              handleChange('imageName', imageName);
+              setImagePickerVisible(false);
+            }}
+            visible={imagePickerVisible}
+            onClose={() => setImagePickerVisible(false)}
+          />
+          {form.imageName ? (
+            <Image
+              source={getGarmentImage(form.imageName)}
+              style={{ width: 60, height: 60, alignSelf: 'center', marginBottom: 10 }}
+              resizeMode="contain"
+            />
+          ) : null}
+          <Text style={styles.label}>Category *</Text>
+          <View style={styles.radioGroup}>
+            {categories.map(cat => (
+              <TouchableOpacity
+                key={cat._id}
+                style={[
+                  styles.radioButton,
+                  form.categoryId === cat._id && styles.radioButtonSelected,
+                ]}
+                onPress={() => handleChange('categoryId', cat._id)}
+              >
+                <View style={[
+                  styles.radioOuter,
+                  form.categoryId === cat._id && styles.radioOuterSelected,
+                ]}>
+                  {form.categoryId === cat._id && <View style={styles.radioInner} />}
+                </View>
+                <Text style={styles.radioLabel}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={styles.requiredFields}>* Required fields</Text>
+          <CrudButtons
+            onCreate={!product ? handleSubmit : undefined}
+            onUpdate={product ? handleSubmit : undefined}
+            onDelete={product ? handleDelete : undefined}
+            onReset={handleReset}
+            onCancel={onClose}
+            isSubmitting={loading}
+            showCreate={!product}
+            showUpdate={!!product}
+            showDelete={!!product}
+            showReset
+            showCancel
+            disabled={!isFormValid()}
+          />
+        </View>
+      </ScrollView>
     </FormModal>
   );
 };
 
-import { TextInput, Image, TouchableOpacity } from 'react-native';
-
-import ImagePicker from '../../../components/ImagePicker';
-import { getGarmentImage } from '../../../utils/ImageMapping';
-
 const styles = StyleSheet.create({
-  form: { width: '100%' },
+  form: { width: '100%', flexGrow: 1, minHeight: 400 },
+  scrollContent: { flexGrow: 1, paddingBottom: 32 },
+
   label: { fontWeight: '600', marginBottom: 4, textTransform: 'capitalize' },
   input: {
     borderWidth: 1,
