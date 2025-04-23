@@ -14,10 +14,22 @@ interface EmployeeFormProps {
   employee?: Employee | null;
 }
 
-const initialState = {
+const initialState: {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  role: RoleOption;
+  pin: string;
+  email: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+} = {
   firstName: '',
   lastName: '',
   phone: '',
+  role: 'Employee', // Valid RoleOption
   pin: '',
   email: '',
   address: '',
@@ -28,9 +40,10 @@ const initialState = {
 
 import { EmployeeAddressFields } from './EmployeeAddressFields';
 import { EmployeePinField } from './EmployeePinField';
+import RoleRadioSelector, { RoleOption } from '../../../components/RoleRadioSelector';
 
 const EmployeeForm: React.FC<EmployeeFormProps> = ({ visible, onClose, onSuccess, employee = null }) => {
-  const [form, setForm] = useState(initialState);
+  const [form, setForm] = useState<typeof initialState>(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [originalPin, setOriginalPin] = useState('');
@@ -45,6 +58,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ visible, onClose, onSuccess
           firstName: employee.firstName || '',
           lastName: employee.lastName || '',
           phone: employee.phone || '',
+          role: (employee as any).role || 'Employee',
           pin: employee.pin || '',
           email: employee.email || '',
           address: employee.address || '',
@@ -75,6 +89,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ visible, onClose, onSuccess
         firstName: employee.firstName || '',
         lastName: employee.lastName || '',
         phone: employee.phone || '',
+        role: (employee as any).role || 'Employee',
         pin: employee.pin || '',
         email: employee.email || '',
         address: employee.address || '',
@@ -179,17 +194,48 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ visible, onClose, onSuccess
 
   const isPinValid = /^\d{4}$/.test(form.pin);
   const isPhoneValid = form.phone.replace(/\D/g, '').length >= 10;
+  const [phoneInUse, setPhoneInUse] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const checkPhone = async () => {
+      const normalizedPhone = form.phone.replace(/\D/g, '');
+      if (normalizedPhone.length >= 10) {
+        const inUse = await phoneCheckFn(normalizedPhone);
+        if (active) setPhoneInUse(inUse);
+      } else {
+        if (active) setPhoneInUse(false);
+      }
+    };
+    checkPhone();
+    return () => { active = false; };
+  }, [form.phone, phoneCheckFn]);
+
+  const isFormValid = () => {
+    return (
+      !!form.firstName &&
+      !!form.lastName &&
+      isPhoneValid &&
+      isPinValid &&
+      !phoneInUse
+    );
+  };
+
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
       if (employee) {
-        await updateEmployee(employee._id, form);
+        const now = new Date();
+        await updateEmployee(employee._id, { ...form, updatedAt: now });
         onSuccess && onSuccess({ ...employee, ...form });
       } else {
+        const now = new Date();
         const newEmployee = {
           ...form,
           _id: Date.now().toString(),
+          createdAt: now,
+          updatedAt: now,
         };
         await addEmployee(newEmployee as Employee);
         onSuccess && onSuccess(newEmployee as Employee);
@@ -215,6 +261,11 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ visible, onClose, onSuccess
           onChange={handleChange}
           phoneCheckFn={phoneCheckFn}
         />
+        <RoleRadioSelector
+          value={form.role}
+          onChange={(role: RoleOption) => handleChange('role', role)}
+        />
+        <Text style={styles.label}>PIN</Text>
         <EmployeePinField
           pin={form.pin}
           onChange={handleChange}
@@ -244,7 +295,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({ visible, onClose, onSuccess
           showDelete={!!employee}
           showReset
           showCancel
-          disabled={loading || !form.firstName || !form.lastName || !isPhoneValid || !isPinValid || !pinAvailable}
+          disabled={loading || !form.firstName || !form.lastName || !isPhoneValid || !isPinValid || !pinAvailable || phoneInUse}
         />
       </ScrollView>
     </FormModal>

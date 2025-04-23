@@ -125,6 +125,12 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
             price: typeof prod.price === 'number' ? prod.price : 0,
             categoryId,
             businessId,
+            notes: [],
+            status: 'active',
+            createdAt: new Date(),
+            updatedAt: undefined,
+            discount: 0,
+            additionalPrice: 0,
           };
           await createProduct(prodObj);
 

@@ -25,14 +25,27 @@ export interface Category {
 }
 
 export interface Product {
-  imageName?: string;
   _id: string;
   name: string;
+  price: number;
+  discount?: number;
+  additionalPrice?: number;
   description?: string;
-  price?: number;
-  categoryId: string;
+  categoryId?: string;
   businessId?: string;
+  customerId?: string;
+  customer?: Customer;
+  employeeId?: string;
+  orderId?: string;
+  orderItemId?: string;
   starch?: string;
+  pressOnly?: boolean;
+  imageName?: string;
+  imageUrl?: string;
+  notes: string[];
+  status: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Customer {
@@ -49,6 +62,9 @@ export interface Customer {
   businessId?: string;
   cognitoId?: string;
   imageName?: string;
+  notes: string[];
+  createdAt: Date;
+  updatedAt?: Date;
 } // Garment removed per backend
   
   export interface Business {
@@ -68,19 +84,26 @@ export interface Customer {
   logoUrl?: string;
   logoSource?: string;
   userId?: string;
-} // orders removed, logoSource added
+  // orders removed
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
   export interface Order {
   _id: string;
   businessId: string;
-  business?: Business;
   customerId: string;
   employeeId: string;
-  items: OrderItem[];
+  items: Product[];
   paymentMethod: string;
+  additionalPrice?: number;
+  discount?: number;
   total: number;
+  notes: string[];
+  pickupDate?: Date;
   status: string;
-  createdAt?: Date;
+  createdAt: Date;
+  updatedAt?: Date;
 }
 
   export interface OrderItem {
@@ -114,4 +137,7 @@ export interface Customer {
   businessId?: string;
   cognitoId?: string;
   pin?: string;
+  role: string;
+  createdAt: Date;
+  updatedAt?: Date;
 }

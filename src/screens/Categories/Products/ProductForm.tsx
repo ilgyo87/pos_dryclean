@@ -27,6 +27,10 @@ const initialState = {
   price: '',
   categoryId: '',
   imageName: '',
+  discount: 0,
+  additionalPrice: 0,
+  notes: [] as string[],
+  status: 'active',
 };
 
 const ProductForm: React.FC<ProductFormProps> = ({
@@ -53,6 +57,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
           price: product.price ? String(product.price) : '',
           categoryId: product.categoryId || '',
           imageName: product.imageName || '',
+          discount: typeof product.discount === 'number' ? product.discount : 0,
+          additionalPrice: typeof product.additionalPrice === 'number' ? product.additionalPrice : 0,
+          notes: Array.isArray(product.notes) ? product.notes : [],
+          status: product.status || 'active',
         });
       } else {
         setForm(initialState);
@@ -65,8 +73,16 @@ const ProductForm: React.FC<ProductFormProps> = ({
     if (error) Alert.alert('Error', error);
   }, [error]);
 
-  const handleChange = (field: keyof typeof initialState, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+  const handleChange = (field: keyof typeof initialState, value: string | number) => {
+    setForm(prev => {
+      if (field === 'discount' || field === 'additionalPrice') {
+        return { ...prev, [field]: typeof value === 'string' ? parseFloat(value) || 0 : value };
+      }
+      if (field === 'notes') {
+        return { ...prev, notes: Array.isArray(value) ? value : [String(value)] };
+      }
+      return { ...prev, [field]: value };
+    });
   };
 
   const handleReset = () => {
@@ -77,6 +93,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
         price: product.price ? String(product.price) : '',
         categoryId: product.categoryId || '',
         imageName: product.imageName || '',
+        discount: typeof product.discount === 'number' ? product.discount : 0,
+        additionalPrice: typeof product.additionalPrice === 'number' ? product.additionalPrice : 0,
+        notes: Array.isArray(product.notes) ? product.notes : [],
+        status: product.status || 'active',
       });
     } else {
       setForm(initialState);
@@ -128,6 +148,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
           price: priceNum,
           categoryId: form.categoryId,
           imageName: form.imageName,
+          discount: typeof form.discount === 'number' ? form.discount : 0,
+          additionalPrice: typeof form.additionalPrice === 'number' ? form.additionalPrice : 0,
+          notes: Array.isArray(form.notes) ? form.notes : [],
+          status: form.status || 'active',
+          updatedAt: new Date(),
         });
         if (onSuccess) onSuccess({ ...product, ...form, price: priceNum });
       } else {
@@ -140,6 +165,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
           categoryId: form.categoryId,
           businessId,
           imageName: form.imageName,
+          discount: typeof form.discount === 'number' ? form.discount : 0,
+          additionalPrice: typeof form.additionalPrice === 'number' ? form.additionalPrice : 0,
+          notes: [],
+          status: 'active',
+          createdAt: new Date(),
+          updatedAt: undefined,
         };
         await createProduct(newProduct);
         if (onSuccess) onSuccess(newProduct);

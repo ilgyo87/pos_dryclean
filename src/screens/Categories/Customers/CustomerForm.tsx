@@ -83,6 +83,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
         if (error) Alert.alert('Error', error);
     }, [error]);
     
+    // Track phone error from child
+    const [phoneError, setPhoneError] = useState<string | null>(null);
+
     const handleChange = (field: keyof typeof initialState, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
     };
@@ -223,16 +226,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
             
             if (customer) {
                 // Update existing customer
-                await updateCustomer(customer._id, {
-                    firstName: form.firstName,
-                    lastName: form.lastName,
-                    phone: form.phone,
-                    email: form.email || '',
-                    address: form.address || '',
-                    city: form.city || '',
-                    state: form.state || '',
-                    zipCode: form.zipCode || '',
-                });
+                const now = new Date();
+                await updateCustomer(customer._id, { ...form, updatedAt: now });
                 if (onSuccess) onSuccess();
                 onClose();
             } else {
@@ -250,7 +245,11 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         zipCode: form.zipCode || '',
                         businessId: userId,
                         cognitoId: authUser?.userId || undefined,
-
+                        notes: [],
+                        createdAt: new Date(),
+                        updatedAt: undefined,
+                        imageName: '',
+                        location: undefined,
                     };
                     console.log('[CUSTOMER][LOCAL] Creating customer in local DB:', JSON.stringify(newCustomer));
                     await addCustomer(newCustomer);
@@ -270,14 +269,16 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
         const normalizedPhone = form.phone.replace(/\D/g, '');
         const isPhoneValid = normalizedPhone.length >= 10;
         const isEmailValid = !form.email || isValidEmail(form.email);
-        
+        // Disable if phone error (e.g. 'already in use') is shown
         return (
             !!form.firstName &&
             !!form.lastName &&
             isPhoneValid &&
-            isEmailValid
+            isEmailValid &&
+            !phoneError
         );
     };
+
 
     return (
         <FormModal visible={visible} onClose={onClose} title={customer ? "Edit Customer" : "Add New Customer"}>
@@ -296,6 +297,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     onChange={handleChange}
                     phoneCheckFn={phoneCheckFn}
                     emailCheckFn={emailCheckFn}
+                    onPhoneError={setPhoneError}
                 />
                 <CustomerAddressFields
                     address={form.address}

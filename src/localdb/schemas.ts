@@ -26,8 +26,7 @@ export const BusinessSchema = {
     hours: 'string[]',
     logoUrl: 'string?',
     logoSource: 'string?',
-    userId: 'string?',
-    orders: 'Order[]',
+    userId: 'string?'
   },
 };
 
@@ -47,6 +46,9 @@ export const CustomerSchema = {
     email: 'string?',
     businessId: 'string?',
     cognitoId: 'string?',
+    notes: 'string[]',
+    createdAt: 'date',
+    updatedAt: 'date?',
   },
 };
 
@@ -69,6 +71,7 @@ export const ProductSchema = {
     name: 'string',
     price: 'double',
     discount: 'double?',
+    additionalPrice: 'double?',
     description: 'string?',
     categoryId: 'string?',
     businessId: 'string?',
@@ -82,6 +85,9 @@ export const ProductSchema = {
     imageName: 'string?',
     imageUrl: 'string?',
     notes: 'string[]',
+    status: 'string',
+    createdAt: 'date?',
+    updatedAt: 'date?',
   },
 };
 
@@ -91,14 +97,18 @@ export const OrderSchema = {
   properties: {
     _id: 'string',
     businessId: 'string',
-    business: 'Business?',
     customerId: 'string',
     employeeId: 'string',
     items: 'Product[]',
     paymentMethod: 'string',
+    additionalPrice: 'double?',
+    discount: 'double?',
     total: 'double',
+    notes: 'string[]',
+    pickupDate: 'date?',
     status: 'string',
-    createdAt: 'date?',
+    createdAt: 'date',
+    updatedAt: 'date?',
   },
 };
 
@@ -119,5 +129,8 @@ export const EmployeeSchema = {
     businessId: 'string?',
     cognitoId: 'string?',
     pin: 'string?',
+    role: 'string',
+    createdAt: 'date',
+    updatedAt: 'date?',
   },
 };

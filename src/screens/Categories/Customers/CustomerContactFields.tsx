@@ -9,6 +9,7 @@ interface Props {
   onChange: (field: 'phone' | 'email', value: string) => void;
   phoneCheckFn: (val: string) => Promise<boolean>;
   emailCheckFn: (val: string) => Promise<boolean>;
+  onPhoneError?: (err: string | null) => void;
 }
 
 export const CustomerContactFields: React.FC<Props> = ({ 
@@ -16,12 +17,18 @@ export const CustomerContactFields: React.FC<Props> = ({
   email, 
   onChange, 
   phoneCheckFn, 
-  emailCheckFn 
+  emailCheckFn, 
+  onPhoneError
 }) => {
   // State for phone availability
   const [phoneAvailable, setPhoneAvailable] = useState(true);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  // Notify parent of phone error
+  useEffect(() => {
+    if (onPhoneError) onPhoneError(phoneError);
+  }, [phoneError, onPhoneError]);
   
   // State for email availability
   const [emailAvailable, setEmailAvailable] = useState(true);
@@ -41,6 +48,7 @@ export const CustomerContactFields: React.FC<Props> = ({
         .then(exists => {
           if (active) {
             setPhoneAvailable(!exists);
+            setPhoneError(exists ? 'Phone number already in use' : null);
           }
         })
         .catch(err => {
