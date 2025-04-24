@@ -141,3 +141,39 @@ export interface Customer {
   createdAt: Date;
   updatedAt?: Date;
 }
+
+export interface Order {
+  _id: string;
+  businessId: string;
+  customerId: string;
+  employeeId: string;
+  items: Product[];
+  paymentMethod: string;
+  additionalPrice?: number;
+  discount?: number;
+  total: number;
+  notes: string[];
+  pickupDate?: Date;
+  status: string;
+  createdAt: Date;
+  updatedAt?: Date;
+  customerName?: string; // Added for order display
+  employeeName?: string; // Added for order display
+}
+
+export interface OrderItem {
+  _id: string;
+  name: string;
+  description?: string;
+  price?: number;
+  discount?: number;
+  category?: string;
+  businessId?: string;
+  customerId?: string;
+  employeeId?: string;
+  orderId?: string;
+  orderIdHistory?: string[];
+  starch?: 'none' | 'light' | 'medium' | 'heavy';
+  pressOnly?: boolean;
+  order?: Order;
+}

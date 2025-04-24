@@ -12,10 +12,9 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Product } from '../../types';
 import PaymentModal, { PaymentMethod } from './PaymentModal';
-import useCheckout from './useCheckout';
+import useCheckout, { CheckoutOrderItem } from '../../hooks/useCheckout';
 import styles from './OrderSummary.styles';
 import OrderItemRow from './OrderItemRow';
-import OptionsModal from './OptionsModal';
 
 export interface OrderItem extends Product {
   quantity: number;
@@ -24,6 +23,7 @@ export interface OrderItem extends Product {
     pressOnly?: boolean;
     notes?: string;
   };
+  _key?: string; // Optional internal key for editing/tracking
 }
 
 interface OrderSummaryProps {
@@ -35,6 +35,7 @@ interface OrderSummaryProps {
   businessId: string;
   customerId: string;
   employeeId: string;
+  employeeName?: string; // Add employee name
   pickupDate?: Date | null;
 }
 
@@ -50,6 +51,7 @@ function hashString(str: string): string {
 }
 
 import type { RootStackParamList } from './CheckoutScreen';
+import OptionsModal from './OptionsModal';
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   items = [], 
@@ -60,6 +62,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   businessId,
   customerId,
   employeeId,
+  employeeName,
   pickupDate
 }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
@@ -101,12 +104,13 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       console.log('[OrderSummary] Items count:', items.length);
       
       const result = await checkout({
-        items,
+        items: items as CheckoutOrderItem[],
         total,
         paymentMethod,
         businessId,
         customerId,
         employeeId,
+        employeeName,
         pickupDate,
         notifications: {
           printReceipt,
@@ -129,7 +133,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               // Close modal and navigate back to dashboard
               onCheckout();
               // Use navigation to go back instead of relying on just the callback
-              // Simply go back to previous screen rather than trying to navigate to a specific route
               navigation.navigate('DASHBOARD'); // Use navigate instead of goBack
             }
           }]
@@ -145,7 +148,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const handleEditItem = (item: OrderItem) => {
     const optionsStr = item.options ? JSON.stringify(item.options) : '';
     const itemKey = `${item._id}_${hashString(optionsStr)}`;
-    setEditingItem({ ...item, _key: itemKey } as any);
+    setEditingItem({ ...item, _key: itemKey });
     setItemNotes(item.options?.notes || '');
     setStarchOption(item.options?.starch || 'none');
     setPressOnly(item.options?.pressOnly || false);
@@ -155,7 +158,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   const handleSaveOptions = () => {
     if (editingItem) {
       // Use the unique key for this item
-      const itemKey = (editingItem as any)._key || (editingItem.options ? `${editingItem._id}_${hashString(JSON.stringify(editingItem.options))}` : editingItem._id);
+      const itemKey = editingItem._key || (editingItem.options ? `${editingItem._id}_${hashString(JSON.stringify(editingItem.options))}` : editingItem._id);
       onUpdateOptions(itemKey, {
         starch: starchOption,
         pressOnly,
@@ -165,15 +168,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       setEditingItem(null);
     }
   };
-
-  const renderItem: ListRenderItem<OrderItem> = ({ item }) => (
-    <OrderItemRow
-      item={item as Product & { quantity: number }}
-      onUpdateQuantity={onUpdateQuantity}
-      onUpdateOptions={onUpdateOptions}
-      onEdit={handleEditItem}
-    />
-  );
 
   return (
     <View style={styles.container}>
@@ -186,8 +180,15 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         </View>
       ) : (
         <FlatList
-          data={items as (Product & { quantity: number })[]}
-          renderItem={renderItem}
+          data={items}
+          renderItem={({ item }) => (
+            <OrderItemRow
+              item={item}
+              onUpdateQuantity={onUpdateQuantity}
+              onUpdateOptions={onUpdateOptions}
+              onEdit={handleEditItem}
+            />
+          )}
           keyExtractor={(item, idx) => `${item._id}_${idx}`}
           ListEmptyComponent={(
             <View style={styles.emptyContainer}>
@@ -218,7 +219,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         onClose={() => setShowOptionsModal(false)}
         onSelectStarch={(level) => {
           if (editingItem) {
-            const itemKey = (editingItem as any)._key || (editingItem.options ? `${editingItem._id}_${hashString(JSON.stringify(editingItem.options))}` : editingItem._id);
+            const itemKey = editingItem._key || (editingItem.options ? `${editingItem._id}_${hashString(JSON.stringify(editingItem.options))}` : editingItem._id);
             onUpdateOptions(itemKey, { ...editingItem.options, starch: level });
             setShowOptionsModal(false);
             setEditingItem(null);

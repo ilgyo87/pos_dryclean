@@ -2,17 +2,27 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
-import { getRealm } from '../../localdb/getRealm';
-import { OrderItem } from './OrderSummary';
-import { Product } from '../../types';
+import { getRealm } from './../localdb/getRealm';
+import { Product } from './../types';
+
+// Define the local OrderItem interface to match what's used in OrderSummary
+export interface CheckoutOrderItem extends Product {
+  quantity: number;
+  options?: {
+    starch?: 'none' | 'light' | 'medium' | 'heavy';
+    pressOnly?: boolean;
+    notes?: string;
+  };
+}
 
 export interface CheckoutParams {
-  items: OrderItem[];
+  items: CheckoutOrderItem[];
   total: number;
   paymentMethod: string;
   businessId: string;
   customerId: string;
   employeeId: string;
+  employeeName?: string;
   pickupDate?: Date | null;
   notifications?: {
     printReceipt: boolean;
@@ -44,6 +54,7 @@ export default function useCheckout() {
       businessId,
       customerId,
       employeeId,
+      employeeName,
       pickupDate,
       notifications
     } = params;
@@ -66,6 +77,15 @@ export default function useCheckout() {
           // but keep the original product ID
           const orderItemId = uuidv4();
           
+          // Map starch to a valid value if not already
+          let starchValue: 'none' | 'light' | 'medium' | 'heavy' | undefined = undefined;
+          if (item.options?.starch) {
+            const starch = item.options.starch;
+            if (starch === 'none' || starch === 'light' || starch === 'medium' || starch === 'heavy') {
+              starchValue = starch;
+            }
+          }
+          
           const productEntry: Product = {
             _id: item._id, // Keep original product ID to identify product type
             name: item.name,
@@ -79,8 +99,8 @@ export default function useCheckout() {
             employeeId,
             orderId,            // Link to the order
             orderItemId,        // Unique ID for this product instance
-            starch: item.options?.starch,
-            pressOnly: item.options?.pressOnly,
+            starch: starchValue,
+            pressOnly: item.options?.pressOnly || false,
             imageName: item.imageName,
             imageUrl: item.imageUrl,
             notes: item.options?.notes ? [item.options.notes] : [],
@@ -96,6 +116,9 @@ export default function useCheckout() {
       
       console.log('[CHECKOUT] Getting Realm instance');
       const realm = await getRealm();
+      
+      // Create order note for employee creating the order
+      const orderCreatedNote = `Order created by ${employeeName || 'Employee ID: ' + employeeId} at ${now.toLocaleString()}`;
       
       console.log('[CHECKOUT] Writing to Realm');
       const realmProducts: any[] = [];
@@ -142,6 +165,9 @@ export default function useCheckout() {
         console.log(`[CHECKOUT] Order ID: ${orderId}`);
         console.log(`[CHECKOUT] Products count: ${realmProducts.length}`);
         
+        // Ensure notes is defined as an array
+        const orderNotes: string[] = [orderCreatedNote]; 
+        
         realm.create('Order', {
           _id: orderId,
           businessId,
@@ -152,7 +178,7 @@ export default function useCheckout() {
           additionalPrice: 0,
           discount: 0,
           total,
-          notes: [],
+          notes: orderNotes, // Use typed array of notes
           pickupDate: pickupDate || undefined,
           status: 'CREATED',
           createdAt: now,
@@ -168,6 +194,8 @@ export default function useCheckout() {
       console.log('[CHECKOUT] Order total:', total.toFixed(2));
       console.log('[CHECKOUT] Customer ID:', customerId);
       console.log('[CHECKOUT] Employee ID:', employeeId);
+      console.log('[CHECKOUT] Employee Name:', employeeName || 'Not specified');
+      console.log('[CHECKOUT] Order Creation Note:', orderCreatedNote);
       console.log('[CHECKOUT] Pickup date:', pickupDate ? pickupDate.toISOString() : 'Not set');
       
       // Log basic details for each created product
