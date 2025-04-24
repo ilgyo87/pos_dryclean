@@ -9,6 +9,7 @@ import { Order, Product } from '../../../types';
 import OrderItemToggleList from './OrderItemToggleList';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { generateQRCodeData } from '../../../utils/QRCodeGenerator';
+import OrderPrintSheet from './OrderPrintSheet';
 
 interface OrdersScreenProps {
   employeeId?: string;
@@ -22,6 +23,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
 
   const [selectedPrintItemIds, setSelectedPrintItemIds] = useState<Set<string>>(new Set());
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // When an order is selected, select all items for print by default
   useEffect(() => {
@@ -356,13 +358,22 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                       selectedIds={selectedPrintItemIds}
                       onToggle={handleTogglePrintItem}
                     />
-                    <TouchableOpacity
-                      style={[styles.printButton, selectedPrintItemIds.size === 0 && styles.disabledButton]}
-                      onPress={printQRCodes}
-                      disabled={selectedPrintItemIds.size === 0}
-                    >
-                      <Text style={styles.printButtonText}>Print QR Labels</Text>
-                    </TouchableOpacity>
+                    <View style={styles.buttonRow}>
+                      <TouchableOpacity
+                        style={[styles.previewButton, selectedPrintItemIds.size === 0 && styles.disabledButton]}
+                        onPress={() => setShowPreviewModal(true)}
+                        disabled={selectedPrintItemIds.size === 0}
+                      >
+                        <Text style={styles.buttonText}>Preview QR Labels</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.printButton, selectedPrintItemIds.size === 0 && styles.disabledButton]}
+                        onPress={printQRCodes}
+                        disabled={selectedPrintItemIds.size === 0}
+                      >
+                        <Text style={styles.printButtonText}>Print QR Labels</Text>
+                      </TouchableOpacity>
+                    </View>
                   </>
                 )}
                 {/* Status Change Section */}
@@ -420,6 +431,47 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
           </View>
         </Modal>
       )}
+      
+      {/* QR Code Preview Modal */}
+      {selectedOrder && (
+        <Modal
+          visible={showPreviewModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowPreviewModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.previewModalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>QR Code Preview</Text>
+                <TouchableOpacity
+                  onPress={() => setShowPreviewModal(false)}
+                  style={styles.closeButton}
+                >
+                  <MaterialIcons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalScroll}>
+                <OrderPrintSheet 
+                  items={selectedOrder.items.filter(item => selectedPrintItemIds.has(item._id))}
+                  customerName={selectedOrder.customerName || 'Customer'}
+                />
+              </ScrollView>
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.printButton}
+                  onPress={() => {
+                    setShowPreviewModal(false);
+                    printQRCodes();
+                  }}
+                >
+                  <Text style={styles.printButtonText}>Print QR Labels</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
@@ -443,6 +495,25 @@ const getStatusColor = (status: OrderStatus) => {
 };
 
 const styles = StyleSheet.create({
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  previewButton: {
+    backgroundColor: '#009688',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
   printButton: {
     backgroundColor: '#2196F3',
     borderRadius: 8,
@@ -477,6 +548,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     maxHeight: '80%',
+  },
+  previewModalContent: {
+    width: '90%',
+    maxWidth: 500,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    maxHeight: '90%',
   },
   modalScroll: {
     padding: 20,
@@ -565,6 +643,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#555',
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
 });
 
