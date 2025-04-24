@@ -2,7 +2,7 @@ import { uploadData } from 'aws-amplify/storage';
 import { Alert } from 'react-native';
 
 // src/utils/QRCodeGenerator.ts
-export type EntityType = 'Business' | 'Employee' | 'Customer' | 'Garment' | 'Rack' | 'Unknown';
+export type EntityType = 'Business' | 'Employee' | 'Customer' | 'Order' | 'Product' | 'Garment' | 'Rack' | 'Unknown';
 
 export interface BaseEntityData {
     id: string;
@@ -30,20 +30,37 @@ export const generateQRCodeData = <T extends BaseEntityData>(
         case 'Employee':
             return JSON.stringify({
                 ...baseData,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                phoneNumber: data.phoneNumber,
-                role: data.role,
-                businessId: data.businessID,
+                employeeId: data.id,
+                phone: data.phone,
+                pin: data.pin,
+                businessId: data.businessId,
             });
 
         case 'Customer':
             return JSON.stringify({
                 ...baseData,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                phoneNumber: data.phoneNumber,
-                businessId: data.businessID,
+                customerId: data.id,
+                phone: data.phone,
+                businessId: data.businessId,
+            });
+
+        case 'Order':
+            return JSON.stringify({
+                ...baseData,
+                orderId: data.id,
+                customerId: data.customerId,
+                employeeId: data.employeeId,
+                businessId: data.businessId,
+            });
+
+        case 'Product':
+            return JSON.stringify({
+                ...baseData,
+                productId: data.id,
+                orderItemId: data.orderItemId,
+                orderId: data.orderId,
+                customerId: data.customerId,
+                businessId: data.businessId,
             });
 
         case 'Garment':
@@ -71,7 +88,7 @@ export const generateQRCodeData = <T extends BaseEntityData>(
 export const parseQRCode = (qrValue: string): { type: EntityType, data: any } | null => {
     try {
         const parsedData = JSON.parse(qrValue);
-        if (parsedData && parsedData.type && ['Business', 'Employee', 'Customer', 'Garment'].includes(parsedData.type)) {
+        if (parsedData && parsedData.type && ['Business', 'Employee', 'Customer', 'Order', 'Product', 'Garment'].includes(parsedData.type)) {
             return {
                 type: parsedData.type as EntityType,
                 data: parsedData

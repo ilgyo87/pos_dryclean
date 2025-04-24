@@ -1,10 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, SafeAreaView, TextInput, Modal, Text, TouchableOpacity, ScrollView } from 'react-native';
+import * as RNPrint from 'react-native-print';
+import { captureRef } from 'react-native-view-shot';
 import OrderSearchBar from './OrderSearchBar';
 import OrderList from './OrderList';
 import StatusHeaderBar, { OrderStatus } from './StatusHeaderBar';
 import { useOrders } from '../../../hooks/useOrders';
 import { Order } from '../../../types';
+import OrderItemToggleList from './OrderItemToggleList';
+import OrderPrintSheet from './OrderPrintSheet';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 interface OrdersScreenProps {
@@ -14,15 +18,57 @@ interface OrdersScreenProps {
 }
 
 const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, lastName }) => {
+  // Order detail modal state (move these to the top)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
+
+  // ...existing state
+  const [selectedPrintItemIds, setSelectedPrintItemIds] = useState<Set<string>>(new Set());
+  const [showPrintSheet, setShowPrintSheet] = useState(false);
+  const printSheetRef = useRef<View>(null);
+
+  // When an order is selected, select all items for print by default
+  useEffect(() => {
+    if (selectedOrder && selectedOrder.status === 'CREATED') {
+      setSelectedPrintItemIds(new Set(selectedOrder.items.map(item => item._id)));
+    }
+  }, [selectedOrder]);
+
+  // Toggle item selection for printing
+  const handleTogglePrintItem = (itemId: string) => {
+    setSelectedPrintItemIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
+
+  // Print handler
+  const handlePrint = () => {
+    setShowPrintSheet(true);
+  };
+
+  // Capture and print the sheet
+  const printSheet = async () => {
+    if (printSheetRef.current) {
+      try {
+        const uri = await captureRef(printSheetRef.current, { format: 'png', quality: 1 });
+        await RNPrint.print({ filePath: uri });
+      } catch (error) {
+        console.error('Print error:', error);
+      }
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>('ALL');
   const { orders, isLoading, error, statusCounts, refetch, updateStatus } = useOrders();
   const searchInputRef = useRef<TextInput>(null);
-  
-  // Order detail modal state
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
 
   // Filter orders based on search query
   useEffect(() => {
@@ -123,7 +169,6 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                   <MaterialIcons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
-              
               <ScrollView style={styles.modalScroll}>
                 <View style={styles.orderDetailRow}>
                   <Text style={styles.orderDetailLabel}>Customer:</Text>
@@ -131,7 +176,6 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                     {selectedOrder.customerName || selectedOrder.customerId}
                   </Text>
                 </View>
-                
                 <View style={styles.orderDetailRow}>
                   <Text style={styles.orderDetailLabel}>Status:</Text>
                   <Text style={[
@@ -142,28 +186,18 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                     {selectedOrder.status}
                   </Text>
                 </View>
-                
-                <View style={styles.orderDetailRow}>
-                  <Text style={styles.orderDetailLabel}>Items:</Text>
-                  <Text style={styles.orderDetailValue}>
-                    {selectedOrder.items.length} items
-                  </Text>
-                </View>
-                
                 <View style={styles.orderDetailRow}>
                   <Text style={styles.orderDetailLabel}>Total:</Text>
                   <Text style={styles.orderDetailValue}>
                     ${selectedOrder.total.toFixed(2)}
                   </Text>
                 </View>
-                
                 <View style={styles.orderDetailRow}>
                   <Text style={styles.orderDetailLabel}>Created:</Text>
                   <Text style={styles.orderDetailValue}>
                     {new Date(selectedOrder.createdAt).toLocaleString()}
                   </Text>
                 </View>
-                
                 {selectedOrder.pickupDate && (
                   <View style={styles.orderDetailRow}>
                     <Text style={styles.orderDetailLabel}>Pickup:</Text>
@@ -172,60 +206,24 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                     </Text>
                   </View>
                 )}
-                
-                {/* Item List */}
-                <View style={styles.itemsSection}>
-                  <Text style={styles.sectionTitle}>Items</Text>
-                  {selectedOrder.items.map((item, index) => (
-                    <View key={index} style={styles.itemRow}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-                    </View>
-                  ))}
-                </View>
-                
-                {/* Status Change Buttons */}
-                <View style={styles.statusButtonsContainer}>
-                  <Text style={styles.sectionTitle}>Change Status</Text>
-                  <View style={styles.statusButtons}>
-                    {selectedOrder.status !== 'PROCESSING' && (
-                      <TouchableOpacity
-                        style={[styles.statusButton, { backgroundColor: '#fff9c4' }]}
-                        onPress={() => handleStatusChange(selectedOrder._id, 'PROCESSING')}
-                      >
-                        <Text style={styles.statusButtonText}>Processing</Text>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {selectedOrder.status !== 'READY' && (
-                      <TouchableOpacity
-                        style={[styles.statusButton, { backgroundColor: '#e8f5e9' }]}
-                        onPress={() => handleStatusChange(selectedOrder._id, 'READY')}
-                      >
-                        <Text style={styles.statusButtonText}>Ready</Text>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {selectedOrder.status !== 'COMPLETED' && (
-                      <TouchableOpacity
-                        style={[styles.statusButton, { backgroundColor: '#f5f5f5' }]}
-                        onPress={() => handleStatusChange(selectedOrder._id, 'COMPLETED')}
-                      >
-                        <Text style={styles.statusButtonText}>Complete</Text>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {selectedOrder.status !== 'CANCELLED' && (
-                      <TouchableOpacity
-                        style={[styles.statusButton, { backgroundColor: '#ffebee' }]}
-                        onPress={() => handleStatusChange(selectedOrder._id, 'CANCELLED')}
-                      >
-                        <Text style={styles.statusButtonText}>Cancel</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-                
+                {/* Toggleable Items List for CREATED status */}
+                {selectedOrder.status === 'CREATED' && (
+                  <>
+                    <Text style={styles.sectionTitle}>Select Items to Print</Text>
+                    <OrderItemToggleList
+                      items={selectedOrder.items}
+                      selectedIds={selectedPrintItemIds}
+                      onToggle={handleTogglePrintItem}
+                    />
+                    <TouchableOpacity
+                      style={styles.printButton}
+                      onPress={handlePrint}
+                      disabled={selectedPrintItemIds.size === 0}
+                    >
+                      <Text style={styles.printButtonText}>Print</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
                 {/* Notes Section */}
                 {selectedOrder.notes && selectedOrder.notes.length > 0 && (
                   <View style={styles.notesSection}>
@@ -241,6 +239,37 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
               </ScrollView>
             </View>
           </View>
+          {/* Print Sheet Modal */}
+          <Modal
+            visible={showPrintSheet}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={() => setShowPrintSheet(false)}
+          >
+            <View style={styles.printSheetOverlay}>
+              <View style={styles.printSheetContent}>
+                <View ref={printSheetRef} collapsable={false}>
+                  <OrderPrintSheet
+                    items={selectedOrder.items.filter(item => selectedPrintItemIds.has(item._id))}
+                    customerName={selectedOrder.customerName || ''}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={styles.printButton}
+                  onPress={printSheet}
+                  disabled={selectedPrintItemIds.size === 0}
+                >
+                  <Text style={styles.printButtonText}>Print</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.printSheetCloseButton}
+                  onPress={() => setShowPrintSheet(false)}
+                >
+                  <Text style={styles.printButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
         </Modal>
       )}
     </SafeAreaView>
@@ -266,6 +295,42 @@ const getStatusColor = (status: OrderStatus) => {
 };
 
 const styles = StyleSheet.create({
+  printButton: {
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  printButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  printSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  printSheetContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 24,
+    width: '90%',
+    maxWidth: 420,
+    alignItems: 'center',
+  },
+  printSheetCloseButton: {
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    marginTop: 16,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f7f9fa',
