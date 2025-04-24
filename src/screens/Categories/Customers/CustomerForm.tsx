@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import FormModal from './../../../components/FormModal';
 import CrudButtons from './../../../components/CrudButtons';
 import type { Customer } from '../../../types';
@@ -10,8 +10,6 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../../amplify/data/resource';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { addCustomer, getAllCustomers, updateCustomer, deleteCustomer } from '../../../localdb/services/customerService';
-import ImagePicker from '../../../components/ImagePicker';
-import { getGarmentImage } from '../../../utils/ImageMapping';
 
 const client = generateClient<Schema>();
 
@@ -32,7 +30,6 @@ const initialState = {
     city: '',
     state: '',
     zipCode: '',
-
 };
 
 const CustomerForm: React.FC<CustomerFormProps> = ({
@@ -47,11 +44,11 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { user: authUser } = useAuthenticator((context) => [context.user]);
-    
+
     // Store original values for comparison when editing
     const [originalPhone, setOriginalPhone] = useState('');
     const [originalEmail, setOriginalEmail] = useState('');
-    
+
     // Reset form when customer changes or modal visibility changes
     useEffect(() => {
         if (visible) {
@@ -65,7 +62,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     city: customer.city || '',
                     state: customer.state || '',
                     zipCode: customer.zipCode || '',
-
                 });
                 setOriginalPhone((customer.phone || '').replace(/\D/g, ''));
                 setOriginalEmail(customer.email || '');
@@ -82,14 +78,14 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     useEffect(() => {
         if (error) Alert.alert('Error', error);
     }, [error]);
-    
+
     // Track phone error from child
     const [phoneError, setPhoneError] = useState<string | null>(null);
 
     const handleChange = (field: keyof typeof initialState, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
     };
-    
+
     const handleReset = () => {
         if (customer) {
             setForm({
@@ -101,14 +97,13 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 city: customer.city || '',
                 state: customer.state || '',
                 zipCode: customer.zipCode || '',
-
             });
         } else {
             setForm(initialState);
         }
         setError(null);
     };
-    
+
     const handleDelete = async () => {
         Alert.alert(
             'Delete Customer',
@@ -137,22 +132,22 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
             ]
         );
     };
-    
+
     // Validate email format
     const isValidEmail = (email: string) => {
         return email ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) : true;
     };
-    
+
     // Phone number check function
     const phoneCheckFn = async (val: string) => {
         const cleanedInput = val.replace(/\D/g, '');
         if (cleanedInput.length < 10) return false;
-        
+
         // If editing and phone hasn't changed
         if (customer && cleanedInput === originalPhone) {
             return false; // Not in use by another customer
         }
-        
+
         const allCustomers = await getAllCustomers();
         const phoneExists = Array.from(allCustomers)
             .filter((c: any) => !customer || c._id !== customer._id)
@@ -160,40 +155,40 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 const customerPhone = (c.phone || '').replace(/\D/g, '');
                 return customerPhone === cleanedInput;
             });
-            
+
         return phoneExists; // If true, phone is in use
     };
-    
+
     // Email check function
     const emailCheckFn = async (val: string) => {
         if (!val) return false;
-        
+
         // If editing and email hasn't changed
         if (customer && val === originalEmail) {
             return false; // Not in use by another customer
         }
-        
+
         const allCustomers = await getAllCustomers();
         const emailExists = Array.from(allCustomers)
             .filter((c: any) => !customer || c._id !== customer._id)
             .some((c: any) => (c.email || '').toLowerCase() === val.toLowerCase());
-            
+
         return emailExists; // If true, email is in use
     };
-    
+
     const handleSubmit = async () => {
         // Basic validation
         if (!form.firstName || !form.lastName || !form.phone) {
             setError('First name, last name, and phone are required');
             return;
         }
-        
+
         const normalizedPhone = form.phone.replace(/\D/g, '');
         if (normalizedPhone.length < 10) {
             setError('Phone number must have at least 10 digits');
             return;
         }
-        
+
         // Check phone availability (skip if unchanged during edit)
         if (!(customer && normalizedPhone === originalPhone)) {
             const phoneInUse = await phoneCheckFn(normalizedPhone);
@@ -202,14 +197,14 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 return;
             }
         }
-        
+
         // Check email if provided
         if (form.email) {
             if (!isValidEmail(form.email)) {
                 setError('Please enter a valid email address');
                 return;
             }
-            
+
             // Check email availability (skip if unchanged during edit)
             if (!(customer && form.email === originalEmail)) {
                 const emailInUse = await emailCheckFn(form.email);
@@ -219,11 +214,11 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 }
             }
         }
-        
+
         try {
             setLoading(true);
             setError(null);
-            
+
             if (customer) {
                 // Update existing customer
                 const now = new Date();
@@ -244,7 +239,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         state: form.state || '',
                         zipCode: form.zipCode || '',
                         businessId: userId,
-                        cognitoId: authUser?.userId || undefined,
+                        // Removed cognitoId
                         notes: [],
                         createdAt: new Date(),
                         updatedAt: undefined,
@@ -263,7 +258,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
             setLoading(false);
         }
     };
-    
+
     // Check if form is valid for enabling submit button
     const isFormValid = () => {
         const normalizedPhone = form.phone.replace(/\D/g, '');

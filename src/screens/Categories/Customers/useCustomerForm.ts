@@ -282,7 +282,7 @@ export function useCustomerForm({ visible, customer, userId, onClose, onSuccess 
                     state: form.state || undefined,
                     zipCode: form.zipCode || undefined,
                     businessId: userId,
-                    cognitoId: authUser?.userId || undefined,
+                    // Removed cognitoId assignment here
                 });
                 
                 if (!response.data) throw new Error('Failed to create customer');
@@ -298,7 +298,9 @@ export function useCustomerForm({ visible, customer, userId, onClose, onSuccess 
                     state: form.state || '',
                     zipCode: form.zipCode || '',
                     businessId: userId,
-                    cognitoId: authUser?.userId || undefined,
+                    // Removed cognitoId
+                    notes: [],
+                    createdAt: new Date(),
                 };
                 
                 await addCustomer(newCustomer);

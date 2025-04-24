@@ -1,6 +1,6 @@
-// Updated CheckoutScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Dimensions, SafeAreaView, Alert } from 'react-native';
+// src/screens/Checkout/CheckoutScreen.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Dimensions, SafeAreaView, Alert, BackHandler } from 'react-native';
 import { RouteProp, useRoute, useNavigation, NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Customer, Product, Category } from '../../types';
 import { useCategories } from '../../hooks/useCategories';
@@ -14,10 +14,9 @@ interface CheckoutScreenRouteParams {
 }
 
 // Define the navigation param list
-type RootStackParamList = {
+export type RootStackParamList = {
   Checkout: CheckoutScreenRouteParams;
-  // Add other screens as needed
-  Dashboard: undefined;
+  DASHBOARD: undefined;
   Receipt: { orderDetails: any };
 };
 
@@ -51,6 +50,36 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   const [pickupDate, setPickupDate] = useState<Date | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  
+  // Handle back button press - confirm before leaving if items in cart
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (orderItems.length > 0) {
+        Alert.alert(
+          'Discard Order?',
+          'You have items in your order. Are you sure you want to go back and discard this order?',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => {} },
+            { 
+              text: 'Discard', 
+              style: 'destructive',
+              onPress: () => navigation.goBack()
+            }
+          ]
+        );
+        return true; // Prevent default back button behavior
+      }
+      return false; // Allow default back button behavior
+    };
+
+    // Add back button handler
+    BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    
+    // Clean up event listener
+    return () => {
+      BackHandler.removeEventListener('hardwareBackPress', handleBackPress);
+    };
+  }, [orderItems, navigation]);
   
   // Check screen size for responsive layout
   useEffect(() => {
@@ -179,9 +208,11 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     // Reset order state
     setOrderItems([]);
     setPickupDate(null);
-    
-    // Navigate back to dashboard
-    navigation.goBack();
+    // Navigate to dashboard using navigate instead of goBack
+    console.log('[CheckoutScreen] Order completed, resetting state and navigating to dashboard');
+    navigation.navigate('DASHBOARD');
+    // Alternative: You can use replace to avoid adding to navigation history
+    // navigation.replace('DASHBOARD');
   };
   
   return (

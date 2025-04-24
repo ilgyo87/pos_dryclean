@@ -46,7 +46,8 @@ function mapCustomer(item: any): Customer {
       state: String(getProperty(item, 'state') || ''),
       zipCode: String(getProperty(item, 'zipCode') || ''),
       businessId: String(getProperty(item, 'businessId') || ''),
-      cognitoId: getProperty(item, 'cognitoId') ? String(getProperty(item, 'cognitoId')) : undefined,
+      // Remove cognitoId and make it undefined by default
+      cognitoId: undefined,  
       notes: Array.isArray(getProperty(item, 'notes')) ? [...getProperty(item, 'notes')] : [],
       createdAt: getProperty(item, 'createdAt') ? new Date(getProperty(item, 'createdAt')) : new Date(),
       updatedAt: getProperty(item, 'updatedAt') ? new Date(getProperty(item, 'updatedAt')) : undefined,
@@ -77,8 +78,14 @@ export async function addCustomer(customer: Customer) {
   const realm = await getRealm();
   let createdCustomer;
   try {
+    // Make sure we're not passing cognitoId if it hasn't been explicitly set
+    const customerToAdd = { ...customer };
+    if (!customerToAdd.cognitoId) {
+      delete customerToAdd.cognitoId;
+    }
+    
     realm.write(() => {
-      createdCustomer = realm.create('Customer', customer);
+      createdCustomer = realm.create('Customer', customerToAdd);
     });
     // Immediately map to plain JS object
     const jsCustomer = mapCustomer(createdCustomer);
@@ -89,7 +96,6 @@ export async function addCustomer(customer: Customer) {
     throw e;
   } finally {
     // Always close the realm instance when done
-
   }
 }
 
@@ -129,7 +135,6 @@ export async function getAllCustomers() {
     return [];
   } finally {
     // Always close the realm instance when done
-
   }
 }
 
@@ -145,7 +150,6 @@ export async function getCustomerById(id: string) {
     console.error('[CUSTOMER][LOCAL] Error getting customer by ID:', e);
     return null;
   } finally {
-
   }
 }
 
@@ -156,12 +160,18 @@ export async function updateCustomer(id: string, updates: Partial<Customer>) {
   const realm = await getRealm();
   let updatedCustomer;
   try {
+    // Remove cognitoId from updates if it's undefined or null
+    const updatesToApply = { ...updates };
+    if (updatesToApply.cognitoId === undefined || updatesToApply.cognitoId === null) {
+      delete updatesToApply.cognitoId;
+    }
+    
     realm.write(() => {
       const customer = realm.objectForPrimaryKey('Customer', id);
       if (customer) {
-        Object.keys(updates).forEach(key => {
+        Object.keys(updatesToApply).forEach(key => {
           // @ts-ignore
-          customer[key] = updates[key];
+          customer[key] = updatesToApply[key];
         });
         updatedCustomer = customer;
       }
@@ -171,7 +181,6 @@ export async function updateCustomer(id: string, updates: Partial<Customer>) {
     console.error('[CUSTOMER][LOCAL] Error updating customer:', e);
     throw e;
   } finally {
-
   }
 }
 
@@ -194,6 +203,5 @@ export async function deleteCustomer(id: string) {
     console.error('[CUSTOMER][LOCAL] Error deleting customer:', e);
     throw e;
   } finally {
-
   }
 }

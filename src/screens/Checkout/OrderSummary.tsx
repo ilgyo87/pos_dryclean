@@ -1,14 +1,14 @@
-// Updated OrderItemRow.tsx to integrate with payment modal
+// src/screens/Checkout/OrderSummary.tsx
 import React, { useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
-  TextInput,
   ListRenderItem,
   Alert,
 } from 'react-native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Product } from '../../types';
 import PaymentModal, { PaymentMethod } from './PaymentModal';
@@ -38,16 +38,6 @@ interface OrderSummaryProps {
   pickupDate?: Date | null;
 }
 
-function starchShortCode(starch?: 'none' | 'light' | 'medium' | 'heavy') {
-  switch (starch) {
-    case 'none': return 'N';
-    case 'light': return 'L';
-    case 'medium': return 'M';
-    case 'heavy': return 'H';
-    default: return '';
-  }
-}
-
 function hashString(str: string): string {
   let hash = 0, i, chr;
   if (str.length === 0) return '0';
@@ -58,6 +48,8 @@ function hashString(str: string): string {
   }
   return Math.abs(hash).toString();
 }
+
+import type { RootStackParamList } from './CheckoutScreen';
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   items = [], 
@@ -70,6 +62,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   employeeId,
   pickupDate
 }) => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null);
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [itemNotes, setItemNotes] = useState('');
@@ -103,6 +96,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
   // Confirm payment: use the custom hook
   const handleConfirmPayment = async () => {
     try {
+      console.log('[OrderSummary] Confirming payment...');
+      console.log('[OrderSummary] Payment method:', paymentMethod);
+      console.log('[OrderSummary] Items count:', items.length);
+      
       const result = await checkout({
         items,
         total,
@@ -120,15 +117,28 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
       
       if (result && result.success) {
         setShowPaymentModal(false);
+        
+        // Show success message
         Alert.alert(
           'Order Created',
           'Your order has been successfully created.',
-          [{ text: 'OK', onPress: onCheckout }]
+          [{ 
+            text: 'OK', 
+            onPress: () => {
+              console.log('[OrderSummary] Navigating to Dashboard after successful checkout');
+              // Close modal and navigate back to dashboard
+              onCheckout();
+              // Use navigation to go back instead of relying on just the callback
+              // Simply go back to previous screen rather than trying to navigate to a specific route
+              navigation.navigate('DASHBOARD'); // Use navigate instead of goBack
+            }
+          }]
         );
+      } else {
+        console.error('[OrderSummary] Checkout failed:', result?.error);
       }
     } catch (e) {
-      // Error is handled in the checkout hook
-      console.error('Payment confirmation error:', e);
+      console.error('[OrderSummary] Payment confirmation error:', e);
     }
   };
   

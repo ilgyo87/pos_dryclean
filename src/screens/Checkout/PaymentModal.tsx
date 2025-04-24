@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Switch, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Switch, Modal, StyleSheet, ActivityIndicator } from 'react-native';
 
 export type PaymentMethod = 'cash' | 'card' | 'venmo' | 'saved';
 
@@ -45,52 +45,69 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           {['cash', 'card', 'venmo', 'saved'].map((method) => (
             <TouchableOpacity
               key={method}
-              style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
+              style={[styles.paymentOption, paymentMethod === method && styles.selectedPaymentOption]}
               onPress={() => setPaymentMethod(method as PaymentMethod)}
+              disabled={saving}
             >
               <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  borderWidth: 2,
-                  borderColor: '#007bff',
-                  marginRight: 8,
-                  backgroundColor: paymentMethod === method ? '#007bff' : '#fff',
-                }}
+                style={[
+                  styles.radioCircle,
+                  paymentMethod === method && styles.radioCircleSelected
+                ]}
               />
-              <Text style={{ fontSize: 16 }}>{method.charAt(0).toUpperCase() + method.slice(1)}</Text>
+              <Text style={styles.paymentLabel}>
+                {method.charAt(0).toUpperCase() + method.slice(1)}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
         <View style={{ marginVertical: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <Switch value={printReceipt} onValueChange={setPrintReceipt} />
-            <Text style={{ marginLeft: 10 }}>Print Receipt</Text>
+          <View style={styles.optionRow}>
+            <Switch 
+              value={printReceipt} 
+              onValueChange={setPrintReceipt} 
+              disabled={saving}
+            />
+            <Text style={styles.optionLabel}>Print Receipt</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <Switch value={notifyTxt} onValueChange={setNotifyTxt} />
-            <Text style={{ marginLeft: 10 }}>Text Notification</Text>
+          <View style={styles.optionRow}>
+            <Switch 
+              value={notifyTxt} 
+              onValueChange={setNotifyTxt} 
+              disabled={saving}
+            />
+            <Text style={styles.optionLabel}>Text Notification</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <Switch value={notifyEmail} onValueChange={setNotifyEmail} />
-            <Text style={{ marginLeft: 10 }}>Email Notification</Text>
+          <View style={styles.optionRow}>
+            <Switch 
+              value={notifyEmail} 
+              onValueChange={setNotifyEmail} 
+              disabled={saving}
+            />
+            <Text style={styles.optionLabel}>Email Notification</Text>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
+        <View style={styles.buttonRow}>
           <TouchableOpacity
-            style={[styles.cancelButton, { marginRight: 12 }]}
+            style={[styles.cancelButton, saving && styles.disabledButton]}
             onPress={onCancel}
             disabled={saving}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.saveButton}
+            style={[styles.confirmButton, saving && styles.disabledButton]}
             onPress={onConfirm}
             disabled={saving}
           >
-            <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Confirm'}</Text>
+            {saving ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.confirmButtonText}>Processing...</Text>
+              </View>
+            ) : (
+              <Text style={styles.confirmButtonText}>Confirm</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -111,28 +128,87 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 20,
     maxHeight: '80%',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 12,
+    color: '#333',
+  },
+  paymentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  selectedPaymentOption: {
+    backgroundColor: '#f0f8ff',
+    borderRadius: 6,
+    padding: 8,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#007bff',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioCircleSelected: {
+    backgroundColor: '#fff',
+    borderColor: '#007bff',
+  },
+  paymentLabel: {
+    fontSize: 16,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  optionLabel: {
+    marginLeft: 10,
+    fontSize: 16,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
   },
   cancelButton: {
-    padding: 10,
-    marginRight: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginRight: 12,
   },
   cancelButtonText: {
     color: '#666',
+    fontSize: 16,
   },
-  saveButton: {
+  confirmButton: {
     backgroundColor: '#007bff',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 4,
+    borderRadius: 6,
   },
-  saveButtonText: {
+  disabledButton: {
+    opacity: 0.6,
+  },
+  confirmButtonText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 16,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
