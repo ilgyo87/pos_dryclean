@@ -50,21 +50,17 @@ export default function useCheckout() {
       items.forEach(item => {
         for (let i = 0; i < (item.quantity || 1); i++) {
           const productId = uuidv4();
+          // Always generate a unique orderItemId for each product instance
           const orderItemId = uuidv4();
           
           const newProduct = {
-            _id: productId,
-            name: item.name,
-            price: item.price || 0,
-            discount: item.discount || 0,
-            additionalPrice: item.additionalPrice || 0,
-            description: item.description || '',
-            categoryId: item.categoryId || '',
+            ...item,
+            _id: productId, // unique product instance
+            orderItemId,    // unique order item instance
             businessId,
             customerId,
             employeeId,
             orderId,
-            orderItemId,
             starch: item.options?.starch || 'none',
             pressOnly: item.options?.pressOnly || false,
             imageName: item.imageName || '',
@@ -107,7 +103,7 @@ export default function useCheckout() {
       realm.write(() => {
         console.log('[CHECKOUT] Creating products');
         productList.forEach(prod => {
-          console.log(`[CHECKOUT] Creating product: ${prod.name} (${prod._id})`);
+          console.log(`[CHECKOUT] Creating product: ${prod.name} (${prod._id}, orderItemId: ${prod.orderItemId})`);
           realm.create('Product', prod);
         });
         
