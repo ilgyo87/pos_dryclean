@@ -1,15 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, SafeAreaView, TextInput, Modal, Text, TouchableOpacity, ScrollView } from 'react-native';
-import * as RNPrint from 'react-native-print';
-import { captureRef } from 'react-native-view-shot';
+import { View, StyleSheet, SafeAreaView, TextInput, Modal, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import * as Print from 'expo-print';
 import OrderSearchBar from './OrderSearchBar';
 import OrderList from './OrderList';
 import StatusHeaderBar, { OrderStatus } from './StatusHeaderBar';
 import { useOrders } from '../../../hooks/useOrders';
-import { Order } from '../../../types';
+import { Order, Product } from '../../../types';
 import OrderItemToggleList from './OrderItemToggleList';
-import OrderPrintSheet from './OrderPrintSheet';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { generateQRCodeData } from '../../../utils/QRCodeGenerator';
 
 interface OrdersScreenProps {
   employeeId?: string;
@@ -18,14 +17,11 @@ interface OrdersScreenProps {
 }
 
 const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, lastName }) => {
-  // Order detail modal state (move these to the top)
+  // Order detail modal state
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
 
-  // ...existing state
   const [selectedPrintItemIds, setSelectedPrintItemIds] = useState<Set<string>>(new Set());
-  const [showPrintSheet, setShowPrintSheet] = useState(false);
-  const printSheetRef = useRef<View>(null);
 
   // When an order is selected, select all items for print by default
   useEffect(() => {
@@ -47,19 +43,164 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
     });
   };
 
-  // Print handler
-  const handlePrint = () => {
-    setShowPrintSheet(true);
+  // Generate HTML for QR codes for Expo Print
+  const generateQRCodesHTML = (items: Product[], customerName: string, orderId: string): string => {
+    // Start with HTML header optimized for mobile printing
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+        <style>
+          @page {
+            size: 58mm 40mm; /* Typical thermal receipt printer size */
+            margin: 0;
+          }
+          body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            padding: 5mm;
+            margin: 0;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          .page-break {
+            page-break-after: always;
+            height: 0;
+          }
+          .order-header {
+            text-align: center;
+            margin-bottom: 3mm;
+            font-size: 3.5mm;
+            font-weight: bold;
+          }
+          .item-container {
+            border: 0.3mm solid #ccc;
+            border-radius: 2mm;
+            padding: 3mm;
+            margin-bottom: 3mm;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+          }
+          .qr-code {
+            width: 20mm;
+            height: 20mm;
+          }
+          .item-details {
+            margin-left: 3mm;
+            flex: 1;
+          }
+          .customer-name {
+            font-weight: bold;
+            font-size: 3mm;
+            margin-bottom: 1mm;
+          }
+          .item-name {
+            font-size: 3mm;
+            color: #007bff;
+            font-weight: bold;
+          }
+          .item-options {
+            font-size: 2.5mm;
+            color: #666;
+            margin-top: 1mm;
+          }
+          .item-id {
+            font-size: 2mm;
+            color: #999;
+            margin-top: 1mm;
+            font-family: monospace;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="order-header">Order #${orderId.substring(0, 8)}</div>
+    `;
+
+    // Generate HTML for each item with proper page breaks for Expo Print
+    items.forEach((item, index) => {
+      // Generate QR code data using the utility
+      const qrData = generateQRCodeData('Product', {
+        id: item._id,
+        orderItemId: item.orderItemId || item._id,
+        orderId: item.orderId || '',
+        customerId: item.customerId || '',
+        businessId: item.businessId || '',
+      });
+
+      // Encode the data for use in a QR code
+      const encodedData = encodeURIComponent(qrData);
+      
+      // Use a QR code generation service - Google Chart API for simplicity
+      // Higher resolution (300x300) for better print quality
+      const qrCodeUrl = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=M|0&chl=${encodedData}`;
+
+      // Add item container with improved thermal printer formatting
+      html += `
+        <div class="item-container">
+          <img src="${qrCodeUrl}" class="qr-code" />
+          <div class="item-details">
+            <div class="customer-name">${customerName || 'Customer'}</div>
+            <div class="item-name">${item.name || 'Item'}</div>
+            ${item.starch ? `<div class="item-options">Starch: ${item.starch}</div>` : ''}
+            ${item.pressOnly ? `<div class="item-options">Press Only</div>` : ''}
+            <div class="item-id">${item._id.substring(0, 8)}</div>
+          </div>
+        </div>
+        ${index < items.length - 1 ? '<div class="page-break"></div>' : ''}
+      `;
+    });
+
+    // Close HTML with current date timestamp for tracking
+    const now = new Date();
+    const timestamp = now.toLocaleString();
+    
+    html += `
+      <div style="text-align: center; font-size: 2mm; color: #999; margin-top: 2mm;">
+        ${timestamp}
+      </div>
+      </body>
+      </html>
+    `;
+
+    return html;
   };
 
-  // Capture and print the sheet
-  const printSheet = async () => {
-    if (printSheetRef.current) {
+  // Direct HTML printing with QR codes using Expo Print
+  const printQRCodes = async () => {
+    if (selectedOrder) {
       try {
-        const uri = await captureRef(printSheetRef.current, { format: 'png', quality: 1 });
-        await RNPrint.print({ filePath: uri });
+        // Filter items based on selected IDs
+        const selectedItems = selectedOrder.items.filter(item => 
+          selectedPrintItemIds.has(item._id)
+        );
+        
+        if (selectedItems.length === 0) {
+          Alert.alert('No Items Selected', 'Please select at least one item to print.');
+          return;
+        }
+        
+        // Generate HTML with QR codes
+        const html = generateQRCodesHTML(
+          selectedItems,
+          selectedOrder.customerName || '',
+          selectedOrder._id
+        );
+        
+        // Print using Expo Print
+        // This works with Expo's printing service which supports iOS/Android/Web
+        const { uri } = await Print.printToFileAsync({ html });
+        await Print.printAsync({
+          uri,
+          // You can set additional options here if needed:
+          // printerUrl: selectedPrinter?.url, // To target a specific printer
+          // orientation: Print.Orientation.portrait,
+          // numberOfCopies: 1,
+        });
       } catch (error) {
         console.error('Print error:', error);
+        Alert.alert('Print Error', 'There was an error printing the QR codes.');
       }
     }
   };
@@ -216,14 +357,52 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                       onToggle={handleTogglePrintItem}
                     />
                     <TouchableOpacity
-                      style={styles.printButton}
-                      onPress={handlePrint}
+                      style={[styles.printButton, selectedPrintItemIds.size === 0 && styles.disabledButton]}
+                      onPress={printQRCodes}
                       disabled={selectedPrintItemIds.size === 0}
                     >
-                      <Text style={styles.printButtonText}>Print</Text>
+                      <Text style={styles.printButtonText}>Print QR Labels</Text>
                     </TouchableOpacity>
                   </>
                 )}
+                {/* Status Change Section */}
+                <View style={styles.statusButtonsContainer}>
+                  <Text style={styles.sectionTitle}>Change Status</Text>
+                  <View style={styles.statusButtons}>
+                    {selectedOrder.status !== 'PROCESSING' && (
+                      <TouchableOpacity
+                        style={[styles.statusButton, { backgroundColor: '#FFF9C4', borderColor: '#FFC107' }]}
+                        onPress={() => handleStatusChange(selectedOrder._id, 'PROCESSING')}
+                      >
+                        <Text style={[styles.statusButtonText, { color: '#F57F17' }]}>Processing</Text>
+                      </TouchableOpacity>
+                    )}
+                    {selectedOrder.status !== 'READY' && (
+                      <TouchableOpacity
+                        style={[styles.statusButton, { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' }]}
+                        onPress={() => handleStatusChange(selectedOrder._id, 'READY')}
+                      >
+                        <Text style={[styles.statusButtonText, { color: '#2E7D32' }]}>Ready</Text>
+                      </TouchableOpacity>
+                    )}
+                    {selectedOrder.status !== 'COMPLETED' && (
+                      <TouchableOpacity
+                        style={[styles.statusButton, { backgroundColor: '#F5F5F5', borderColor: '#9E9E9E' }]}
+                        onPress={() => handleStatusChange(selectedOrder._id, 'COMPLETED')}
+                      >
+                        <Text style={[styles.statusButtonText, { color: '#616161' }]}>Completed</Text>
+                      </TouchableOpacity>
+                    )}
+                    {selectedOrder.status !== 'CANCELLED' && (
+                      <TouchableOpacity
+                        style={[styles.statusButton, { backgroundColor: '#FFEBEE', borderColor: '#F44336' }]}
+                        onPress={() => handleStatusChange(selectedOrder._id, 'CANCELLED')}
+                      >
+                        <Text style={[styles.statusButtonText, { color: '#C62828' }]}>Cancelled</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
                 {/* Notes Section */}
                 {selectedOrder.notes && selectedOrder.notes.length > 0 && (
                   <View style={styles.notesSection}>
@@ -239,37 +418,6 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
               </ScrollView>
             </View>
           </View>
-          {/* Print Sheet Modal */}
-          <Modal
-            visible={showPrintSheet}
-            animationType="fade"
-            transparent={true}
-            onRequestClose={() => setShowPrintSheet(false)}
-          >
-            <View style={styles.printSheetOverlay}>
-              <View style={styles.printSheetContent}>
-                <View ref={printSheetRef} collapsable={false}>
-                  <OrderPrintSheet
-                    items={selectedOrder.items.filter(item => selectedPrintItemIds.has(item._id))}
-                    customerName={selectedOrder.customerName || ''}
-                  />
-                </View>
-                <TouchableOpacity
-                  style={styles.printButton}
-                  onPress={printSheet}
-                  disabled={selectedPrintItemIds.size === 0}
-                >
-                  <Text style={styles.printButtonText}>Print</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.printSheetCloseButton}
-                  onPress={() => setShowPrintSheet(false)}
-                >
-                  <Text style={styles.printButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
         </Modal>
       )}
     </SafeAreaView>
@@ -304,32 +452,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
   },
+  disabledButton: {
+    backgroundColor: '#B0C4DE',
+    opacity: 0.7,
+  },
   printButtonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
-  },
-  printSheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  printSheetContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    width: '90%',
-    maxWidth: 420,
-    alignItems: 'center',
-  },
-  printSheetCloseButton: {
-    backgroundColor: '#2196F3',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-    alignItems: 'center',
-    marginTop: 16,
   },
   container: {
     flex: 1,
@@ -384,28 +514,6 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontWeight: '600',
-  },
-  itemsSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  itemName: {
-    flex: 1,
-    fontSize: 14,
-  },
-  itemPrice: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#007bff',
   },
   statusButtonsContainer: {
     marginTop: 16,
