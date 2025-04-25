@@ -49,7 +49,7 @@ export function useAvailability(
     setError(null);
 
     // Use a ref to track if component is still mounted
-    const activeRef = useRef(true);
+    const activeRef = {current: true};
     
     // Debounce the check (300ms)
     debounceTimerRef.current = setTimeout(async () => {

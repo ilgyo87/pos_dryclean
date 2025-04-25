@@ -50,7 +50,7 @@ function AuthenticatedApp() {
       }
     }
     checkUserBusiness();
-  }, [userId]);
+  }, [userId, refresh]);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>

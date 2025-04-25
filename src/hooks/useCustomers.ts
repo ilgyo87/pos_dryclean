@@ -14,13 +14,19 @@ export function useCustomers() {
   
   // Use refs to track component mount state and avoid memory leaks
   const isMountedRef = useRef(true);
+  const isRefetchingRef = useRef(false);
   
   // Function to safely fetch customers
   const fetchCustomers = useCallback(async () => {
-    if (!isMountedRef.current) return;
+    // Prevent concurrent fetches
+    if (isRefetchingRef.current || !isMountedRef.current) return;
     
-    setIsLoading(true);
-    setError(null);
+    isRefetchingRef.current = true;
+    
+    if (isMountedRef.current) {
+      setIsLoading(true);
+      setError(null);
+    }
     
     try {
       // Get all customers from the service - this will return detached objects
@@ -43,37 +49,39 @@ export function useCustomers() {
         }));
         
         setCustomers(customersCopy);
+        setIsLoading(false);
       }
     } catch (err: any) {
       console.error('[useCustomers] Error fetching customers:', err);
       if (isMountedRef.current) {
         setError(err.message || 'Failed to fetch customers');
-      }
-    } finally {
-      if (isMountedRef.current) {
         setIsLoading(false);
       }
+    } finally {
+      isRefetchingRef.current = false;
     }
   }, []);
   
-  // Initial data fetch on mount
+  // Setup and cleanup effect
   useEffect(() => {
     console.log('[useCustomers] Mounting hook');
     isMountedRef.current = true;
+    
+    // Initial data fetch
     fetchCustomers();
     
     // Cleanup function to run on unmount
     return () => {
       console.log('[useCustomers] Unmounting hook, cleaning up');
       isMountedRef.current = false;
-      // Clear customers on unmount to avoid stale refs
-      setCustomers([]);
     };
   }, [fetchCustomers]);
   
   // Debug output to track customers state
   useEffect(() => {
-    console.log(`[useCustomers] Customers updated: ${customers.length} items`);
+    if (isMountedRef.current) {
+      console.log(`[useCustomers] Customers updated: ${customers.length} items`);
+    }
   }, [customers]);
   
   return {

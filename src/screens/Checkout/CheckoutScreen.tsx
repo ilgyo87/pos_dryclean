@@ -282,8 +282,8 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
               />
               
               <PickupCalendar 
-                selectedDate={pickupDate}
-                onSelectDate={setPickupDate}
+                value={pickupDate ?? undefined}
+                onChange={date => setPickupDate(date)}
               />
             </View>
           </View>
@@ -324,8 +324,8 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
               />
               
               <PickupCalendar 
-                selectedDate={pickupDate}
-                onSelectDate={setPickupDate}
+                value={pickupDate ?? undefined}
+                onChange={date => setPickupDate(date)}
               />
             </View>
           </View>
