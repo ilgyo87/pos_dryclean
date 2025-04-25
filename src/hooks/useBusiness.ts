@@ -1,3 +1,5 @@
+// src/hooks/useBusiness.ts - Updated version with fixes for dashboard loading issues
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
@@ -12,10 +14,26 @@ const client = generateClient<Schema>();
 const globalRefetchingRef = { current: false };
 const initialFetchDoneRef = { current: false };
 
-export function useBusiness({ userId, refresh, authUser }: {
-  userId: string | undefined,
-  refresh?: number,
-  authUser: any
+// Add a function to reset the global refetch state
+// This will be called when the dashboard becomes visible
+export function resetBusinessRefetchState() {
+  console.log('[useBusiness] Resetting global refetch state');
+  globalRefetchingRef.current = false;
+  // Don't reset initialFetchDoneRef here as we still want to track if initial fetch happened
+}
+
+export function useBusiness({ 
+  userId, 
+  refresh, 
+  authUser,
+  forceRefreshOnMount = false,
+  skipInitialFetch = false
+}: { 
+  userId: string | undefined, 
+  refresh?: number, 
+  authUser: any,
+  forceRefreshOnMount?: boolean,
+  skipInitialFetch?: boolean
 }) {
   const [business, setBusiness] = useState<LocalBusiness | undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -23,24 +41,38 @@ export function useBusiness({ userId, refresh, authUser }: {
   
   // Track mount state to prevent state updates after unmount
   const isMountedRef = useRef(true);
+  
   // Track when last fetch happened to prevent too many refreshes
   const lastFetchTimeRef = useRef<number>(0);
   
+  // Track if this instance has been mounted
+  const hasBeenMountedRef = useRef(false);
+
   // Clean up on unmount
   useEffect(() => {
     isMountedRef.current = true;
+    hasBeenMountedRef.current = true;
+    
+    // If forceRefreshOnMount is true, reset the global refetch state
+    if (forceRefreshOnMount) {
+      resetBusinessRefetchState();
+    }
+    
     return () => {
       isMountedRef.current = false;
     };
-  }, []);
+  }, [forceRefreshOnMount]);
 
-  // Time-based throttling function to prevent excessive refetches
+  // Modified throttling function to allow more refetches in certain scenarios
   const shouldRefetch = useCallback((force: boolean): boolean => {
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTimeRef.current;
     
-    // If forcing refresh or it's been more than 2 seconds since last fetch
-    if (force || timeSinceLastFetch > 2000) {
+    // Always allow refetch if:
+    // 1. Force is true (explicit refresh request)
+    // 2. It's been more than 2 seconds since last fetch
+    // 3. This is the first time this instance is fetching (hasBeenMountedRef but no fetch yet)
+    if (force || timeSinceLastFetch > 2000 || (hasBeenMountedRef.current && lastFetchTimeRef.current === 0)) {
       lastFetchTimeRef.current = now;
       return true;
     }
@@ -91,10 +123,10 @@ export function useBusiness({ userId, refresh, authUser }: {
       }
       
       // Save to local database
-      const localBusiness: LocalBusiness = { 
-        _id: id, 
-        ...formData, 
-        email: ownerEmail 
+      const localBusiness: LocalBusiness = {
+        _id: id,
+        ...formData,
+        email: ownerEmail
       };
       
       console.log(`[useBusiness] Saving business to local database`);
@@ -104,6 +136,9 @@ export function useBusiness({ userId, refresh, authUser }: {
       if (formData.userId) {
         await deleteAllBusinessesExceptUser(formData.userId);
       }
+      
+      // Reset global refetch state to ensure next refetch will happen
+      resetBusinessRefetchState();
       
       // Update the local state if component is still mounted
       if (isMountedRef.current) {
@@ -130,8 +165,28 @@ export function useBusiness({ userId, refresh, authUser }: {
 
   // Refetch business data
   const refetch = useCallback(async (forceRefresh = false) => {
-    // Skip if not mounted, already fetching, or throttled
-    if (!isMountedRef.current || globalRefetchingRef.current || !shouldRefetch(forceRefresh)) {
+    // Skip if not mounted
+    if (!isMountedRef.current) {
+      console.log('[useBusiness] Skipping refetch - component not mounted');
+      return business;
+    }
+    
+    // If global refetching is true but it's been more than 5 seconds, reset it
+    // This prevents a stuck refetch state
+    if (globalRefetchingRef.current) {
+      const now = Date.now();
+      const timeSinceLastFetch = now - lastFetchTimeRef.current;
+      if (timeSinceLastFetch > 5000) {
+        console.log('[useBusiness] Resetting stuck refetch state');
+        globalRefetchingRef.current = false;
+      } else {
+        console.log('[useBusiness] Skipping refetch - already fetching');
+        return business;
+      }
+    }
+    
+    // Skip if throttled and not forced
+    if (!shouldRefetch(forceRefresh)) {
       return business;
     }
     
@@ -183,7 +238,6 @@ export function useBusiness({ userId, refresh, authUser }: {
             
             // Get the first business from API
             const apiObj = data[0];
-            
             console.log(`[useBusiness] Processing business from API`);
             
             try {
@@ -225,8 +279,12 @@ export function useBusiness({ userId, refresh, authUser }: {
       if (isMountedRef.current) {
         setBusiness(localBusiness);
         setIsLoading(false);
+        // If no business found after all fetch attempts, explicitly set undefined
+        if (!localBusiness) {
+          setBusiness(undefined);
+          setIsLoading(false);
+        }
       }
-      
       initialFetchDoneRef.current = true;
       return localBusiness;
     } catch (err: any) {
@@ -243,19 +301,26 @@ export function useBusiness({ userId, refresh, authUser }: {
     }
   }, [userId, authUser, business, shouldRefetch]);
 
+  // Reset initial fetch flag when userId changes (e.g., after sign-in)
+  useEffect(() => {
+    initialFetchDoneRef.current = false;
+  }, [userId]);
+
   // Initial fetch on mount (only once)
   useEffect(() => {
-    if (!initialFetchDoneRef.current && userId) {
-      // Only do once across all instances
+    if (!initialFetchDoneRef.current && userId && !skipInitialFetch) {
+      // Mark initial fetch done immediately to avoid duplicate calls (e.g. React Strict Mode)
+      initialFetchDoneRef.current = true;
       console.log('[useBusiness] Doing initial fetch');
       refetch(true);
     }
-  }, [userId, refetch]);
+  }, [userId, skipInitialFetch]);
 
-  // Regular refetch when refresh or userId changes 
+  // Regular refetch when refresh or userId changes
   useEffect(() => {
     if (userId && isMountedRef.current && refresh !== undefined) {
       const delay = Math.random() * 500; // Random delay to avoid concurrent calls
+      
       const timer = setTimeout(() => {
         console.log(`[useBusiness] userId or refresh changed, doing light refetch`);
         // Don't force refresh on this to avoid excessive API calls
@@ -266,11 +331,5 @@ export function useBusiness({ userId, refresh, authUser }: {
     }
   }, [userId, refresh, refetch]);
 
-  return { 
-    business, 
-    isLoading, 
-    error, 
-    refetch, 
-    createBusiness 
-  };
+  return { business, isLoading, error, refetch, createBusiness };
 }

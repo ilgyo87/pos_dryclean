@@ -3,17 +3,8 @@ import { Platform } from 'react-native';
 import QRCode from 'qrcode';
 import { Buffer } from 'buffer';
 
-// Import the appropriate printer library based on platform
+// Native module reference, loaded lazily in initialize()
 let BluetoothEscposPrinter: any = null;
-if (Platform.OS !== 'web') {
-  try {
-    const escpos = require('react-native-bluetooth-escpos-printer');
-    BluetoothEscposPrinter = escpos?.BluetoothEscposPrinter || escpos;
-  } catch (error) {
-    console.error('Failed to load BluetoothEscposPrinter module', error);
-    BluetoothEscposPrinter = null;
-  }
-}
 
 // Type for Order to be printed
 interface Order {
@@ -51,6 +42,15 @@ export class PrinterService {
     if (Platform.OS === 'web') {
       console.warn('Printer service is not available on web platform');
       return false;
+    }
+
+    // Load printer module
+    try {
+      const escpos = require('react-native-bluetooth-escpos-printer');
+      BluetoothEscposPrinter = escpos?.BluetoothEscposPrinter || escpos;
+    } catch (error) {
+      console.error('Failed to load BluetoothEscposPrinter module', error);
+      BluetoothEscposPrinter = null;
     }
 
     // Ensure printer module is loaded

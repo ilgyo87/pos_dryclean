@@ -1,24 +1,32 @@
+// src/screens/Dashboard/CategoriesGrid.tsx - Updated version with onSelectCategory prop
+
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
+// Updated CategoryItem interface to remove onPress from individual items
 interface CategoryItem {
   id: string;
   title: string;
   count: number;
-  onPress: () => void;
+  screen?: string; // Optional screen property for navigation
 }
 
+// Updated CategoriesGridProps interface to include onSelectCategory
 interface CategoriesGridProps {
   categories: CategoryItem[];
+  onSelectCategory?: (category: CategoryItem) => void; // Added onSelectCategory prop
 }
 
-const CategoriesGrid: React.FC<CategoriesGridProps> = ({ categories }) => (
+const CategoriesGrid: React.FC<CategoriesGridProps> = ({ 
+  categories,
+  onSelectCategory 
+}) => (
   <View style={styles.grid}>
     {categories.map(cat => (
       <TouchableOpacity
         key={cat.id}
         style={styles.card}
-        onPress={cat.onPress}
+        onPress={() => onSelectCategory && onSelectCategory(cat)} // Use onSelectCategory prop
         activeOpacity={0.8}
       >
         <Text style={styles.cardTitle}>{cat.title}</Text>

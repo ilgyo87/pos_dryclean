@@ -1,6 +1,8 @@
+// src/screens/Dashboard/Dashboard.tsx - Updated version with fixes for dashboard loading issues
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native";
-import { useBusiness } from '../../hooks/useBusiness';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useBusiness, resetBusinessRefetchState } from '../../hooks/useBusiness';
 import { AuthUser } from "aws-amplify/auth";
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import BusinessForm from '../../components/BusinessForm';
@@ -8,10 +10,9 @@ import CategoriesGrid from './CategoriesGrid';
 import CustomerQuickSearch from './CustomerQuickSearch';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-export default function Dashboard({ user, refresh }: { user: AuthUser | null, refresh: number }) {
-  const customerQuickSearchRef = useRef<{ focus: () => void }>(null);
-  const mountedRef = useRef(true);
+export default function Dashboard({ user, refresh }: { user: AuthUser | null, refresh?: number }) {
   const [showBusinessModal, setShowBusinessModal] = useState(false);
+  const [hasAutoOpenedModal, setHasAutoOpenedModal] = useState(false);
   const [localRefresh, setLocalRefresh] = useState(0);
   const { user: authUser } = useAuthenticator((context) => [context.user]);
   const navigation = useNavigation<any>();
@@ -19,34 +20,38 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
   // Track initial render to prevent double-fetching
   const initialRenderRef = useRef(true);
   
-  // Clean up on unmount
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  // Track if dashboard is currently focused
+  const isFocusedRef = useRef(false);
 
-  // Focus the search bar when the screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      // Short delay to ensure ref is ready
-      const timer = setTimeout(() => {
-        if (customerQuickSearchRef.current && mountedRef.current) {
-          customerQuickSearchRef.current.focus();
-        }
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }, [])
-  );
-
-  // Get business data
+  // Get business data with forceRefreshOnMount set to true
   const { business, isLoading, error, refetch } = useBusiness({
     userId: user?.userId,
     refresh: localRefresh + (refresh || 0),
     authUser,
+    forceRefreshOnMount: true // Use the new parameter to force refresh on mount
   });
+
+  // Reset refetch state and force refresh when dashboard gains focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[Dashboard] Screen focused');
+      isFocusedRef.current = true;
+      
+      // Reset the global refetch state to ensure we can fetch
+      resetBusinessRefetchState();
+      
+      // Force a refresh when returning to this screen
+      if (!initialRenderRef.current) {
+        console.log('[Dashboard] Not initial render, triggering refresh');
+        setLocalRefresh(prev => prev + 1);
+      }
+      
+      return () => {
+        console.log('[Dashboard] Screen unfocused');
+        isFocusedRef.current = false;
+      };
+    }, [])
+  );
 
   // Handle initial fetch
   useEffect(() => {
@@ -62,107 +67,107 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
     // Close the modal
     setShowBusinessModal(false);
     
-    // Ensure we're still mounted before updating state
-    if (mountedRef.current) {
-      console.log('[Dashboard] Business created successfully, triggering refetch');
-      
-      // Trigger local refresh to force refetch
+    // Reset the global refetch state
+    resetBusinessRefetchState();
+    
+    // Force a refresh with a small delay to ensure dashboard is visible
+    setTimeout(() => {
+      console.log('[Dashboard] Business form success, triggering refresh');
       setLocalRefresh(prev => prev + 1);
-      
-      // Immediate fetch with a short delay
-      setTimeout(() => {
-        if (mountedRef.current) {
-          refetch(true);
-        }
-      }, 100);
-    }
-  }, [refetch]);
+    }, 300);
+  }, []);
 
-  // Show loading state only for the first load
-  if (isLoading && !business && initialRenderRef.current) {
+  // Only auto-open business modal once on first load with no business
+  useEffect(() => {
+    if (!isLoading && !business && !showBusinessModal && !hasAutoOpenedModal) {
+      setShowBusinessModal(true);
+      setHasAutoOpenedModal(true);
+    }
+  }, [isLoading, business, showBusinessModal, hasAutoOpenedModal]);
+
+  // Automatically close business modal if a business is present
+  useEffect(() => {
+    if (business && showBusinessModal) {
+      setShowBusinessModal(false);
+    }
+  }, [business, showBusinessModal]);
+
+  // Debug log for render state
+  console.log('[Dashboard] Render', { isLoading, business });
+
+  // Show loading spinner only on first load before modal auto-open
+  if (!business && isLoading && !hasAutoOpenedModal) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007bff" />
+        <Text style={styles.loadingText}>Loading dashboard...</Text>
       </View>
     );
   }
 
+  // If no business, show create business screen
+  if (!business) {
+    return (
+      <View style={styles.noBusiness}>
+        <Text style={styles.noBusinessTitle}>Welcome to POS Dryclean!</Text>
+        <Text style={styles.noBusinessText}>
+          To get started, please create a business profile.
+        </Text>
+        {!showBusinessModal && (
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={() => setShowBusinessModal(true)}
+          >
+            <Text style={styles.createButtonText}>Create Business</Text>
+          </TouchableOpacity>
+        )}
+
+        <BusinessForm
+          visible={showBusinessModal}
+          onClose={() => {
+            setShowBusinessModal(false);
+            // Reset refetch state only; do NOT force a refetch on cancel
+            resetBusinessRefetchState();
+          }}
+          onSuccess={handleBusinessFormSuccess}
+        />
+      </View>
+    );
+  }
+
+  // Define dashboard categories for quick actions grid
+  const dashboardCategories = [
+    { id: 'customers', title: 'Customers', count: 0, screen: 'Customers' },
+    { id: 'orders', title: 'Orders', count: 0, screen: 'Orders' },
+    { id: 'products', title: 'Products', count: 0, screen: 'Products' },
+    { id: 'employees', title: 'Team', count: 0, screen: 'Employees' },
+    { id: 'settings', title: 'Settings', count: 0, screen: 'Settings' },
+    { id: 'reports', title: 'Reports', count: 0, screen: 'Reports' },
+  ];
+
+  // If we have a business, show the dashboard
   return (
     <View style={styles.container}>
-      {business ? (
-        <>
-          {/* Business info at the top */}
-          <View style={styles.businessInfo}>
-            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
-              <Text style={[styles.businessName, { marginBottom: 0, marginRight: 12 }]}>{business.businessName}</Text>
-              <Text style={[styles.businessDetail, { fontSize: 18, color: '#555' }]}>{business.phone}</Text>
-            </View>
-            {business.address ? (
-              <Text style={styles.businessDetail}>{business.address}</Text>
-            ) : null}
-          </View>
-          
-          {/* Customer search component */}
-          <CustomerQuickSearch ref={customerQuickSearchRef} />
-          
-          {/* Categories grid */}
-          <CategoriesGrid
-            categories={[
-              {
-                id: 'customers',
-                title: 'Customers',
-                count: 0,
-                onPress: () => navigation.navigate('Customers'),
-              },
-              {
-                id: 'orders',
-                title: 'Orders',
-                count: 0,
-                onPress: () => navigation.navigate('Orders'),
-              },
-              {
-                id: 'products',
-                title: 'Products',
-                count: 0,
-                onPress: () => navigation.navigate('Products'),
-              },
-              {
-                id: 'employees',
-                title: 'Team',
-                count: 0,
-                onPress: () => navigation.navigate('Employees'),
-              },
-              {
-                id: 'settings',
-                title: 'Settings',
-                count: 0,
-                onPress: () => navigation.navigate('Settings'),
-              },
-              {
-                id: 'reports',
-                title: 'Reports',
-                count: 0,
-                onPress: () => navigation.navigate('Reports'),
-              },
-            ]}
-          />
-        </> 
-      ) : (
-        <View style={styles.noBusiness}>
-          <Text style={styles.noBusinessText}>Business not created. Please create a business.</Text>
-          <TouchableOpacity 
-            onPress={() => setShowBusinessModal(true)}
-            style={styles.createButtonContainer}
-          >
-            <Text style={styles.createButton}>Create Business</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      
-      {/* Business form modal */}
+      <View style={styles.header}>
+        <Text style={styles.businessName}>{business.businessName}</Text>
+      </View>
+
+      <CustomerQuickSearch />
+
+      <Text style={styles.sectionTitle}>Quick Actions</Text>
+      <CategoriesGrid
+        categories={dashboardCategories}
+        onSelectCategory={(category: any) => navigation.navigate(category.screen)}
+      />
+
       <BusinessForm
         visible={showBusinessModal}
-        onClose={() => setShowBusinessModal(false)}
+        onClose={() => {
+          setShowBusinessModal(false);
+          // Reset refetch state and force refresh when modal is closed
+          resetBusinessRefetchState();
+          setTimeout(() => refetch(true), 300);
+        }}
         onSuccess={handleBusinessFormSuccess}
       />
     </View>
@@ -173,65 +178,63 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    backgroundColor: '#f7f9fa',
+    backgroundColor: '#f8f9fa',
   },
-  businessInfo: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    minWidth: 300,
-    maxWidth: 400,
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  header: {
+    marginBottom: 20,
   },
   businessName: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#222',
-    marginBottom: 10,
-    letterSpacing: 0.5,
-    textAlign: 'center',
+    color: '#333',
   },
-  businessDetail: {
-    fontSize: 16,
-    color: '#444',
-    marginBottom: 4,
-    textAlign: 'center',
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 20,
+    marginBottom: 10,
+    color: '#333',
   },
   noBusiness: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
+    backgroundColor: '#f8f9fa',
   },
-  noBusinessText: {
-    fontSize: 18,
-    marginBottom: 20,
+  noBusinessTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
     textAlign: 'center',
   },
-  createButtonContainer: {
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    borderRadius: 8,
-    overflow: 'hidden',
+  noBusinessText: {
+    fontSize: 16,
+    marginBottom: 30,
+    color: '#666',
+    textAlign: 'center',
   },
   createButton: {
     backgroundColor: '#007bff',
-    color: 'white',
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 30,
     borderRadius: 8,
+  },
+  createButtonText: {
+    color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  }
+    fontWeight: '600',
+  },
 });

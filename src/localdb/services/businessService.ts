@@ -67,7 +67,8 @@ export async function getBusinessByUserId(userId: string): Promise<Business | un
     }
     
     const result = mapBusiness(businesses[0]);
-    console.log(`[BusinessService] Found business for userId ${userId}: ${JSON.stringify(result)}`);
+    // Suppressed verbose log to avoid repeating on every fetch
+    // console.log(`[BusinessService] Found business for userId ${userId}: ${JSON.stringify(result)}`);
     return result;
   } catch (error) {
     console.error(`[BusinessService] Error finding business for userId ${userId}:`, error);
