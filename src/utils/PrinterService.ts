@@ -1,582 +1,290 @@
 // src/utils/PrinterService.ts
-import { Alert, Platform } from 'react-native';
-import * as Print from 'expo-print';
+import { Platform } from 'react-native';
+import QRCode from 'qrcode';
+import { Buffer } from 'buffer';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { generateQRCodeData } from './QRCodeGenerator';
-
-
-// Define interfaces for our printer service
-export interface PrinterDevice {
-  name: string;
-  address: string;
-  inner_mac_address?: string; // For BLEPrinter compatibility
-  lastConnected?: string;
+// Import the appropriate printer library based on platform
+let BluetoothEscposPrinter: any;
+if (Platform.OS !== 'web') {
+  // Only import on native platforms
+  BluetoothEscposPrinter = require('react-native-bluetooth-escpos-printer').BluetoothEscposPrinter;
 }
 
-export interface ReceiptItem {
-  _id: string;
-  orderItemId?: string;
-  customerId?: string;
-  businessId?: string;
-  name: string;
-  options?: {
-    starch?: 'none' | 'light' | 'medium' | 'heavy';
-    pressOnly?: boolean;
-    notes?: string;
-  };
-  price?: number;
-  imageName?: string;
-}
-
-export interface ReceiptData {
-  businessName?: string;
-  orderNumber?: string;
-  customerName?: string;
-  items?: ReceiptItem[];
-  total?: number;
-  date?: string;
+// Type for Order to be printed
+interface Order {
+  id: string;
+  customerId: string;
+  items: any[];
+  total: number;
+  status: string;
+  createdAt: Date;
+  pickupDate: Date | null;
+  employeeId: string;
   notes?: string;
 }
 
-// Constants for storage
-const PRINTER_SETTINGS_KEY = 'PRINTER_SETTINGS';
-const DEFAULT_PRINTER_KEY = 'DEFAULT_PRINTER';
-const PRINTER_HISTORY_KEY = 'PRINTER_HISTORY';
-
-class PrinterService {
-
-  // Initialize the printer service
-  async init() {
-    // No-op for now. Will support future printer integrations.
-    return true;
-  }
-
-  // Load printer history
-  async getPrinterHistory(): Promise<PrinterDevice[]> {
-    try {
-      const historyJSON = await AsyncStorage.getItem(PRINTER_HISTORY_KEY);
-      return historyJSON ? JSON.parse(historyJSON) : [];
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-  console.error('Error loading printer history:', error.message);
-} else {
-  console.error('Error loading printer history:', error);
+// Type for printer connection status
+export enum PrinterConnectionStatus {
+  DISCONNECTED = 'disconnected',
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+  ERROR = 'error'
 }
-      return [];
-    }
-  }
 
-  // Print QR codes for order items
-  async printQRCodes(items: ReceiptItem[], customerName: string, orderId: string): Promise<boolean> {
+/**
+ * Service for handling printing operations with the Brother QL820NWB Label Printer
+ */
+export class PrinterService {
+  private static deviceName = 'QL820NWB';
+  private static connectionStatus: PrinterConnectionStatus = PrinterConnectionStatus.DISCONNECTED;
+  private static lastError: string | null = null;
+
+  /**
+   * Initialize the printer service
+   */
+  static async initialize(): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      console.warn('Printer service is not available on web platform');
+      return false;
+    }
+
     try {
-      if (items.length === 0) {
-        Alert.alert('Print Error', 'No items to print');
+      // Get list of paired devices
+      const devices = await BluetoothEscposPrinter.scanDevices();
+      
+      // Find our QL820NWB printer
+      const printerDevice = devices.find((device: any) => 
+        device.name === this.deviceName || device.name.includes('QL820')
+      );
+      
+      if (!printerDevice) {
+        this.lastError = `Printer ${this.deviceName} not found. Please pair the printer in your device settings.`;
+        this.connectionStatus = PrinterConnectionStatus.ERROR;
         return false;
       }
-
-      if (Platform.OS === 'ios' || Platform.OS === 'android') {
-        const { generateQRCodeData } = require('./QRCodeGenerator');
-        const ThermalPrinterModule = require('react-native-thermal-receipt-printer').default;
-        for (const item of items) {
-          try {
-            // Generate QR code data
-            const qrCodeData = generateQRCodeData('Product', {
-              id: item._id,
-              orderItemId: item.orderItemId || item._id,
-              orderId: orderId,
-              customerId: item.customerId || '',
-              businessId: item.businessId || '',
-            });
-
-            // Format options string
-            let optionsStr = '';
-            if (item.options) {
-              if (item.options.starch) {
-                optionsStr += `Starch: ${item.options.starch}\n`;
-              }
-              if (item.options.pressOnly) {
-                optionsStr += `Press Only\n`;
-              }
-              if (item.options.notes) {
-                optionsStr += `Notes: ${item.options.notes}\n`;
-              }
-            }
-
-            // Print the QR code
-            await ThermalPrinterModule.printQRCode({
-              value: qrCodeData,
-              size: 8,
-              align: 'center'
-            });
-
-            // Print text
-            await ThermalPrinterModule.printText(
-              `\n${customerName || 'Customer'}\n${item.name}\n${optionsStr}\n\n`
-            );
-
-            // Cut the paper between items
-            await ThermalPrinterModule.printCut();
-          } catch (itemError: unknown) {
-            if (itemError instanceof Error) {
-              console.error('Error printing QR code for item:', item, itemError.message);
-            } else {
-              console.error('Error printing QR code for item:', item, itemError);
-            }
-            Alert.alert('Print Error', `Failed to print QR code for item: ${item.name || item._id}`);
-          }
-        }
-        return true;
-      }
-
-      // For demo/development without a physical printer:
-      // Use Expo Print as a fallback when in development or on web
-      return this.printWithExpoPrint(items, customerName, orderId);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error('Print error:', error.message);
-      } else {
-        console.error('Print error:', error);
-      }
-      // Instead of alerting, use the print preview as fallback
-      console.log('Using print preview as fallback after error');
-      return this.printWithExpoPrint(items, customerName, orderId);
-    }
-  }
-
-  // Print a receipt
-  async printReceipt(data: ReceiptData): Promise<boolean> {
-    // For now, always use Expo Print fallback
-    return this.printReceiptWithExpoPrint(data);
-  }
-
-  // Format receipt text for thermal printer
-  private formatReceiptForPrinter(data: ReceiptData): string {
-    const { 
-      businessName, 
-      orderNumber, 
-      customerName, 
-      items, 
-      total, 
-      date,
-      notes 
-    } = data;
-    
-    // Get current date if not provided
-    const printDate = date || new Date().toLocaleString();
-    
-    // Start with header
-    let receiptText = '\n';
-    
-    // Business name centered
-    if (businessName) {
-      receiptText += `${this.centerText(businessName.toUpperCase())}\n\n`;
-    }
-    
-    // Order number and date
-    receiptText += `Order: #${orderNumber || 'N/A'}\n`;
-    receiptText += `Date: ${printDate}\n`;
-    
-    // Customer info if available
-    if (customerName) {
-      receiptText += `Customer: ${customerName}\n`;
-    }
-    
-    // Separator
-    receiptText += `${'-'.repeat(32)}\n`;
-    
-    // Items
-    if (items && items.length > 0) {
-      items.forEach(item => {
-        // Item name
-        receiptText += `${item.name}\n`;
-        
-        // Item options if available
-        if (item.options) {
-          if (item.options.starch) {
-            receiptText += `  Starch: ${item.options.starch}\n`;
-          }
-          if (item.options.pressOnly) {
-            receiptText += `  Press Only\n`;
-          }
-          if (item.options.notes) {
-            receiptText += `  Notes: ${item.options.notes}\n`;
-          }
-        }
-        
-        // Price aligned right
-        if (item.price) {
-          receiptText += `${this.alignRight('$' + item.price.toFixed(2))}\n`;
-        }
-        
-        receiptText += `\n`;
-      });
-    }
-    
-    // Separator
-    receiptText += `${'-'.repeat(32)}\n`;
-    
-    // Total
-    if (total) {
-      receiptText += `${this.alignRight('Total: $' + total.toFixed(2))}\n\n`;
-    }
-    
-    // Notes
-    if (notes) {
-      receiptText += `Notes: ${notes}\n\n`;
-    }
-    
-    // Footer
-    receiptText += `${this.centerText('Thank You!')}\n\n\n`;
-    
-    return receiptText;
-  }
-
-  // Helper functions
-  private centerText(text: string, width: number = 32): string {
-    const padding = Math.max(0, width - text.length) / 2;
-    return ' '.repeat(Math.floor(padding)) + text;
-  }
-  
-  private alignRight(text: string, width: number = 32): string {
-    const padding = Math.max(0, width - text.length);
-    return ' '.repeat(padding) + text;
-  }
-
-  // Expo Print fallback methods for web platform
-  private async printWithExpoPrint(items: ReceiptItem[], customerName: string, orderId: string): Promise<boolean> {
-    try {
-      // Generate HTML for Expo Print
-      const html = this.generateQRCodesHTML(items, customerName, orderId);
       
-      // Print using Expo Print
-      const { uri } = await Print.printToFileAsync({ html });
-      await Print.printAsync({ uri });
-      
+      // Connect to the printer
+      this.connectionStatus = PrinterConnectionStatus.CONNECTING;
+      await BluetoothEscposPrinter.connectPrinter(printerDevice.address);
+      this.connectionStatus = PrinterConnectionStatus.CONNECTED;
       return true;
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-  console.error('Expo Print error:', error.message);
-} else {
-  console.error('Expo Print error:', error);
-}
-      Alert.alert('Print Error', `There was an error printing: ${error}`);
+    } catch (error) {
+      this.lastError = `Failed to initialize printer: ${error}`;
+      this.connectionStatus = PrinterConnectionStatus.ERROR;
+      console.error('Printer initialization error:', error);
       return false;
     }
   }
-  
-  private async printReceiptWithExpoPrint(data: ReceiptData): Promise<boolean> {
+
+  /**
+   * Get the current connection status
+   */
+  static getConnectionStatus(): { status: PrinterConnectionStatus, error: string | null } {
+    return {
+      status: this.connectionStatus,
+      error: this.lastError
+    };
+  }
+
+  /**
+   * Print a QR code directly to the printer without saving
+   * @param orderId The order ID to encode in the QR code
+   */
+  static async printQRCode(orderId: string): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      console.warn('QR code printing is not available on web platform');
+      return false;
+    }
+
     try {
-      // Generate HTML for receipt
-      const html = this.generateReceiptHTML(data);
+      // Ensure printer is connected
+      if (this.connectionStatus !== PrinterConnectionStatus.CONNECTED) {
+        const initialized = await this.initialize();
+        if (!initialized) {
+          throw new Error('Printer not connected');
+        }
+      }
+
+      // Generate QR code as data URL
+      const qrCodeDataURL = await QRCode.toDataURL(orderId, {
+        errorCorrectionLevel: 'H',
+        margin: 1,
+        width: 200,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
+      // Convert data URL to image data
+      const base64Data = qrCodeDataURL.replace('data:image/png;base64,', '');
+      const imageData = Buffer.from(base64Data, 'base64');
+
+      // Configure printer for label printing
+      await BluetoothEscposPrinter.printerInit();
+      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
       
-      // Print using Expo Print
-      const { uri } = await Print.printToFileAsync({ html });
-      await Print.printAsync({ uri });
+      // Set label size for QL820NWB (62mm width)
+      await BluetoothEscposPrinter.sendCommand("M 0\r\n");
+      await BluetoothEscposPrinter.sendCommand("O R\r\n");
+      await BluetoothEscposPrinter.sendCommand("q 800\r\n");
+      await BluetoothEscposPrinter.sendCommand("S 4\r\n");
+      await BluetoothEscposPrinter.sendCommand("D 8\r\n");
+      await BluetoothEscposPrinter.sendCommand("L\r\n");
+      
+      // Print order ID text
+      await BluetoothEscposPrinter.printText(`Order: ${orderId}\n`, {});
+      
+      // Print QR code
+      await BluetoothEscposPrinter.printPic(imageData, { width: 200, left: 100 });
+      
+      // Print date
+      const now = new Date();
+      await BluetoothEscposPrinter.printText(`${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`, {});
+      
+      // End label
+      await BluetoothEscposPrinter.sendCommand("E\r\n");
       
       return true;
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-  console.error('Receipt print error:', error.message);
-} else {
-  console.error('Receipt print error:', error);
-}
-      Alert.alert('Print Error', `There was an error printing receipt: ${error}`);
+    } catch (error) {
+      this.lastError = `Failed to print QR code: ${error}`;
+      this.connectionStatus = PrinterConnectionStatus.ERROR;
+      console.error('QR code printing error:', error);
       return false;
     }
   }
-  
-  private generateQRCodesHTML(items: ReceiptItem[], customerName: string, orderId: string): string {
-    // Start with HTML header
-    let html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-        <style>
-          @page {
-            size: 58mm 40mm; /* Thermal label size */
-            margin: 0;
-          }
-          body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            padding: 5mm;
-            margin: 0;
-            width: 100%;
-            box-sizing: border-box;
-          }
-          .page-break {
-            page-break-after: always;
-            height: 0;
-          }
-          .order-header {
-            text-align: center;
-            margin-bottom: 3mm;
-            font-size: 3.5mm;
-            font-weight: bold;
-          }
-          .item-container {
-            border: 0.3mm solid #ccc;
-            border-radius: 2mm;
-            padding: 3mm;
-            margin-bottom: 3mm;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-          }
-          .qr-code {
-            width: 20mm;
-            height: 20mm;
-          }
-          .item-details {
-            margin-left: 3mm;
-            flex: 1;
-          }
-          .customer-name {
-            font-weight: bold;
-            font-size: 3mm;
-            margin-bottom: 1mm;
-          }
-          .item-name {
-            font-size: 3mm;
-            color: #007bff;
-            font-weight: bold;
-          }
-          .item-options {
-            font-size: 2.5mm;
-            color: #666;
-            margin-top: 1mm;
-          }
-          .item-id {
-            font-size: 2mm;
-            color: #999;
-            margin-top: 1mm;
-            font-family: monospace;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="order-header">Order #${orderId ? orderId.substring(0, 8) : 'N/A'}</div>
-    `;
-    
-    // Generate HTML for each item with proper page breaks
-    items.forEach((item, index) => {
-      // Generate QR code data
-      const qrData = generateQRCodeData('Product', {
-        id: item._id,
-        orderItemId: item.orderItemId || item._id,
-        orderId: orderId,
-        customerId: item.customerId || '',
-        businessId: item.businessId || '',
-      });
-      
-      // Encode the data for use in a QR code
-      const encodedData = encodeURIComponent(qrData);
-      
-      // Use a QR code generation service
-      const qrCodeUrl = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=M|0&chl=${encodedData}`;
-      
-      // Add item container with options
-      let optionsHtml = '';
-      if (item.options) {
-        if (item.options.starch) {
-          optionsHtml += `<div class="item-options">Starch: ${item.options.starch}</div>`;
-        }
-        if (item.options.pressOnly) {
-          optionsHtml += `<div class="item-options">Press Only</div>`;
-        }
-        if (item.options.notes) {
-          optionsHtml += `<div class="item-options">Notes: ${item.options.notes}</div>`;
+
+  /**
+   * Print a receipt for an order
+   * @param order The order details to print
+   */
+  static async printReceipt(order: Order): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      console.warn('Receipt printing is not available on web platform');
+      return false;
+    }
+
+    try {
+      // Ensure printer is connected
+      if (this.connectionStatus !== PrinterConnectionStatus.CONNECTED) {
+        const initialized = await this.initialize();
+        if (!initialized) {
+          throw new Error('Printer not connected');
         }
       }
+
+      // Configure printer for receipt printing
+      await BluetoothEscposPrinter.printerInit();
+      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
       
-      html += `
-        <div class="item-container">
-          <img src="${qrCodeUrl}" class="qr-code" />
-          <div class="item-details">
-            <div class="customer-name">${customerName || 'Customer'}</div>
-            <div class="item-name">${item.name || 'Item'}</div>
-            ${optionsHtml}
-            <div class="item-id">${item._id ? item._id.substring(0, 8) : 'N/A'}</div>
-          </div>
-        </div>
-        ${index < items.length - 1 ? '<div class="page-break"></div>' : ''}
-      `;
-    });
-    
-    // Close HTML with timestamp
-    const now = new Date();
-    const timestamp = now.toLocaleString();
-    
-    html += `
-      <div style="text-align: center; font-size: 2mm; color: #999; margin-top: 2mm;">
-        ${timestamp}
-      </div>
-      </body>
-      </html>
-    `;
-    
-    return html;
-  }
-  
-  private generateReceiptHTML(data: ReceiptData): string {
-    const { 
-      businessName, 
-      orderNumber, 
-      customerName, 
-      items, 
-      total, 
-      date,
-      notes 
-    } = data;
-    
-    // Get current date if not provided
-    const printDate = date || new Date().toLocaleString();
-    
-    // Generate HTML header
-    let html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-        <style>
-          @page {
-            size: 58mm auto; /* Thermal receipt size */
-            margin: 0;
-          }
-          body {
-            font-family: 'Courier New', monospace;
-            padding: 5mm;
-            margin: 0;
-            width: 100%;
-            box-sizing: border-box;
-            font-size: 3mm;
-          }
-          .text-center {
-            text-align: center;
-          }
-          .text-right {
-            text-align: right;
-          }
-          .business-name {
-            font-size: 4mm;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 3mm;
-          }
-          .separator {
-            border-top: 0.2mm dashed #000;
-            margin: 2mm 0;
-          }
-          .item {
-            margin-bottom: 2mm;
-          }
-          .item-option {
-            padding-left: 3mm;
-            font-size: 2.5mm;
-          }
-          .item-price {
-            text-align: right;
-          }
-          .total {
-            font-weight: bold;
-            margin-top: 2mm;
-          }
-          .notes {
-            font-style: italic;
-            margin-top: 2mm;
-            font-size: 2.5mm;
-          }
-          .footer {
-            margin-top: 4mm;
-            font-size: 3mm;
-            text-align: center;
-          }
-        </style>
-      </head>
-      <body>
-    `;
-    
-    // Business name
-    if (businessName) {
-      html += `<div class="business-name text-center">${businessName}</div>`;
-    }
-    
-    // Order details
-    html += `<div>Order: #${orderNumber || 'N/A'}</div>`;
-    html += `<div>Date: ${printDate}</div>`;
-    
-    // Customer info
-    if (customerName) {
-      html += `<div>Customer: ${customerName}</div>`;
-    }
-    
-    // Separator
-    html += `<div class="separator"></div>`;
-    
-    // Items
-    if (items && items.length > 0) {
-      items.forEach(item => {
-        html += `<div class="item">`;
-        
-        // Item name
-        html += `<div>${item.name || 'Item'}</div>`;
-        
-        // Item options
-        if (item.options) {
-          if (item.options.starch) {
-            html += `<div class="item-option">Starch: ${item.options.starch}</div>`;
-          }
-          if (item.options.pressOnly) {
-            html += `<div class="item-option">Press Only</div>`;
-          }
-          if (item.options.notes) {
-            html += `<div class="item-option">Notes: ${item.options.notes}</div>`;
-          }
-        }
-        
-        // Price
-        if (item.price) {
-          html += `<div class="item-price">$${item.price.toFixed(2)}</div>`;
-        }
-        
-        html += `</div>`;
+      // Print header
+      await BluetoothEscposPrinter.printText("DRY CLEAN RECEIPT\n\n", {
+        fonttype: 1,
+        widthtimes: 1,
+        heigthtimes: 1
       });
+      
+      // Print order info
+      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
+      await BluetoothEscposPrinter.printText(`Order: ${order.id}\n`, {});
+      await BluetoothEscposPrinter.printText(`Date: ${new Date(order.createdAt).toLocaleString()}\n`, {});
+      await BluetoothEscposPrinter.printText(`Pickup: ${order.pickupDate ? new Date(order.pickupDate).toLocaleString() : 'Not specified'}\n`, {});
+      await BluetoothEscposPrinter.printText(`Employee: ${order.employeeId}\n`, {});
+      await BluetoothEscposPrinter.printText(`Customer ID: ${order.customerId}\n`, {});
+      
+      // Print divider
+      await BluetoothEscposPrinter.printText("--------------------------------\n", {});
+      
+      // Print items
+      await BluetoothEscposPrinter.printText("ITEMS\n", {
+        fonttype: 1,
+        widthtimes: 0,
+        heigthtimes: 0
+      });
+      
+      for (const item of order.items) {
+        const optionsText = item.options 
+          ? Object.entries(item.options)
+              .filter(([_, value]) => value !== undefined && value !== '')
+              .map(([key, value]) => `${key}: ${value}`)
+              .join(', ')
+          : '';
+          
+        await BluetoothEscposPrinter.printText(`${item.name} x${item.quantity}\n`, {});
+        if (optionsText) {
+          await BluetoothEscposPrinter.printText(`  ${optionsText}\n`, {});
+        }
+        await BluetoothEscposPrinter.printText(`  $${(item.price * item.quantity).toFixed(2)}\n`, {});
+      }
+      
+      // Print divider
+      await BluetoothEscposPrinter.printText("--------------------------------\n", {});
+      
+      // Print total
+      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.RIGHT);
+      await BluetoothEscposPrinter.printText(`TOTAL: $${order.total.toFixed(2)}\n\n`, {
+        fonttype: 1,
+        widthtimes: 1,
+        heigthtimes: 1
+      });
+      
+      // Print QR code
+      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
+      
+      // Generate QR code as data URL
+      const qrCodeDataURL = await QRCode.toDataURL(order.id, {
+        errorCorrectionLevel: 'H',
+        margin: 1,
+        width: 150,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
+      // Convert data URL to image data
+      const base64Data = qrCodeDataURL.replace('data:image/png;base64,', '');
+      const imageData = Buffer.from(base64Data, 'base64');
+      
+      // Print QR code
+      await BluetoothEscposPrinter.printPic(imageData, { width: 150, left: 150 });
+      
+      // Print footer
+      await BluetoothEscposPrinter.printText("\nThank you for your business!\n", {});
+      await BluetoothEscposPrinter.printText("Please present this receipt or QR code\nwhen picking up your order.\n\n\n", {});
+      
+      // Cut paper
+      await BluetoothEscposPrinter.cutOnePoint();
+      
+      return true;
+    } catch (error) {
+      this.lastError = `Failed to print receipt: ${error}`;
+      this.connectionStatus = PrinterConnectionStatus.ERROR;
+      console.error('Receipt printing error:', error);
+      return false;
     }
-    
-    // Separator
-    html += `<div class="separator"></div>`;
-    
-    // Total
-    if (total) {
-      html += `<div class="total text-right">Total: $${total.toFixed(2)}</div>`;
+  }
+
+  /**
+   * Disconnect from the printer
+   */
+  static async disconnect(): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      return false;
     }
-    
-    // Notes
-    if (notes) {
-      html += `<div class="notes">Notes: ${notes}</div>`;
+
+    try {
+      if (this.connectionStatus === PrinterConnectionStatus.CONNECTED) {
+        await BluetoothEscposPrinter.disconnect();
+        this.connectionStatus = PrinterConnectionStatus.DISCONNECTED;
+      }
+      return true;
+    } catch (error) {
+      this.lastError = `Failed to disconnect printer: ${error}`;
+      console.error('Printer disconnection error:', error);
+      return false;
     }
-    
-    // Footer
-    html += `
-      <div class="footer">Thank You!</div>
-      <div class="text-center" style="font-size: 2mm; color: #666; margin-top: 4mm;">
-        ${new Date().toLocaleString()}
-      </div>
-    `;
-    
-    // Close HTML
-    html += `
-      </body>
-      </html>
-    `;
-    
-    return html;
   }
 }
 
-// Create singleton instance
-const printerService = new PrinterService();
-export default printerService;
+export default PrinterService;

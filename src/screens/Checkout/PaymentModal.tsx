@@ -1,214 +1,208 @@
+// src/screens/Checkout/PaymentModal.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, Switch, Modal, StyleSheet, ActivityIndicator } from 'react-native';
-
-export type PaymentMethod = 'cash' | 'card' | 'venmo' | 'saved';
+import {
+  Modal,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Switch
+} from 'react-native';
 
 interface PaymentModalProps {
   visible: boolean;
-  paymentMethod: PaymentMethod;
-  setPaymentMethod: (method: PaymentMethod) => void;
+  total: number;
+  onClose: () => void;
+  onComplete: (method: 'cash' | 'card' | 'other') => void;
   printReceipt: boolean;
-  setPrintReceipt: (v: boolean) => void;
-  notifyTxt: boolean;
-  setNotifyTxt: (v: boolean) => void;
-  notifyEmail: boolean;
-  setNotifyEmail: (v: boolean) => void;
-  saving: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
+  setPrintReceipt: (value: boolean) => void;
+  loading: boolean;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
   visible,
-  paymentMethod,
-  setPaymentMethod,
+  total,
+  onClose,
+  onComplete,
   printReceipt,
   setPrintReceipt,
-  notifyTxt,
-  setNotifyTxt,
-  notifyEmail,
-  setNotifyEmail,
-  saving,
-  onCancel,
-  onConfirm,
-}) => (
-  <Modal
-    visible={visible}
-    transparent
-    animationType="slide"
-    onRequestClose={onCancel}
-  >
-    <View style={styles.modalOverlay}>
-      <View style={styles.modalContent}>
-        <Text style={styles.modalTitle}>Select Payment Method</Text>
-        <View style={{ marginVertical: 12 }}>
-          {['cash', 'card', 'venmo', 'saved'].map((method) => (
-            <TouchableOpacity
-              key={method}
-              style={[styles.paymentOption, paymentMethod === method && styles.selectedPaymentOption]}
-              onPress={() => setPaymentMethod(method as PaymentMethod)}
-              disabled={saving}
-            >
-              <View
-                style={[
-                  styles.radioCircle,
-                  paymentMethod === method && styles.radioCircleSelected
-                ]}
+  loading
+}) => {
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Complete Payment</Text>
+          
+          <Text style={styles.totalText}>
+            Total: ${total.toFixed(2)}
+          </Text>
+          
+          <View style={styles.optionsContainer}>
+            <Text style={styles.optionsTitle}>Receipt Options:</Text>
+            <View style={styles.optionRow}>
+              <Text>Print Receipt</Text>
+              <Switch
+                value={printReceipt}
+                onValueChange={setPrintReceipt}
+                trackColor={{ false: '#767577', true: '#81b0ff' }}
+                thumbColor={printReceipt ? '#4CAF50' : '#f4f3f4'}
               />
-              <Text style={styles.paymentLabel}>
-                {method.charAt(0).toUpperCase() + method.slice(1)}
-              </Text>
+            </View>
+            <Text style={styles.noteText}>
+              QR code will be printed automatically for item tracking
+            </Text>
+          </View>
+          
+          <Text style={styles.paymentMethodTitle}>Select Payment Method:</Text>
+          
+          <View style={styles.paymentButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.paymentButton, styles.cashButton]}
+              onPress={() => onComplete('cash')}
+              disabled={loading}
+            >
+              <Text style={styles.paymentButtonText}>Cash</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-        <View style={{ marginVertical: 12 }}>
-          <View style={styles.optionRow}>
-            <Switch 
-              value={printReceipt} 
-              onValueChange={setPrintReceipt} 
-              disabled={saving}
-            />
-            <Text style={styles.optionLabel}>Print Receipt</Text>
+            
+            <TouchableOpacity
+              style={[styles.paymentButton, styles.cardButton]}
+              onPress={() => onComplete('card')}
+              disabled={loading}
+            >
+              <Text style={styles.paymentButtonText}>Card</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.paymentButton, styles.otherButton]}
+              onPress={() => onComplete('other')}
+              disabled={loading}
+            >
+              <Text style={styles.paymentButtonText}>Other</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.optionRow}>
-            <Switch 
-              value={notifyTxt} 
-              onValueChange={setNotifyTxt} 
-              disabled={saving}
-            />
-            <Text style={styles.optionLabel}>Text Notification</Text>
-          </View>
-          <View style={styles.optionRow}>
-            <Switch 
-              value={notifyEmail} 
-              onValueChange={setNotifyEmail} 
-              disabled={saving}
-            />
-            <Text style={styles.optionLabel}>Email Notification</Text>
-          </View>
-        </View>
-        <View style={styles.buttonRow}>
+          
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#4CAF50" />
+              <Text style={styles.loadingText}>Processing payment...</Text>
+            </View>
+          )}
+          
           <TouchableOpacity
-            style={[styles.cancelButton, saving && styles.disabledButton]}
-            onPress={onCancel}
-            disabled={saving}
+            style={styles.cancelButton}
+            onPress={onClose}
+            disabled={loading}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.confirmButton, saving && styles.disabledButton]}
-            onPress={onConfirm}
-            disabled={saving}
-          >
-            {saving ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.confirmButtonText}>Processing...</Text>
-              </View>
-            ) : (
-              <Text style={styles.confirmButtonText}>Confirm</Text>
-            )}
-          </TouchableOpacity>
         </View>
       </View>
-    </View>
-  </Modal>
-);
+    </Modal>
+  );
+};
 
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    width: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: 'white',
+    borderRadius: 10,
     padding: 20,
-    maxHeight: '80%',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    width: '80%',
+    maxWidth: 500,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
   },
-  paymentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    marginBottom: 8,
+  totalText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
   },
-  selectedPaymentOption: {
-    backgroundColor: '#f0f8ff',
-    borderRadius: 6,
-    padding: 8,
+  optionsContainer: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 5,
   },
-  radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#007bff',
-    marginRight: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioCircleSelected: {
-    backgroundColor: '#fff',
-    borderColor: '#007bff',
-  },
-  paymentLabel: {
+  optionsTitle: {
     fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   optionRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 5,
   },
-  optionLabel: {
-    marginLeft: 10,
+  noteText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: '#666',
+    marginTop: 10,
+  },
+  paymentMethodTitle: {
     fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
-  buttonRow: {
+  paymentButtonsContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 16,
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  paymentButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 5,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  cashButton: {
+    backgroundColor: '#4CAF50',
+  },
+  cardButton: {
+    backgroundColor: '#2196F3',
+  },
+  otherButton: {
+    backgroundColor: '#FF9800',
+  },
+  paymentButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
   },
   cancelButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginRight: 12,
+    padding: 15,
+    borderRadius: 5,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
   },
   cancelButtonText: {
     color: '#666',
-    fontSize: 16,
-  },
-  confirmButton: {
-    backgroundColor: '#007bff',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 6,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  confirmButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
 
