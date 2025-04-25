@@ -1,12 +1,15 @@
 // src/screens/Checkout/CheckoutScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { View, Dimensions, SafeAreaView, Alert, BackHandler } from 'react-native';
 import { RouteProp, useRoute, useNavigation, NavigationProp, ParamListBase } from '@react-navigation/native';
 import { Customer, Product, Category } from '../../types';
 import { useCategories } from '../../hooks/useCategories';
 import { useProducts } from '../../hooks/useProducts';
 import { CustomerHeader, ServiceTabBar, ProductGrid, OrderSummary, PickupCalendar } from './';
+import CheckoutScreenCustomerFormModal from './CheckoutScreenCustomerFormModal';
 import styles from './CheckoutScreen.styles';
+import { hashString } from '../../utils/hashString';
 
 // Route params type for navigation
 interface CheckoutScreenRouteParams {
@@ -41,6 +44,35 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   const route = useRoute<CheckoutScreenRouteProp>();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { customer } = route.params;
+
+  // Track the current customer (for updates)
+  const [currentCustomer, setCurrentCustomer] = useState<Customer>(customer);
+
+  // Modal state for editing customer
+  const [editCustomerModalVisible, setEditCustomerModalVisible] = useState(false);
+  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
+
+  // Handler to open modal
+  const handleEditCustomer = () => {
+    setCustomerToEdit(currentCustomer);
+    setEditCustomerModalVisible(true);
+  };
+
+  // Handler for modal close
+  const handleCustomerModalClose = () => {
+    setEditCustomerModalVisible(false);
+    setCustomerToEdit(null);
+  };
+
+  // Handler for modal success (update customer)
+  const handleCustomerModalSuccess = (updatedCustomer?: Customer) => {
+    setEditCustomerModalVisible(false);
+    setCustomerToEdit(null);
+    if (updatedCustomer) {
+      setCurrentCustomer(updatedCustomer);
+    }
+  };
+
   
   const { categories, loading: loadingCategories } = useCategories();
   const { products, loading: loadingProducts } = useProducts();
@@ -99,6 +131,10 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
       subscription.remove();
     };
   }, []);
+
+  // Detect horizontal orientation
+  const { width, height } = useWindowDimensions();
+  const isHorizontal = width > height;
   
   // Initial category selection
   useEffect(() => {
@@ -155,32 +191,29 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     });
   };
 
-  // Hash function for generating unique keys
-  function hashString(str: string): string {
-    let hash = 0, i, chr;
-    if (str.length === 0) return '0';
-    for (i = 0; i < str.length; i++) {
-      chr = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + chr;
-      hash |= 0; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString();
-  }
 
   // Update item quantity
-  const handleUpdateQuantity = (productId: string, quantity: number) => {
+  // Update item quantity by unique key (including options)
+  const handleUpdateQuantity = (itemKey: string, quantity: number) => {
     setOrderItems(prevItems => {
       if (quantity <= 0) {
         // Remove item if quantity is zero or negative
-        return prevItems.filter(item => item._id !== productId);
+        return prevItems.filter(item => {
+          const optionsStr = item.options ? JSON.stringify(item.options) : '';
+          const key = `${item._id}_${hashString(optionsStr)}`;
+          return key !== itemKey;
+        });
       } else {
-        // Update quantity
-        return prevItems.map(item => 
-          item._id === productId ? { ...item, quantity } : item
-        );
+        // Update quantity for the matching key
+        return prevItems.map(item => {
+          const optionsStr = item.options ? JSON.stringify(item.options) : '';
+          const key = `${item._id}_${hashString(optionsStr)}`;
+          return key === itemKey ? { ...item, quantity } : item;
+        });
       }
     });
   };
+
   
   // Update item options by key
   const handleUpdateOptions = (itemKey: string, update: any) => {
@@ -217,7 +250,16 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   
   return (
     <SafeAreaView style={styles.container}>
-      <CustomerHeader customer={customer} />
+      <CustomerHeader customer={currentCustomer} onEdit={handleEditCustomer} />
+
+      {/* Customer Edit Modal */}
+      <CheckoutScreenCustomerFormModal
+        visible={editCustomerModalVisible}
+        customer={customerToEdit}
+        businessId={currentCustomer.businessId}
+        onClose={handleCustomerModalClose}
+        onSuccess={handleCustomerModalSuccess}
+      />
       
       {isSmallScreen ? (
         // Small screen layout (stacked)
@@ -264,6 +306,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
         // Regular layout (side-by-side)
         <View style={styles.content}>
           <View style={styles.leftPanel}>
+
             <ServiceTabBar 
               categories={categories} 
               selectedCategory={selectedCategory}
@@ -287,7 +330,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
             </View>
           </View>
           
-          <View style={styles.rightPanel}>
+          <View style={[styles.rightPanel, isHorizontal && styles.rightPanelNarrow]}>
             <OrderSummary 
               items={orderItems}
               onUpdateQuantity={handleUpdateQuantity}

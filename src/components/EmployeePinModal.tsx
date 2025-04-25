@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, View, StyleSheet, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Modal, View, StyleSheet, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 
 interface EmployeePinModalProps {
   visible: boolean;
@@ -55,8 +55,12 @@ export const EmployeePinModal: React.FC<EmployeePinModalProps> = ({ visible, onC
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modalContent}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 30}
+      >
+        <View style={[styles.modalContent, { marginTop: -60 }]}> 
           <Text style={styles.title}>Employee Sign In</Text>
           <TextInput
             ref={inputRef}
@@ -90,7 +94,7 @@ export const EmployeePinModal: React.FC<EmployeePinModalProps> = ({ visible, onC
             <Text style={{ fontSize: 24, color: '#888' }}>×</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

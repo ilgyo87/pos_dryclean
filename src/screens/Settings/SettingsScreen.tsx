@@ -39,11 +39,26 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
   </TouchableOpacity>
 );
 
-const SettingsScreen: React.FC = () => {
+interface SettingsScreenProps {
+  employeeId?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ employeeId, firstName, lastName }) => {
   const navigation = useNavigation<any>();
 
   return (
     <SafeAreaView style={styles.container}>
+      {employeeId && (
+        <View style={{ padding: 12, backgroundColor: '#e3f2fd', borderRadius: 8, margin: 10, flexDirection: 'row', alignItems: 'center' }}>
+          <MaterialIcons name="person" size={22} color="#2196F3" style={{ marginRight: 10 }} />
+          <View>
+            <Text style={{ fontWeight: 'bold', color: '#1565c0', fontSize: 15 }}>{firstName} {lastName}</Text>
+            <Text style={{ color: '#1565c0', fontSize: 13 }}>Employee ID: {employeeId}</Text>
+          </View>
+        </View>
+      )}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.sectionHeader}>Printer Settings</Text>
         <SettingsSection

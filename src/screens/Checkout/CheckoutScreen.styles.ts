@@ -26,6 +26,10 @@ const styles = StyleSheet.create({
     borderLeftColor: '#e0e0e0',
     backgroundColor: '#fff',
   },
+  rightPanelNarrow: {
+    flex: 1,
+    maxWidth: 260,
+  },
   checkoutSection: {
     padding: 15,
   },

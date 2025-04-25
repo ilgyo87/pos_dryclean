@@ -5,7 +5,7 @@ import CustomerSearchBar from '../Categories/Customers/CustomerSearchBar';
 import CustomerForm from '../Categories/Customers/CustomerForm';
 import { useCustomers } from '../../hooks/useCustomers';
 import type { Customer } from '../../types';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 const CustomerQuickSearch = forwardRef<any, any>((props, ref) => {
@@ -15,6 +15,16 @@ const CustomerQuickSearch = forwardRef<any, any>((props, ref) => {
   const [preFillPhone, setPreFillPhone] = useState('');
   const navigation = useNavigation<any>();
   const { customers, isLoading, refetch } = useCustomers();
+  const isFocused = useIsFocused();
+  const wasFocusedRef = React.useRef(false);
+
+  // Only refetch when focus transitions from false to true
+  React.useEffect(() => {
+    if (isFocused && !wasFocusedRef.current) {
+      refetch();
+    }
+    wasFocusedRef.current = isFocused;
+  }, [isFocused, refetch]);
   const inputRef = useRef<TextInput>(null);
 
   // Expose focus method to parent components

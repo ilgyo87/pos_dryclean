@@ -11,6 +11,9 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 10,
   },
+  containerNarrow: {
+    maxWidth: 260,
+  },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -60,7 +63,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   totalLabel: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
   },
@@ -107,10 +110,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   itemName: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
     color: '#222',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   itemRow: {
     flexDirection: 'row',
@@ -129,19 +132,17 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   quantityLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#555',
-    marginRight: 5,
   },
   quantityControl: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 6,
     borderWidth: 1,
     borderColor: '#eee',
     borderRadius: 4,
     paddingHorizontal: 4,
-    paddingVertical: 2,
+    paddingVertical: 1,
     backgroundColor: '#f7f7f7',
   },
   quantityButton: {
@@ -149,10 +150,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   itemPrice: {
-    fontSize: 15,
+    fontSize: 12,
     color: '#007bff',
     fontWeight: '600',
-    marginLeft: 6,
   },
   optionsButton: {
     marginLeft: 10,

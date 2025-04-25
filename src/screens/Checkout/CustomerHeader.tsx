@@ -7,9 +7,10 @@ import { getGarmentImage } from '../../utils/ImageMapping';
 
 interface CustomerHeaderProps {
   customer: Customer;
+  onEdit?: () => void;
 }
 
-const CustomerHeader: React.FC<CustomerHeaderProps> = ({ customer }) => {
+const CustomerHeader: React.FC<CustomerHeaderProps> = ({ customer, onEdit }) => {
   const navigation = useNavigation();
   
   return (
@@ -40,9 +41,7 @@ const CustomerHeader: React.FC<CustomerHeaderProps> = ({ customer }) => {
       
       <TouchableOpacity 
         style={styles.editButton}
-        onPress={() => {
-          // Add logic to edit customer
-        }}
+        onPress={onEdit}
       >
         <MaterialIcons name="edit" size={20} color="#666" />
         <Text style={styles.editText}>Edit</Text>

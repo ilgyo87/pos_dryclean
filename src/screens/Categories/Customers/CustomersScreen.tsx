@@ -1,5 +1,5 @@
 // src/screens/Customers/CustomersScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, SafeAreaView } from 'react-native';
 import CustomerSearchBar from './CustomerSearchBar';
 import CustomerList from './CustomerList';
@@ -7,6 +7,7 @@ import AddCustomerButton from './AddCustomerButton';
 import CustomerForm from './CustomerForm';
 import { Customer } from '../../../types';
 import { useCustomers } from '../../../hooks/useCustomers';
+import { useIsFocused } from '@react-navigation/native';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 
 interface CustomersScreenProps {
@@ -43,10 +44,7 @@ export default function CustomersScreen({ employeeId, firstName, lastName }: Cus
     setFilteredCustomers(filtered);
   }, [searchQuery, customers]);
 
-  // Refresh the customer list when the component mounts
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
+
 
   // Handle Enter key to open first customer in edit modal
   const handleSubmit = () => {
@@ -78,7 +76,10 @@ export default function CustomersScreen({ employeeId, firstName, lastName }: Cus
         visible={!!editingCustomer}
         userId={user?.userId}
         onClose={() => setEditingCustomer(null)}
-        onSuccess={refetch}
+        onSuccess={() => {
+          refetch();
+          setEditingCustomer(null);
+        }}
         customer={editingCustomer}
       />
     </SafeAreaView>

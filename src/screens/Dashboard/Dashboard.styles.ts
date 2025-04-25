@@ -4,16 +4,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', // keep horizontal centering for now
+    justifyContent: 'flex-start', // top align
     backgroundColor: '#f7f9fa',
   },
   businessInfo: {
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 28,
-    marginBottom: 32,
+    padding: 16, // less padding
+    marginBottom: 16, // less margin
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,

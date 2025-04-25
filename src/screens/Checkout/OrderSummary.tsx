@@ -1,5 +1,6 @@
 // src/screens/Checkout/OrderSummary.tsx
 import React, { useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 import {
   View,
   Text,
@@ -169,8 +170,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
     }
   };
 
+  const { width, height } = useWindowDimensions();
+  const isHorizontal = width > height;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isHorizontal && styles.containerNarrow]}>
       <Text style={styles.title}>Order Summary</Text>
 
       {items.length === 0 ? (

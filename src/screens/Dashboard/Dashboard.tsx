@@ -44,10 +44,15 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
     <View style={styles.container}>
       {business ? (
         <>
+          {/* Move business info to the very top, search bar below */}
           <View style={styles.businessInfo}>
-            <Text style={styles.businessName}>{business.businessName}</Text>
-            <Text style={styles.businessDetail}>{business.address}</Text>
-            <Text style={styles.businessDetail}>{business.phone}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={[styles.businessName, { marginBottom: 0, marginRight: 12 }]}>{business.businessName}</Text>
+              <Text style={[styles.businessDetail, { fontSize: 18, color: '#555' }]}>{business.phone}</Text>
+            </View>
+            {business.address ? (
+              <Text style={styles.businessDetail}>{business.address}</Text>
+            ) : null}
           </View>
           <CustomerQuickSearch ref={customerQuickSearchRef} />
           <CategoriesGrid
