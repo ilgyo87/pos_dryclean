@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { BluetoothDevice } from 'react-native-bluetooth-escpos-printer';
+
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Switch,
   SafeAreaView,
 } from 'react-native';
-import { BluetoothManager } from 'react-native-bluetooth-escpos-printer';
+
 import { ThermalPrinterModule } from 'react-native-thermal-receipt-printer';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { requestBluetoothPermissions } from './../utils/PermissionHandler';
@@ -23,9 +23,12 @@ const PrinterManagementScreen = ({ navigation }: { navigation: any }): JSX.Eleme
   const [isLoading, setIsLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [bluetoothEnabled, setBluetoothEnabled] = useState(false);
-  const [pairedDevices, setPairedDevices] = useState<BluetoothDevice[]>([]);
-  const [availableDevices, setAvailableDevices] = useState<BluetoothDevice[]>([]);
-  const [selectedPrinter, setSelectedPrinter] = useState<BluetoothDevice | null>(null);
+  // TODO: Replace BluetoothDevice with new printer device type if needed
+const [pairedDevices, setPairedDevices] = useState<any[]>([]);
+  // TODO: Replace BluetoothDevice with new printer device type if needed
+const [availableDevices, setAvailableDevices] = useState<any[]>([]);
+  // TODO: Replace BluetoothDevice with new printer device type if needed
+const [selectedPrinter, setSelectedPrinter] = useState<any | null>(null);
   const [autoConnect, setAutoConnect] = useState(true);
 
   // Load saved printer and settings on mount
@@ -54,7 +57,8 @@ const PrinterManagementScreen = ({ navigation }: { navigation: any }): JSX.Eleme
   };
 
   // Save printer to AsyncStorage
-  const savePrinter = async (printer: BluetoothDevice): Promise<void> => {
+  // TODO: Replace BluetoothDevice with new printer device type if needed
+const savePrinter = async (printer: any): Promise<void> => {
     try {
       await AsyncStorage.setItem(PRINTER_STORAGE_KEY, JSON.stringify(printer));
     } catch (error) {
@@ -64,6 +68,11 @@ const PrinterManagementScreen = ({ navigation }: { navigation: any }): JSX.Eleme
 
   // Check if Bluetooth is enabled
   const checkBluetoothState = async (): Promise<void> => {
+  // TODO: Replace BluetoothManager.isBluetoothEnabled with new integration
+  setBluetoothEnabled(true); // Assume enabled or handle with new integration
+  await getPairedDevices();
+  return;
+
     try {
       setIsLoading(true);
       const isEnabled = await BluetoothManager.isBluetoothEnabled();
@@ -81,6 +90,11 @@ const PrinterManagementScreen = ({ navigation }: { navigation: any }): JSX.Eleme
 
   // Enable Bluetooth
   const enableBluetooth = async (): Promise<void> => {
+  // TODO: Replace BluetoothManager.enableBluetooth with new integration
+  setBluetoothEnabled(true);
+  setPairedDevices([]); // Replace with new device list if supported
+  return;
+
     try {
       setIsLoading(true);
       const hasPermissions = await requestBluetoothPermissions();
@@ -102,6 +116,10 @@ const PrinterManagementScreen = ({ navigation }: { navigation: any }): JSX.Eleme
 
   // Get paired devices
   const getPairedDevices = async (): Promise<void> => {
+  // TODO: Replace BluetoothManager.getBondedDevices with new integration
+  setPairedDevices([]); // Replace with new device list if supported
+  return;
+
     try {
       setIsLoading(true);
       const hasPermissions = await requestBluetoothPermissions();
@@ -121,6 +139,11 @@ const PrinterManagementScreen = ({ navigation }: { navigation: any }): JSX.Eleme
 
   // Scan for Bluetooth devices
   const scanForDevices = async (): Promise<void> => {
+  // TODO: Implement device scanning with new printer integration if supported
+  setAvailableDevices([]);
+  setIsScanning(false);
+  return;
+
     try {
       setIsScanning(true);
       setAvailableDevices([]);
@@ -156,7 +179,8 @@ const PrinterManagementScreen = ({ navigation }: { navigation: any }): JSX.Eleme
   };
 
   // Connect to a printer
-  const connectToPrinter = async (printer: BluetoothDevice): Promise<void> => {
+  // TODO: Replace BluetoothDevice with new printer device type if needed
+const connectToPrinter = async (printer: any): Promise<void> => {
     try {
       setIsLoading(true);
       
