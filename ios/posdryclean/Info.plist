@@ -44,6 +44,16 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>This app uses Bluetooth to connect to the Phomemo M120 printer</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>This app uses Bluetooth to connect to the Phomemo M120 printer</string>
+    <key>NSCameraUsageDescription</key>
+    <string>This app requires access to the camera for scanning and capturing images.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>This app saves QR code labels to your photo library so you can print them with Print Master.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This app accesses your photo library to save and select QR code labels for printing.</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
@@ -70,11 +80,5 @@
     <string>Light</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
-    <key>NSCameraUsageDescription</key>
-  <string>This app requires access to the camera for scanning and capturing images.</string>
-  <key>NSBluetoothAlwaysUsageDescription</key>
-  <string>This app uses Bluetooth to connect to the Phomemo M120 printer</string>
-  <key>NSBluetoothPeripheralUsageDescription</key>
-  <string>This app uses Bluetooth to connect to the Phomemo M120 printer</string>
-</dict>
+  </dict>
 </plist>

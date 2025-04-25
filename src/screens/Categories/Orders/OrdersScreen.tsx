@@ -1,17 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, SafeAreaView, TextInput, Modal, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import * as Print from 'expo-print';
+import { 
+  View, 
+  StyleSheet, 
+  SafeAreaView, 
+  TextInput, 
+  Modal, 
+  Text, 
+  TouchableOpacity, 
+  ScrollView, 
+  Alert 
+} from 'react-native';
 import OrderSearchBar from './OrderSearchBar';
 import OrderList from './OrderList';
 import StatusHeaderBar, { OrderStatus } from './StatusHeaderBar';
 import { useOrders } from '../../../hooks/useOrders';
-import { Order, Product } from '../../../types';
-import OrderItemToggleList from './OrderItemToggleList';
+import { Order } from '../../../types';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { generateQRCodeData } from '../../../utils/QRCodeGenerator';
-import OrderPrintSheet from './OrderPrintSheet';
-import phomemoPrinter from '../../../utils/PhomemoIntegration';
-import { requestBluetoothPermissions } from '../../../utils/PermissionHandler';
+import OrderPrintSelection from './OrderPrintSelection';
+import printerService from '../../../utils/PrinterService';
 
 interface OrdersScreenProps {
   employeeId?: string;
@@ -23,10 +29,17 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
   // Order detail modal state
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
-
   const [selectedPrintItemIds, setSelectedPrintItemIds] = useState<Set<string>>(new Set());
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>('ALL');
+  
+  // Hooks and refs
+  const { orders, isLoading, error, statusCounts, refetch, updateStatus } = useOrders();
+  const searchInputRef = useRef<TextInput>(null);
   const isPrintingRef = useRef(false);
 
   // When an order is selected, select all items for print by default
@@ -35,6 +48,16 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
       setSelectedPrintItemIds(new Set(selectedOrder.items.map(item => item._id)));
     }
   }, [selectedOrder]);
+
+  // Handle order status change
+  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    const employeeName = firstName && lastName 
+      ? `${firstName} ${lastName}` 
+      : `Employee ${employeeId}`;
+    
+    await updateStatus(orderId, newStatus, employeeName);
+    setShowOrderDetailModal(false);
+  };
 
   // Toggle item selection for printing
   const handleTogglePrintItem = (itemId: string) => {
@@ -49,185 +72,30 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
     });
   };
 
-  // Generate HTML for QR codes for Expo Print
-  const generateQRCodesHTML = (items: Product[], customerName: string, orderId: string): string => {
-    // Start with HTML header optimized for mobile printing
-    let html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-        <style>
-          @page {
-            size: 58mm 40mm; /* Typical thermal receipt printer size */
-            margin: 0;
-          }
-          body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            padding: 5mm;
-            margin: 0;
-            width: 100%;
-            box-sizing: border-box;
-          }
-          .page-break {
-            page-break-after: always;
-            height: 0;
-          }
-          .order-header {
-            text-align: center;
-            margin-bottom: 3mm;
-            font-size: 3.5mm;
-            font-weight: bold;
-          }
-          .item-container {
-            border: 0.3mm solid #ccc;
-            border-radius: 2mm;
-            padding: 3mm;
-            margin-bottom: 3mm;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-          }
-          .qr-code {
-            width: 20mm;
-            height: 20mm;
-          }
-          .item-details {
-            margin-left: 3mm;
-            flex: 1;
-          }
-          .customer-name {
-            font-weight: bold;
-            font-size: 3mm;
-            margin-bottom: 1mm;
-          }
-          .item-name {
-            font-size: 3mm;
-            color: #007bff;
-            font-weight: bold;
-          }
-          .item-options {
-            font-size: 2.5mm;
-            color: #666;
-            margin-top: 1mm;
-          }
-          .item-id {
-            font-size: 2mm;
-            color: #999;
-            margin-top: 1mm;
-            font-family: monospace;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="order-header">Order #${orderId.substring(0, 8)}</div>
-    `;
-
-    // Generate HTML for each item with proper page breaks for Expo Print
-    items.forEach((item, index) => {
-      // Generate QR code data using the utility
-      const qrData = generateQRCodeData('Product', {
-        id: item._id,
-        orderItemId: item.orderItemId || item._id,
-        orderId: item.orderId || '',
-        customerId: item.customerId || '',
-        businessId: item.businessId || '',
+  // Handle print completion
+  const handlePrintComplete = async (success: boolean) => {
+    if (success && selectedOrder && selectedOrder.status === 'CREATED') {
+      const shouldUpdateStatus = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Update Order Status?',
+          'Would you like to mark this order as "Processing" now?',
+          [
+            { text: 'No', onPress: () => resolve(false) },
+            { text: 'Yes', onPress: () => resolve(true) }
+          ]
+        );
       });
-
-      // Encode the data for use in a QR code
-      const encodedData = encodeURIComponent(qrData);
       
-      // Use a QR code generation service - Google Chart API for simplicity
-      // Higher resolution (300x300) for better print quality
-      const qrCodeUrl = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=M|0&chl=${encodedData}`;
-
-      // Add item container with improved thermal printer formatting
-      html += `
-        <div class="item-container">
-          <img src="${qrCodeUrl}" class="qr-code" />
-          <div class="item-details">
-            <div class="customer-name">${customerName || 'Customer'}</div>
-            <div class="item-name">${item.name || 'Item'}</div>
-            ${item.starch ? `<div class="item-options">Starch: ${item.starch}</div>` : ''}
-            ${item.pressOnly ? `<div class="item-options">Press Only</div>` : ''}
-            <div class="item-id">${item._id.substring(0, 8)}</div>
-          </div>
-        </div>
-        ${index < items.length - 1 ? '<div class="page-break"></div>' : ''}
-      `;
-    });
-
-    // Close HTML with current date timestamp for tracking
-    const now = new Date();
-    const timestamp = now.toLocaleString();
-    
-    html += `
-      <div style="text-align: center; font-size: 2mm; color: #999; margin-top: 2mm;">
-        ${timestamp}
-      </div>
-      </body>
-      </html>
-    `;
-
-    return html;
-  };
-
-  // Unified QR code printing using PhomemoIntegration
-  const printQRCodes = async () => {
-    if (!selectedOrder) return;
-    try {
-      setIsPrinting(true);
-      isPrintingRef.current = true;
-
-      const selectedItems = selectedOrder.items.filter(item =>
-        selectedPrintItemIds.has(item._id)
-      );
-      if (selectedItems.length === 0) {
-        Alert.alert('No Items Selected', 'Please select at least one item to print.');
-        return;
+      if (shouldUpdateStatus) {
+        const employeeName = firstName && lastName
+          ? `${firstName} ${lastName}`
+          : `Employee ${employeeId}`;
+        
+        await updateStatus(selectedOrder._id, 'PROCESSING', employeeName);
+        setShowOrderDetailModal(false);
       }
-
-      // Use centralized PhomemoIntegration, which handles permissions and connection
-      const success = await phomemoPrinter.printQRCodes(
-        selectedItems,
-        selectedOrder.customerName || '',
-        selectedOrder._id
-      );
-
-      if (success && selectedOrder.status === 'CREATED') {
-        const shouldUpdateStatus = await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Update Order Status?',
-            'Would you like to mark this order as "Processing" now?',
-            [
-              { text: 'No', onPress: () => resolve(false) },
-              { text: 'Yes', onPress: () => resolve(true) }
-            ]
-          );
-        });
-        if (shouldUpdateStatus) {
-          const employeeName = firstName && lastName
-            ? `${firstName} ${lastName}`
-            : `Employee ${employeeId}`;
-          await updateStatus(selectedOrder._id, 'PROCESSING', employeeName);
-          setShowOrderDetailModal(false);
-        }
-      }
-    } catch (error) {
-      console.error('Print error:', error);
-      Alert.alert('Print Error', 'There was an error printing the QR codes.');
-    } finally {
-      setIsPrinting(false);
-      isPrintingRef.current = false;
     }
   };
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>('ALL');
-  const { orders, isLoading, error, statusCounts, refetch, updateStatus } = useOrders();
-  const searchInputRef = useRef<TextInput>(null);
 
   // Filter orders based on search query
   useEffect(() => {
@@ -269,18 +137,18 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
     return () => clearTimeout(timer);
   }, []);
 
-  // Handle order status change
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-    const employeeName = firstName && lastName ? `${firstName} ${lastName}` : `Employee ${employeeId}`;
-    await updateStatus(orderId, newStatus, employeeName);
-    setShowOrderDetailModal(false);
-  };
-
   // Handle order selection
   const handleOrderSelect = (order: Order) => {
     setSelectedOrder(order);
     setShowOrderDetailModal(true);
   };
+
+  // Initialize printer service
+  useEffect(() => {
+    printerService.init().catch(error => {
+      console.error('Error initializing printer service:', error);
+    });
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -328,13 +196,16 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                   <MaterialIcons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
+              
               <ScrollView style={styles.modalScroll}>
+                {/* Order Details */}
                 <View style={styles.orderDetailRow}>
                   <Text style={styles.orderDetailLabel}>Customer:</Text>
                   <Text style={styles.orderDetailValue}>
                     {selectedOrder.customerName || selectedOrder.customerId}
                   </Text>
                 </View>
+                
                 <View style={styles.orderDetailRow}>
                   <Text style={styles.orderDetailLabel}>Status:</Text>
                   <Text style={[
@@ -345,18 +216,21 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                     {selectedOrder.status}
                   </Text>
                 </View>
+                
                 <View style={styles.orderDetailRow}>
                   <Text style={styles.orderDetailLabel}>Total:</Text>
                   <Text style={styles.orderDetailValue}>
                     ${selectedOrder.total.toFixed(2)}
                   </Text>
                 </View>
+                
                 <View style={styles.orderDetailRow}>
                   <Text style={styles.orderDetailLabel}>Created:</Text>
                   <Text style={styles.orderDetailValue}>
                     {new Date(selectedOrder.createdAt).toLocaleString()}
                   </Text>
                 </View>
+                
                 {selectedOrder.pickupDate && (
                   <View style={styles.orderDetailRow}>
                     <Text style={styles.orderDetailLabel}>Pickup:</Text>
@@ -365,33 +239,19 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                     </Text>
                   </View>
                 )}
-                {/* Toggleable Items List for CREATED status */}
+                
+                {/* Print QR Codes Section */}
                 {selectedOrder.status === 'CREATED' && (
-                  <>
-                    <Text style={styles.sectionTitle}>Select Items to Print</Text>
-                    <OrderItemToggleList
-                      items={selectedOrder.items}
-                      selectedIds={selectedPrintItemIds}
-                      onToggle={handleTogglePrintItem}
-                    />
-                    <View style={styles.buttonRow}>
-                      <TouchableOpacity
-                        style={[styles.previewButton, selectedPrintItemIds.size === 0 && styles.disabledButton]}
-                        onPress={() => setShowPreviewModal(true)}
-                        disabled={selectedPrintItemIds.size === 0}
-                      >
-                        <Text style={styles.buttonText}>Preview QR Labels</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.printButton, (selectedPrintItemIds.size === 0 || isPrinting) && styles.disabledButton]}
-                        disabled={selectedPrintItemIds.size === 0 || isPrinting}
-                        onPress={printQRCodes}
-                      >
-                        <Text style={styles.printButtonText}>Print QR Labels</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </>
+                  <OrderPrintSelection
+                    items={selectedOrder.items}
+                    selectedItemIds={selectedPrintItemIds}
+                    onToggleItem={handleTogglePrintItem}
+                    customerName={selectedOrder.customerName || 'Customer'}
+                    orderId={selectedOrder._id}
+                    onPrintComplete={handlePrintComplete}
+                  />
                 )}
+                
                 {/* Status Change Section */}
                 <View style={styles.statusButtonsContainer}>
                   <Text style={styles.sectionTitle}>Change Status</Text>
@@ -404,6 +264,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                         <Text style={[styles.statusButtonText, { color: '#F57F17' }]}>Processing</Text>
                       </TouchableOpacity>
                     )}
+                    
                     {selectedOrder.status !== 'READY' && (
                       <TouchableOpacity
                         style={[styles.statusButton, { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' }]}
@@ -412,6 +273,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                         <Text style={[styles.statusButtonText, { color: '#2E7D32' }]}>Ready</Text>
                       </TouchableOpacity>
                     )}
+                    
                     {selectedOrder.status !== 'COMPLETED' && (
                       <TouchableOpacity
                         style={[styles.statusButton, { backgroundColor: '#F5F5F5', borderColor: '#9E9E9E' }]}
@@ -420,6 +282,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                         <Text style={[styles.statusButtonText, { color: '#616161' }]}>Completed</Text>
                       </TouchableOpacity>
                     )}
+                    
                     {selectedOrder.status !== 'CANCELLED' && (
                       <TouchableOpacity
                         style={[styles.statusButton, { backgroundColor: '#FFEBEE', borderColor: '#F44336' }]}
@@ -430,6 +293,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                     )}
                   </View>
                 </View>
+                
                 {/* Notes Section */}
                 {selectedOrder.notes && selectedOrder.notes.length > 0 && (
                   <View style={styles.notesSection}>
@@ -443,46 +307,6 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                   </View>
                 )}
               </ScrollView>
-            </View>
-          </View>
-        </Modal>
-      )}
-      
-      {/* QR Code Preview Modal */}
-      {selectedOrder && (
-        <Modal
-          visible={showPreviewModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowPreviewModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.previewModalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>QR Code Preview</Text>
-                <TouchableOpacity
-                  onPress={() => setShowPreviewModal(false)}
-                  style={styles.closeButton}
-                >
-                  <MaterialIcons name="close" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.modalScroll}>
-                <OrderPrintSheet 
-                  items={selectedOrder.items.filter(item => selectedPrintItemIds.has(item._id))}
-                  customerName={selectedOrder.customerName || 'Customer'}
-                  orderId={selectedOrder._id}
-                />
-              </ScrollView>
-              <View style={styles.modalFooter}>
-                <TouchableOpacity
-                  style={[styles.printButton, isPrinting && styles.disabledButton]}
-                  disabled={isPrinting}
-                  onPress={() => printQRCodes()}
-                >
-                  <Text style={styles.printButtonText}>Print QR Labels</Text>
-                </TouchableOpacity>
-              </View>
             </View>
           </View>
         </Modal>
@@ -510,43 +334,6 @@ const getStatusColor = (status: OrderStatus) => {
 };
 
 const styles = StyleSheet.create({
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  previewButton: {
-    backgroundColor: '#009688',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  printButton: {
-    backgroundColor: '#2196F3',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  disabledButton: {
-    backgroundColor: '#B0C4DE',
-    opacity: 0.7,
-  },
-  printButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
   container: {
     flex: 1,
     backgroundColor: '#f7f9fa',
@@ -563,13 +350,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     maxHeight: '80%',
-  },
-  previewModalContent: {
-    width: '90%',
-    maxWidth: 500,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    maxHeight: '90%',
   },
   modalScroll: {
     padding: 20,
@@ -658,13 +438,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#555',
-  },
-  modalFooter: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
   },
 });
 
