@@ -159,18 +159,21 @@ class PhomemoIntegration {
     try {
       // Check if we're on a native platform (not web)
       if (Platform.OS === 'web') {
+        Alert.alert('DEBUG', 'Platform is web: using Expo Print fallback');
         // Web doesn't support direct Bluetooth - fall back to Expo Print
         return this.printWithExpoPrint(items, customerName, orderId);
       }
       
       // For native platforms, check if printer is connected
       if (!this.isConnected) {
+        Alert.alert('DEBUG', 'Not connected to printer: attempting to get default printer and connect');
         const defaultPrinter = await PrinterSettingsAPI.getDefaultPrinter();
         
         if (defaultPrinter) {
           try {
             await this.connectToPrinter(defaultPrinter);
           } catch (error) {
+            Alert.alert('DEBUG', 'Failed to connect to default printer: ' + (error as Error).message);
             // If connection fails, show printer selection dialog
             const shouldTryAgain = await new Promise((resolve) => {
               Alert.alert(
@@ -196,6 +199,7 @@ class PhomemoIntegration {
       }
       
       // Generate content for each item
+      Alert.alert('DEBUG', 'Printing to Phomemo via Bluetooth: items count = ' + items.length);
       for (const item of items) {
         // Generate QR code data
         const qrData = this.generateQRCodeData(item, orderId, customerName);

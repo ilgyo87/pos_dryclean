@@ -173,47 +173,53 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
     return html;
   };
 
-  // Direct printing with Phomemo M120
+  // Unified QR code printing using PhomemoIntegration
   const printQRCodes = async () => {
-    if (selectedOrder) {
-      try {
-        const hasPerm = await requestBluetoothPermissions();
-        if (!hasPerm) return;
-        const selectedItems = selectedOrder.items.filter(item =>
-          selectedPrintItemIds.has(item._id)
-        );
-        if (selectedItems.length === 0) {
-          Alert.alert('No Items Selected', 'Please select at least one item to print.');
-          return;
-        }
-        const success = await phomemoPrinter.printQRCodes(
-          selectedItems,
-          selectedOrder.customerName || '',
-          selectedOrder._id
-        );
-        if (success && selectedOrder.status === 'CREATED') {
-          const shouldUpdateStatus = await new Promise<boolean>((resolve) => {
-            Alert.alert(
-              'Update Order Status?',
-              'Would you like to mark this order as "Processing" now?',
-              [
-                { text: 'No', onPress: () => resolve(false) },
-                { text: 'Yes', onPress: () => resolve(true) }
-              ]
-            );
-          });
-          if (shouldUpdateStatus) {
-            const employeeName = firstName && lastName
-              ? `${firstName} ${lastName}`
-              : `Employee ${employeeId}`;
-            await updateStatus(selectedOrder._id, 'PROCESSING', employeeName);
-            setShowOrderDetailModal(false);
-          }
-        }
-      } catch (error) {
-        console.error('Print error:', error);
-        Alert.alert('Print Error', 'There was an error printing the QR codes.');
+    if (!selectedOrder) return;
+    try {
+      setIsPrinting(true);
+      isPrintingRef.current = true;
+
+      const selectedItems = selectedOrder.items.filter(item =>
+        selectedPrintItemIds.has(item._id)
+      );
+      if (selectedItems.length === 0) {
+        Alert.alert('No Items Selected', 'Please select at least one item to print.');
+        return;
       }
+
+      // Use centralized PhomemoIntegration, which handles permissions and connection
+      const success = await phomemoPrinter.printQRCodes(
+        selectedItems,
+        selectedOrder.customerName || '',
+        selectedOrder._id
+      );
+
+      if (success && selectedOrder.status === 'CREATED') {
+        const shouldUpdateStatus = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Update Order Status?',
+            'Would you like to mark this order as "Processing" now?',
+            [
+              { text: 'No', onPress: () => resolve(false) },
+              { text: 'Yes', onPress: () => resolve(true) }
+            ]
+          );
+        });
+        if (shouldUpdateStatus) {
+          const employeeName = firstName && lastName
+            ? `${firstName} ${lastName}`
+            : `Employee ${employeeId}`;
+          await updateStatus(selectedOrder._id, 'PROCESSING', employeeName);
+          setShowOrderDetailModal(false);
+        }
+      }
+    } catch (error) {
+      console.error('Print error:', error);
+      Alert.alert('Print Error', 'There was an error printing the QR codes.');
+    } finally {
+      setIsPrinting(false);
+      isPrintingRef.current = false;
     }
   };
 

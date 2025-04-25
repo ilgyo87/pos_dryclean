@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { generateQRCodeData } from '../../../utils/QRCodeGenerator';
-import { printToPhomemoM120 } from '../../../utils/printToPhomemoM120';
+import phomemoPrinter from '../../../utils/PhomemoIntegration';
 import { requestBluetoothPermissions } from '../../../utils/PermissionHandler';
 import { Product } from '../../../types';
 
@@ -20,7 +20,7 @@ const OrderPrintSheet: React.FC<OrderPrintSheetProps> = ({ items, customerName, 
         onPress={async () => {
           const hasPerm = await requestBluetoothPermissions();
           if (!hasPerm) return;
-          await printToPhomemoM120(items, customerName, orderId);
+          await phomemoPrinter.printQRCodes(items, customerName, orderId);
         }}
       >
         <Text style={styles.printButtonText}>Print</Text>
