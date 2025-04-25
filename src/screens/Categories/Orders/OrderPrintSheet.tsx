@@ -1,17 +1,30 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { generateQRCodeData } from '../../../utils/QRCodeGenerator';
+import { printToPhomemoM120 } from '../../../utils/printToPhomemoM120';
+import { requestBluetoothPermissions } from '../../../utils/PermissionHandler';
 import { Product } from '../../../types';
 
 interface OrderPrintSheetProps {
   items: Product[];
   customerName: string;
+  orderId: string;
 }
 
-const OrderPrintSheet: React.FC<OrderPrintSheetProps> = ({ items, customerName }) => {
+const OrderPrintSheet: React.FC<OrderPrintSheetProps> = ({ items, customerName, orderId }) => {
   return (
     <View style={styles.sheetContainer}>
+      <TouchableOpacity
+        style={styles.printButton}
+        onPress={async () => {
+          const hasPerm = await requestBluetoothPermissions();
+          if (!hasPerm) return;
+          await printToPhomemoM120(items, customerName, orderId);
+        }}
+      >
+        <Text style={styles.printButtonText}>Print</Text>
+      </TouchableOpacity>
       {items.map(item => (
         <View key={item._id} style={styles.row}>
           <View style={styles.qrBox}>
@@ -76,6 +89,17 @@ const styles = StyleSheet.create({
     color: '#1976D2',
     fontWeight: '600',
     marginBottom: 1,
+  },
+  printButton: {
+    backgroundColor: '#1976D2',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  printButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

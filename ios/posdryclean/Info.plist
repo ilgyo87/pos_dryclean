@@ -73,8 +73,8 @@
     <key>NSCameraUsageDescription</key>
   <string>This app requires access to the camera for scanning and capturing images.</string>
   <key>NSBluetoothAlwaysUsageDescription</key>
-  <string>This app uses Bluetooth to connect to devices such as printers and scanners.</string>
+  <string>This app uses Bluetooth to connect to the Phomemo M120 printer</string>
   <key>NSBluetoothPeripheralUsageDescription</key>
-  <string>This app uses Bluetooth to connect to peripherals.</string>
+  <string>This app uses Bluetooth to connect to the Phomemo M120 printer</string>
 </dict>
 </plist>

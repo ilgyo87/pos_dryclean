@@ -10,6 +10,8 @@ import OrderItemToggleList from './OrderItemToggleList';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { generateQRCodeData } from '../../../utils/QRCodeGenerator';
 import OrderPrintSheet from './OrderPrintSheet';
+import phomemoPrinter from '../../../utils/PhomemoIntegration';
+import { requestBluetoothPermissions } from '../../../utils/PermissionHandler';
 
 interface OrdersScreenProps {
   employeeId?: string;
@@ -24,6 +26,8 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
 
   const [selectedPrintItemIds, setSelectedPrintItemIds] = useState<Set<string>>(new Set());
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const isPrintingRef = useRef(false);
 
   // When an order is selected, select all items for print by default
   useEffect(() => {
@@ -169,37 +173,43 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
     return html;
   };
 
-  // Direct HTML printing with QR codes using Expo Print
+  // Direct printing with Phomemo M120
   const printQRCodes = async () => {
     if (selectedOrder) {
       try {
-        // Filter items based on selected IDs
-        const selectedItems = selectedOrder.items.filter(item => 
+        const hasPerm = await requestBluetoothPermissions();
+        if (!hasPerm) return;
+        const selectedItems = selectedOrder.items.filter(item =>
           selectedPrintItemIds.has(item._id)
         );
-        
         if (selectedItems.length === 0) {
           Alert.alert('No Items Selected', 'Please select at least one item to print.');
           return;
         }
-        
-        // Generate HTML with QR codes
-        const html = generateQRCodesHTML(
+        const success = await phomemoPrinter.printQRCodes(
           selectedItems,
           selectedOrder.customerName || '',
           selectedOrder._id
         );
-        
-        // Print using Expo Print
-        // This works with Expo's printing service which supports iOS/Android/Web
-        const { uri } = await Print.printToFileAsync({ html });
-        await Print.printAsync({
-          uri,
-          // You can set additional options here if needed:
-          // printerUrl: selectedPrinter?.url, // To target a specific printer
-          // orientation: Print.Orientation.portrait,
-          // numberOfCopies: 1,
-        });
+        if (success && selectedOrder.status === 'CREATED') {
+          const shouldUpdateStatus = await new Promise<boolean>((resolve) => {
+            Alert.alert(
+              'Update Order Status?',
+              'Would you like to mark this order as "Processing" now?',
+              [
+                { text: 'No', onPress: () => resolve(false) },
+                { text: 'Yes', onPress: () => resolve(true) }
+              ]
+            );
+          });
+          if (shouldUpdateStatus) {
+            const employeeName = firstName && lastName
+              ? `${firstName} ${lastName}`
+              : `Employee ${employeeId}`;
+            await updateStatus(selectedOrder._id, 'PROCESSING', employeeName);
+            setShowOrderDetailModal(false);
+          }
+        }
       } catch (error) {
         console.error('Print error:', error);
         Alert.alert('Print Error', 'There was an error printing the QR codes.');
@@ -367,9 +377,9 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                         <Text style={styles.buttonText}>Preview QR Labels</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.printButton, selectedPrintItemIds.size === 0 && styles.disabledButton]}
+                        style={[styles.printButton, (selectedPrintItemIds.size === 0 || isPrinting) && styles.disabledButton]}
+                        disabled={selectedPrintItemIds.size === 0 || isPrinting}
                         onPress={printQRCodes}
-                        disabled={selectedPrintItemIds.size === 0}
                       >
                         <Text style={styles.printButtonText}>Print QR Labels</Text>
                       </TouchableOpacity>
@@ -455,15 +465,14 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                 <OrderPrintSheet 
                   items={selectedOrder.items.filter(item => selectedPrintItemIds.has(item._id))}
                   customerName={selectedOrder.customerName || 'Customer'}
+                  orderId={selectedOrder._id}
                 />
               </ScrollView>
               <View style={styles.modalFooter}>
                 <TouchableOpacity
-                  style={styles.printButton}
-                  onPress={() => {
-                    setShowPreviewModal(false);
-                    printQRCodes();
-                  }}
+                  style={[styles.printButton, isPrinting && styles.disabledButton]}
+                  disabled={isPrinting}
+                  onPress={() => printQRCodes()}
                 >
                   <Text style={styles.printButtonText}>Print QR Labels</Text>
                 </TouchableOpacity>

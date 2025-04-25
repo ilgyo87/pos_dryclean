@@ -10,6 +10,7 @@ import ReportsScreen from '../screens/Reports/ReportsScreen';
 import CheckoutScreen from '../screens/Checkout/CheckoutScreen';
 import EmployeesScreen from '../screens/Categories/Employees/EmployeesScreen';
 import ProductsScreen from '../screens/Categories/Products/ProductsScreen';
+import PrinterManagementScreen from './PrinterManagementScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -85,6 +86,11 @@ export default function Navigation({ user, refresh }: { user: AuthUser, refresh:
           <Stack.Screen name="Checkout">
             {(props) => <CheckoutScreen {...props} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
           </Stack.Screen>
+          <Stack.Screen
+            name="PrinterManagement"
+            component={PrinterManagementScreen}
+            options={{ title: 'Printer Setup' }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
       <EmployeePinModal
