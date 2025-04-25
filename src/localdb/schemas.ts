@@ -49,6 +49,7 @@ export const CustomerSchema = {
     notes: 'string[]',
     createdAt: 'date',
     updatedAt: 'date?',
+    dob: 'date?', // Date of birth
   },
 };
 
@@ -87,6 +88,7 @@ export const ProductSchema = {
     status: 'string',
     createdAt: 'date?',
     updatedAt: 'date?',
+    dob: 'date?', // Date of birth
   },
 };
 
@@ -108,6 +110,7 @@ export const OrderSchema = {
     status: 'string',
     createdAt: 'date',
     updatedAt: 'date?',
+    dob: 'date?', // Date of birth
   },
 };
 
@@ -131,5 +134,6 @@ export const EmployeeSchema = {
     role: 'string',
     createdAt: 'date',
     updatedAt: 'date?',
+    dob: 'date?', // Date of birth
   },
 };

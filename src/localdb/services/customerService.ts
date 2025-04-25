@@ -52,10 +52,11 @@ function mapCustomer(item: any): Customer {
       createdAt: getProperty(item, 'createdAt') ? new Date(getProperty(item, 'createdAt')) : new Date(),
       updatedAt: getProperty(item, 'updatedAt') ? new Date(getProperty(item, 'updatedAt')) : undefined,
       imageName: getProperty(item, 'imageName') ? String(getProperty(item, 'imageName')) : '',
-      location: getProperty(item, 'location') ? { ...getProperty(item, 'location') } : undefined
+      location: getProperty(item, 'location') ? { ...getProperty(item, 'location') } : undefined,
+      dob: getProperty(item, 'dob') ? new Date(getProperty(item, 'dob')) : undefined
     };
     
-    console.log(`[mapCustomer] Successfully mapped customer: ${customer._id}`);
+
     return customer;
   } catch (e) {
     console.error('[mapCustomer] Error mapping customer:', e);
@@ -156,33 +157,51 @@ export async function getCustomerById(id: string) {
 /**
  * Update a customer in Realm database
  */
+/**
+ * Update a customer in Realm database
+ */
 export async function updateCustomer(id: string, updates: Partial<Customer>) {
+  console.log(`Starting to update customer with ID: ${id}`, updates);
   const realm = await getRealm();
   let updatedCustomer;
+  
   try {
-    // Remove cognitoId from updates if it's undefined or null
-    const updatesToApply = { ...updates };
-    if (updatesToApply.cognitoId === undefined || updatesToApply.cognitoId === null) {
-      delete updatesToApply.cognitoId;
-    }
-    
     realm.write(() => {
+      console.log(`Finding customer with ID: ${id} in Realm`);
       const customer = realm.objectForPrimaryKey('Customer', id);
-      if (customer) {
-        Object.keys(updatesToApply).forEach(key => {
-          // @ts-ignore
-          customer[key] = updatesToApply[key];
-        });
-        updatedCustomer = customer;
+      
+      if (!customer) {
+        console.error(`Customer with ID ${id} not found in the database`);
+        throw new Error(`Customer with ID ${id} not found`);
       }
+      
+      console.log(`Found customer, applying updates`);
+      
+      // Update each field in the customer object
+      Object.keys(updates).forEach(key => {
+        // Skip undefined values
+        if (updates[key as keyof Customer] !== undefined) {
+          console.log(`Updating ${key} to:`, updates[key as keyof Customer]);
+          // Set the value in the Realm object
+          (customer as any)[key] = updates[key as keyof Customer];
+        }
+      });
+      
+      // Store the updated customer for return
+      updatedCustomer = customer;
+      console.log(`Customer updated successfully`);
     });
-    return updatedCustomer ? mapCustomer(updatedCustomer) : null;
-  } catch (e) {
-    console.error('[CUSTOMER][LOCAL] Error updating customer:', e);
-    throw e;
-  } finally {
+    
+    // Return the updated customer as a plain object
+    const result = updatedCustomer ? mapCustomer(updatedCustomer) : null;
+    console.log(`Returning updated customer:`, result?._id);
+    return result;
+  } catch (error) {
+    console.error(`[updateCustomer] Error updating customer with ID ${id}:`, error);
+    throw error;
   }
 }
+
 
 /**
  * Delete a customer from Realm database

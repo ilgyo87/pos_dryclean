@@ -65,6 +65,7 @@ export interface Customer {
   notes: string[];
   createdAt: Date;
   updatedAt?: Date;
+  dob?: Date; // Date of birth
 } // Garment removed per backend
   
   export interface Business {

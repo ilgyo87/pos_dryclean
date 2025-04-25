@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, StyleSheet, Dimensions, Text, TouchableOpacity } from 'react-native';
+import { Modal, View, StyleSheet, Dimensions, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 
 interface FormModalProps {
   visible: boolean;
@@ -17,17 +17,29 @@ export default function FormModal({ visible, onClose, title, children }: FormMod
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalContent}>
-          {title && (
-            <View style={styles.header}>
-              <Text style={styles.title}>{title}</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <Text style={styles.closeText}>×</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {children}
-        </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ width: '100%', alignItems: 'center', justifyContent: 'center', flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+        >
+          <View style={styles.modalContent}>
+            {title && (
+              <View style={styles.header}>
+                <Text style={styles.title}>{title}</Text>
+                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                  <Text style={styles.closeText}>×</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            <ScrollView
+              contentContainerStyle={{ flexGrow: 1 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {children}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );

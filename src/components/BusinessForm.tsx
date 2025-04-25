@@ -80,10 +80,9 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
           style={styles.input}
           value={form.phone}
           onChangeText={v => handleChange('phone', v)}
-          checkFn={async (val: string) => {
-            const resp = await client.models.Business.list({ filter: { phone: { eq: val } } });
-            return !!resp.data && resp.data.length > 0;
-          }}
+          isAvailable={phoneAvailability.available}
+          isLoading={phoneAvailability.loading}
+          errorMessage={phoneAvailability.error}
         />
         <Text style={styles.label}>First Name</Text>
         <TextInput placeholder="First Name" style={styles.input} value={form.firstName} onChangeText={(v: string) => handleChange('firstName', v)} />

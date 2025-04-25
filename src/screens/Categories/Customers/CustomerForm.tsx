@@ -6,12 +6,8 @@ import type { Customer } from '../../../types';
 import { CustomerNameFields } from './CustomerNameFields';
 import { CustomerContactFields } from './CustomerContactFields';
 import { CustomerAddressFields } from './CustomerAddressFields';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../../amplify/data/resource';
-import { useAuthenticator } from '@aws-amplify/ui-react-native';
+import { DatePickerField } from '../../../components/DatePickerField';
 import { addCustomer, getAllCustomers, updateCustomer, deleteCustomer } from '../../../localdb/services/customerService';
-
-const client = generateClient<Schema>();
 
 interface CustomerFormProps {
     visible: boolean;
@@ -30,6 +26,7 @@ const initialState = {
     city: '',
     state: '',
     zipCode: '',
+    dob: undefined as Date | undefined,
 };
 
 const CustomerForm: React.FC<CustomerFormProps> = ({
@@ -39,11 +36,10 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     onSuccess,
     customer = null
 }) => {
-
     const [form, setForm] = useState(initialState);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { user: authUser } = useAuthenticator((context) => [context.user]);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // Store original values for comparison when editing
     const [originalPhone, setOriginalPhone] = useState('');
@@ -62,6 +58,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     city: customer.city || '',
                     state: customer.state || '',
                     zipCode: customer.zipCode || '',
+                    dob: customer.dob ? new Date(customer.dob) : undefined,
                 });
                 setOriginalPhone((customer.phone || '').replace(/\D/g, ''));
                 setOriginalEmail(customer.email || '');
@@ -71,6 +68,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 setOriginalEmail('');
             }
             setError(null);
+            setIsInitialized(true);
         }
     }, [customer, visible]);
 
@@ -97,6 +95,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 city: customer.city || '',
                 state: customer.state || '',
                 zipCode: customer.zipCode || '',
+                dob: customer.dob ? new Date(customer.dob) : undefined,
             });
         } else {
             setForm(initialState);
@@ -118,8 +117,10 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                             setLoading(true);
                             setError(null);
                             if (!customer) throw new Error('No customer to delete');
-                            // Hard delete from Realm/local
+                            
+                            // Delete from local database
                             await deleteCustomer(customer._id);
+                            
                             if (onSuccess) onSuccess();
                             onClose();
                         } catch (err: any) {
@@ -131,11 +132,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 },
             ]
         );
-    };
-
-    // Validate email format
-    const isValidEmail = (email: string) => {
-        return email ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) : true;
     };
 
     // Phone number check function
@@ -176,7 +172,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
         return emailExists; // If true, email is in use
     };
 
-    const handleSubmit = async () => {
+    const handleCreate = async () => {
         // Basic validation
         if (!form.firstName || !form.lastName || !form.phone) {
             setError('First name, last name, and phone are required');
@@ -189,8 +185,88 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
             return;
         }
 
-        // Check phone availability (skip if unchanged during edit)
-        if (!(customer && normalizedPhone === originalPhone)) {
+        // Check phone availability
+        const phoneInUse = await phoneCheckFn(normalizedPhone);
+        if (phoneInUse) {
+            setError('Phone number is already in use');
+            return;
+        }
+
+        // Check email if provided
+        if (form.email) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+                setError('Please enter a valid email address');
+                return;
+            }
+
+            const emailInUse = await emailCheckFn(form.email);
+            if (emailInUse) {
+                setError('Email address is already in use');
+                return;
+            }
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Create new customer
+            const newCustomer: Customer = {
+                _id: Date.now().toString(),
+                firstName: form.firstName,
+                lastName: form.lastName,
+                phone: form.phone,
+                email: form.email || '',
+                address: form.address || '',
+                city: form.city || '',
+                state: form.state || '',
+                zipCode: form.zipCode || '',
+                dob: form.dob,
+                businessId: userId,
+                notes: [],
+                createdAt: new Date(),
+                updatedAt: undefined,
+                imageName: '',
+                location: undefined,
+            };
+            
+            // Add to local database
+            console.log("Creating new customer:", newCustomer._id);
+            await addCustomer(newCustomer);
+            
+            if (onSuccess) onSuccess(newCustomer);
+            
+            // Reset form and close modal
+            setForm(initialState);
+            onClose();
+        } catch (err: any) {
+            console.error("Error creating customer:", err);
+            setError(err.message || 'Error creating customer');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!customer) {
+            setError('No customer to update');
+            return;
+        }
+
+        // Basic validation
+        if (!form.firstName || !form.lastName || !form.phone) {
+            setError('First name, last name, and phone are required');
+            return;
+        }
+
+        const normalizedPhone = form.phone.replace(/\D/g, '');
+        if (normalizedPhone.length < 10) {
+            setError('Phone number must have at least 10 digits');
+            return;
+        }
+
+        // Skip phone check if unchanged during edit
+        if (normalizedPhone !== originalPhone) {
             const phoneInUse = await phoneCheckFn(normalizedPhone);
             if (phoneInUse) {
                 setError('Phone number is already in use');
@@ -199,19 +275,16 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
         }
 
         // Check email if provided
-        if (form.email) {
-            if (!isValidEmail(form.email)) {
+        if (form.email && form.email !== originalEmail) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
                 setError('Please enter a valid email address');
                 return;
             }
 
-            // Check email availability (skip if unchanged during edit)
-            if (!(customer && form.email === originalEmail)) {
-                const emailInUse = await emailCheckFn(form.email);
-                if (emailInUse) {
-                    setError('Email address is already in use');
-                    return;
-                }
+            const emailInUse = await emailCheckFn(form.email);
+            if (emailInUse) {
+                setError('Email address is already in use');
+                return;
             }
         }
 
@@ -219,61 +292,50 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
             setLoading(true);
             setError(null);
 
-            if (customer) {
-                // Update existing customer
-                const now = new Date();
-                await updateCustomer(customer._id, { ...form, updatedAt: now });
-                if (onSuccess) onSuccess();
-                onClose();
-            } else {
-                // Create new customer (local DB only, no API call)
-                try {
-                    const newCustomer: Customer = {
-                        _id: Date.now().toString(), // Generate a unique ID for local use
-                        firstName: form.firstName,
-                        lastName: form.lastName,
-                        phone: form.phone,
-                        email: form.email || '',
-                        address: form.address || '',
-                        city: form.city || '',
-                        state: form.state || '',
-                        zipCode: form.zipCode || '',
-                        businessId: userId,
-                        // Removed cognitoId
-                        notes: [],
-                        createdAt: new Date(),
-                        updatedAt: undefined,
-                        imageName: '',
-                        location: undefined,
-                    };
-                    console.log('[CUSTOMER][LOCAL] Creating customer in local DB:', JSON.stringify(newCustomer));
-                    await addCustomer(newCustomer);
-                    if (onSuccess) onSuccess(newCustomer);
-                    onClose();
-                } catch (err: any) {
-                    setError(err.message || 'Error saving customer');
-                }
-            }
+            // Create update object
+            const now = new Date();
+            const updates = {
+                firstName: form.firstName,
+                lastName: form.lastName,
+                phone: form.phone,
+                email: form.email || '',
+                address: form.address || '',
+                city: form.city || '',
+                state: form.state || '',
+                zipCode: form.zipCode || '',
+                dob: form.dob,
+                updatedAt: now
+            };
+            
+            console.log("Updating customer:", customer._id);
+            
+            // Update in local database
+            await updateCustomer(customer._id, updates);
+            
+            // Create updated customer object for callback
+            const updatedCustomer = {
+                ...customer,
+                ...updates
+            };
+            
+            // Success callback and close
+            if (onSuccess) onSuccess(updatedCustomer);
+            
+            // Reset form and close modal
+            setForm(initialState);
+            onClose();
+        } catch (err: any) {
+            console.error("Error updating customer:", err);
+            setError(err.message || 'Error updating customer');
         } finally {
             setLoading(false);
         }
     };
 
-    // Check if form is valid for enabling submit button
-    const isFormValid = () => {
-        const normalizedPhone = form.phone.replace(/\D/g, '');
-        const isPhoneValid = normalizedPhone.length >= 10;
-        const isEmailValid = !form.email || isValidEmail(form.email);
-        // Disable if phone error (e.g. 'already in use') is shown
-        return (
-            !!form.firstName &&
-            !!form.lastName &&
-            isPhoneValid &&
-            isEmailValid &&
-            !phoneError
-        );
-    };
-
+    // Only render once initialized to prevent flicker
+    if (!isInitialized && visible) {
+        return null;
+    }
 
     return (
         <FormModal visible={visible} onClose={onClose} title={customer ? "Edit Customer" : "Add New Customer"}>
@@ -283,9 +345,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     lastName={form.lastName}
                     onChange={handleChange}
                 />
-                <View>
-
-                </View>
                 <CustomerContactFields
                     phone={form.phone}
                     email={form.email}
@@ -303,8 +362,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 />
                 <Text style={styles.requiredFields}>* Required fields</Text>
                 <CrudButtons
-                    onCreate={!customer ? handleSubmit : undefined}
-                    onUpdate={customer ? handleSubmit : undefined}
+                    onCreate={!customer ? handleCreate : undefined}
+                    onUpdate={customer ? handleUpdate : undefined}
                     onDelete={customer ? handleDelete : undefined}
                     onReset={handleReset}
                     onCancel={onClose}
@@ -314,7 +373,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     showDelete={!!customer}
                     showReset
                     showCancel
-                    disabled={!isFormValid()}
+                    disabled={!form.firstName || !form.lastName || !form.phone || phoneError !== null}
                 />
             </View>
         </FormModal>

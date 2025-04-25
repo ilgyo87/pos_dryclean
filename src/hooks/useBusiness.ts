@@ -95,7 +95,7 @@ export function useBusiness({ userId, refresh, authUser }: {
       }
       setBusiness(locals);
       if (!locals) {
-        console.warn('[useBusiness] After refetch, business is STILL undefined!');
+
       }
     } catch (err: any) {
       let message = err?.message || String(err);
