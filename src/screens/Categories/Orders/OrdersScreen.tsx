@@ -145,7 +145,7 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
 
   // Initialize printer service
   useEffect(() => {
-    printerService.init().catch(error => {
+    printerService.initialize().catch(error => {
       console.error('Error initializing printer service:', error);
     });
   }, []);

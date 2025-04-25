@@ -48,8 +48,11 @@ const images: Record<string, any> = {
 export const getGarmentImage = (imageName: string) => {
   try {
     if (!imageName || typeof imageName !== 'string') return images.default;
-    // Accept both dashes and underscores in keys
-    const cleanImageName = imageName.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    // Normalize: lowercase, replace spaces/underscores with dashes, strip non-alphanum/dash
+    const cleanImageName = imageName
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-')        // spaces/underscores to dashes
+      .replace(/[^a-z0-9-]/g, '');    // remove all but alphanum and dash
     return images[cleanImageName] || images.default;
   } catch (error) {
     // If image loading fails, return null to use a fallback

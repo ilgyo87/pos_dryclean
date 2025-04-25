@@ -23,14 +23,43 @@ import type { Category, Product } from '../../../types';
 
 import type { Business } from '../../../types';
 
+import { useRoute } from '@react-navigation/native';
+
 interface ProductsScreenProps {
   business?: Business;
+  businessId?: string;
   employeeId?: string;
   firstName?: string;
   lastName?: string;
 }
 
-const ProductsScreen: React.FC<ProductsScreenProps> = ({ business, employeeId, firstName, lastName }) => {
+const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
+  // DEBUG: Log all props to diagnose missing businessId
+  console.log('[ProductsScreen] props:', props);
+  console.log('[ProductsScreen] business:', props.business);
+  console.log('[ProductsScreen] businessId:', props.businessId);
+  const business = props.business;
+  const businessId = props.businessId;
+  // Defensive UI if businessId is missing
+  if (!businessId) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: 'red', fontSize: 16, textAlign: 'center', margin: 20 }}>
+          No business found. Please create or select a business from the dashboard.
+        </Text>
+      </View>
+    );
+  }
+  const { employeeId, firstName, lastName } = props;
+
+  // Guard: Only render if businessId is present
+  if (!businessId) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading business...</Text>
+      </View>
+    );
+  }
 
   const { categories, loading: loadingCategories, createCategory, editCategory, removeCategory, fetchCategories } = useCategories();
   const { products, loading: loadingProducts, createProduct, editProduct, removeProduct, fetchProducts } = useProducts();
@@ -97,6 +126,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ business, employeeId, f
         onClose={() => setShowCategoryForm(false)}
         onSuccess={handleCategoryFormSuccess}
         category={editingCategory}
+        businessId={businessId}
       />
       {/* Product Modal */}
       <ProductForm
@@ -105,6 +135,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ business, employeeId, f
         onSuccess={handleProductFormSuccess}
         product={editingProduct}
         categories={categories}
+        businessId={businessId}
       />
       {/* Categories Header */}
       <View style={styles.header}>
@@ -132,7 +163,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = ({ business, employeeId, f
             </Text>
 
             <DefaultServicesButton 
-              businessId={business?._id}
+              businessId={businessId}
               onComplete={async () => {
                 await fetchCategories();
                 await fetchProducts();

@@ -11,7 +11,7 @@ import {
   Alert
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { PrinterService } from '../../../utils/PrinterService';
+import PrinterService from '../../../utils/PrinterService';
 
 // Order status enum
 enum OrderStatus {

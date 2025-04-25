@@ -1,6 +1,5 @@
-// src/components/BusinessForm.tsx - Updated version with fixes for dashboard loading issues
-
-import React, { useState, useEffect } from 'react';
+// src/components/BusinessForm.tsx
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, TextInput } from 'react-native';
 import { PhoneInput } from './PhoneInput';
 import FormModal from './FormModal';
@@ -24,8 +23,11 @@ const initialState: BusinessFormState = {
 
 export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFormProps) {
   const [form, setForm] = useState(initialState);
+  const [submitting, setSubmitting] = useState(false);
   const { user: authUser } = useAuthenticator((context) => [context.user]);
-  const { createBusiness, isLoading, error, refetch } = useBusiness({
+  
+  // Only use createBusiness from useBusiness hook
+  const { createBusiness, error } = useBusiness({
     userId: authUser?.userId,
     authUser,
   });
@@ -34,15 +36,18 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
   useEffect(() => {
     if (visible) {
       setForm(initialState);
+      setSubmitting(false);
     }
   }, [visible]);
 
+  // Show error alerts
   useEffect(() => {
     if (error) {
       Alert.alert('Error', error);
     }
   }, [error]);
 
+  // Check if phone number is available
   const phoneAvailability = useAvailability(
     form.phone.replace(/\D/g, '').length >= 10 ? form.phone : '',
     async (val: string) => {
@@ -58,16 +63,18 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
     }
   );
 
+  // Handle form field changes
   const handleChange = (field: keyof typeof initialState, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleReset = () => {
+  // Reset form to initial state
+  const handleReset = useCallback(() => {
     setForm(initialState);
-  };
+  }, []);
 
-  // Modified to ensure dashboard refreshes after business creation
-  const handleCreate = async () => {
+  // Handle business creation
+  const handleCreate = useCallback(async () => {
     try {
       if (!authUser?.userId) {
         Alert.alert('Error', 'No user ID found.');
@@ -90,6 +97,8 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
         return;
       }
 
+      setSubmitting(true);
+
       // Create the business
       await createBusiness({
         ...form,
@@ -99,43 +108,29 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
       // Reset form
       handleReset();
       
-      // Close the modal first
-      onClose();
+      // Close modal and trigger success callback
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        onClose();
+      }
       
-      // Reset global refetch state to ensure dashboard will refresh
-      resetBusinessRefetchState();
-      
-      // Force a refetch to update the dashboard AFTER modal is closed
-      setTimeout(() => {
-        refetch(true);
-        
-        // Call the success callback if provided
-        if (onSuccess) onSuccess();
-        
-        Alert.alert('Success', 'Business created successfully!');
-      }, 300); // Small delay to ensure modal is closed and dashboard is visible
-      
+      Alert.alert('Success', 'Business created successfully!');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to create business');
+    } finally {
+      setSubmitting(false);
     }
-  };
+  }, [authUser, form, handleReset, createBusiness, phoneAvailability.available, onClose, onSuccess]);
 
-  // Modified to ensure dashboard refreshes after cancellation
-  const handleCancel = () => {
+  // Handle cancellation
+  const handleCancel = useCallback(() => {
     // Reset form
     handleReset();
     
     // Close the modal
     onClose();
-    
-    // Reset global refetch state to ensure dashboard will refresh
-    resetBusinessRefetchState();
-    
-    // Force a refetch after a small delay to ensure dashboard is visible
-    setTimeout(() => {
-      refetch(true);
-    }, 300);
-  };
+  }, [handleReset, onClose]);
 
   return (
     <FormModal visible={visible} onClose={handleCancel} title="Create Business">
@@ -175,18 +170,28 @@ export default function BusinessForm({ visible, onClose, onSuccess }: BusinessFo
           onChangeText={(v: string) => handleChange('lastName', v)}
         />
 
+        <Text style={styles.label}>Email<Text style={{ color: 'red' }}> *</Text></Text>
+        <TextInput
+          placeholder="Email"
+          style={styles.input}
+          value={form.email}
+          onChangeText={(v: string) => handleChange('email', v)}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
         <Text style={styles.requiredFields}>* Required fields</Text>
 
         <CrudButtons
           onCreate={handleCreate}
           onReset={handleReset}
           onCancel={handleCancel}
-          isSubmitting={isLoading}
+          isSubmitting={submitting}
           showCreate
           showReset
           showCancel
           // Only disable the Create button (not Reset or Cancel)
-          disabled={!form.businessName || !form.phone || !phoneAvailability.available}
+          disabled={!form.businessName || !form.phone || !phoneAvailability.available || !form.email}
         />
       </View>
     </FormModal>

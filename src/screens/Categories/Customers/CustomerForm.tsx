@@ -225,7 +225,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                 businessId: userId,
                 notes: [],
                 createdAt: new Date(),
-                updatedAt: undefined,
+                updatedAt: new Date(),
                 imageName: '',
                 location: undefined,
             };

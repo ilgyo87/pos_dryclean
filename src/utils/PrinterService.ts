@@ -1,10 +1,10 @@
 // src/utils/PrinterService.ts
 import { Platform } from 'react-native';
-import QRCode from 'qrcode';
-import { Buffer } from 'buffer';
+import { ThermalPrinterModule } from 'react-native-thermal-receipt-printer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Native module reference, loaded lazily in initialize()
-let BluetoothEscposPrinter: any = null;
+// Storage key for saved printer
+const PRINTER_STORAGE_KEY = 'POS_DRYCLEAN_PRINTER_ADDRESS';
 
 // Type for Order to be printed
 interface Order {
@@ -19,6 +19,18 @@ interface Order {
   notes?: string;
 }
 
+// Type for Product in QRCodes
+interface Product {
+  _id: string;
+  orderItemId?: string;
+  name: string;
+  customerId?: string;
+  businessId?: string;
+  starch?: 'none' | 'light' | 'medium' | 'heavy';
+  pressOnly?: boolean;
+  notes?: string[];
+}
+
 // Type for printer connection status
 export enum PrinterConnectionStatus {
   DISCONNECTED = 'disconnected',
@@ -28,12 +40,12 @@ export enum PrinterConnectionStatus {
 }
 
 /**
- * Service for handling printing operations with the Brother QL820NWB Label Printer
+ * Service for handling printing operations with thermal printers
  */
-export class PrinterService {
-  private static deviceName = 'QL820NWB';
+class PrinterService {
   private static connectionStatus: PrinterConnectionStatus = PrinterConnectionStatus.DISCONNECTED;
   private static lastError: string | null = null;
+  private static selectedPrinter: { device_name?: string; inner_mac_address?: string; address?: string } | null = null;
 
   /**
    * Initialize the printer service
@@ -44,118 +56,92 @@ export class PrinterService {
       return false;
     }
 
-    // Load printer module
     try {
-      const escpos = require('react-native-bluetooth-escpos-printer');
-      BluetoothEscposPrinter = escpos?.BluetoothEscposPrinter || escpos;
-    } catch (error) {
-      console.error('Failed to load BluetoothEscposPrinter module', error);
-      BluetoothEscposPrinter = null;
-    }
+      // First try to load a saved printer
+      await this.loadSavedPrinter();
 
-    // Ensure printer module is loaded
-    if (!BluetoothEscposPrinter) {
-      this.lastError = 'BluetoothEscposPrinter module not available';
-      this.connectionStatus = PrinterConnectionStatus.ERROR;
-      return false;
-    }
-
-    try {
-      // Get list of paired devices
-      const devices = await BluetoothEscposPrinter.scanDevices();
-      
-      // Find our QL820NWB printer
-      const printerDevice = devices.find((device: any) => 
-        device.name === this.deviceName || device.name.includes('QL820')
-      );
-      
-      if (!printerDevice) {
-        this.lastError = `Printer ${this.deviceName} not found. Please pair the printer in your device settings.`;
-        this.connectionStatus = PrinterConnectionStatus.ERROR;
+      // Initialize the printer module
+      if (this.selectedPrinter?.address) {
+        await ThermalPrinterModule.init({
+          type: 'bluetooth',
+          macAddress: this.selectedPrinter.address,
+          interface: this.selectedPrinter.address
+        });
+        this.connectionStatus = PrinterConnectionStatus.CONNECTED;
+        return true;
+      } else {
+        this.lastError = 'No printer configured. Please set up a printer first.';
+        this.connectionStatus = PrinterConnectionStatus.DISCONNECTED;
         return false;
       }
-      
-      // Connect to the printer
-      this.connectionStatus = PrinterConnectionStatus.CONNECTING;
-      await BluetoothEscposPrinter.connectPrinter(printerDevice.address);
-      this.connectionStatus = PrinterConnectionStatus.CONNECTED;
-      return true;
     } catch (error) {
-      this.lastError = `Failed to initialize printer: ${error}`;
+      this.lastError = `Failed to initialize thermal printer: ${error}`;
       this.connectionStatus = PrinterConnectionStatus.ERROR;
-      console.error('Printer initialization error:', error);
+      console.error('Thermal printer initialization error:', error);
       return false;
+    }
+  }
+
+  /**
+   * Load the saved printer from AsyncStorage
+   */
+  private static async loadSavedPrinter(): Promise<void> {
+    try {
+      const printerData = await AsyncStorage.getItem(PRINTER_STORAGE_KEY);
+      if (printerData) {
+        this.selectedPrinter = JSON.parse(printerData);
+      }
+    } catch (error) {
+      console.error('Error loading saved printer:', error);
+    }
+  }
+
+  /**
+   * Save the printer to AsyncStorage
+   */
+  static async savePrinter(printer: any): Promise<void> {
+    try {
+      await AsyncStorage.setItem(PRINTER_STORAGE_KEY, JSON.stringify(printer));
+      this.selectedPrinter = printer;
+    } catch (error) {
+      console.error('Error saving printer:', error);
     }
   }
 
   /**
    * Get the current connection status
    */
-  static getConnectionStatus(): { status: PrinterConnectionStatus, error: string | null } {
+  static getConnectionStatus(): { status: PrinterConnectionStatus, error: string | null, printer: any } {
     return {
       status: this.connectionStatus,
-      error: this.lastError
+      error: this.lastError,
+      printer: this.selectedPrinter
     };
   }
 
   /**
-   * Print a QR code directly to the printer without saving
-   * @param orderId The order ID to encode in the QR code
+   * Print a QR code to the printer
+   * @param data The data to encode in the QR code
    */
-  static async printQRCode(orderId: string): Promise<boolean> {
+  static async printQRCode(data: string): Promise<boolean> {
     if (Platform.OS === 'web') {
       console.warn('QR code printing is not available on web platform');
       return false;
     }
-
+    
     try {
-      // Ensure printer is connected
       if (this.connectionStatus !== PrinterConnectionStatus.CONNECTED) {
         const initialized = await this.initialize();
         if (!initialized) {
           throw new Error('Printer not connected');
         }
       }
-
-      // Generate QR code as data URL
-      const qrCodeDataURL = await QRCode.toDataURL(orderId, {
-        errorCorrectionLevel: 'H',
-        margin: 1,
-        width: 200,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
+      
+      await ThermalPrinterModule.printQRCode({
+        value: data,
+        size: 8,
+        align: 'center'
       });
-
-      // Convert data URL to image data
-      const base64Data = qrCodeDataURL.replace('data:image/png;base64,', '');
-      const imageData = Buffer.from(base64Data, 'base64');
-
-      // Configure printer for label printing
-      await BluetoothEscposPrinter.printerInit();
-      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
-      
-      // Set label size for QL820NWB (62mm width)
-      await BluetoothEscposPrinter.sendCommand("M 0\r\n");
-      await BluetoothEscposPrinter.sendCommand("O R\r\n");
-      await BluetoothEscposPrinter.sendCommand("q 800\r\n");
-      await BluetoothEscposPrinter.sendCommand("S 4\r\n");
-      await BluetoothEscposPrinter.sendCommand("D 8\r\n");
-      await BluetoothEscposPrinter.sendCommand("L\r\n");
-      
-      // Print order ID text
-      await BluetoothEscposPrinter.printText(`Order: ${orderId}\n`, {});
-      
-      // Print QR code
-      await BluetoothEscposPrinter.printPic(imageData, { width: 200, left: 100 });
-      
-      // Print date
-      const now = new Date();
-      await BluetoothEscposPrinter.printText(`${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`, {});
-      
-      // End label
-      await BluetoothEscposPrinter.sendCommand("E\r\n");
       
       return true;
     } catch (error) {
@@ -167,106 +153,170 @@ export class PrinterService {
   }
 
   /**
-   * Print a receipt for an order
-   * @param order The order details to print
+   * Print multiple QR codes for products
+   * @param items Products to print QR codes for
+   * @param customerName Customer name to print on labels
+   * @param orderId Order ID for reference
    */
-  static async printReceipt(order: Order): Promise<boolean> {
+  static async printQRCodes(
+    items: Product[],
+    customerName: string,
+    orderId: string
+  ): Promise<boolean> {
     if (Platform.OS === 'web') {
-      console.warn('Receipt printing is not available on web platform');
+      console.warn('QR code printing is not available on web platform');
       return false;
     }
-
+    
     try {
-      // Ensure printer is connected
       if (this.connectionStatus !== PrinterConnectionStatus.CONNECTED) {
         const initialized = await this.initialize();
         if (!initialized) {
           throw new Error('Printer not connected');
         }
       }
-
-      // Configure printer for receipt printing
-      await BluetoothEscposPrinter.printerInit();
-      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
       
       // Print header
-      await BluetoothEscposPrinter.printText("DRY CLEAN RECEIPT\n\n", {
-        fonttype: 1,
-        widthtimes: 1,
-        heigthtimes: 1
-      });
+      await ThermalPrinterModule.printText(`\n`);
       
-      // Print order info
-      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.LEFT);
-      await BluetoothEscposPrinter.printText(`Order: ${order.id}\n`, {});
-      await BluetoothEscposPrinter.printText(`Date: ${new Date(order.createdAt).toLocaleString()}\n`, {});
-      await BluetoothEscposPrinter.printText(`Pickup: ${order.pickupDate ? new Date(order.pickupDate).toLocaleString() : 'Not specified'}\n`, {});
-      await BluetoothEscposPrinter.printText(`Employee: ${order.employeeId}\n`, {});
-      await BluetoothEscposPrinter.printText(`Customer ID: ${order.customerId}\n`, {});
-      
-      // Print divider
-      await BluetoothEscposPrinter.printText("--------------------------------\n", {});
-      
-      // Print items
-      await BluetoothEscposPrinter.printText("ITEMS\n", {
-        fonttype: 1,
-        widthtimes: 0,
-        heigthtimes: 0
-      });
-      
-      for (const item of order.items) {
-        const optionsText = item.options 
-          ? Object.entries(item.options)
-              .filter(([_, value]) => value !== undefined && value !== '')
-              .map(([key, value]) => `${key}: ${value}`)
-              .join(', ')
-          : '';
-          
-        await BluetoothEscposPrinter.printText(`${item.name} x${item.quantity}\n`, {});
-        if (optionsText) {
-          await BluetoothEscposPrinter.printText(`  ${optionsText}\n`, {});
+      // Print each item as a separate label
+      for (const item of items) {
+        // Generate QR code data
+        const qrData = JSON.stringify({
+          id: item._id,
+          orderItemId: item.orderItemId || item._id,
+          orderId: orderId,
+          customerId: item.customerId || '',
+          businessId: item.businessId || '',
+        });
+        
+        // Print customer name
+        await ThermalPrinterModule.printText(`${customerName}\n`);
+        
+        // Print item name
+        await ThermalPrinterModule.printText(`${item.name}\n`);
+        
+        // Print options if available
+        if (item.starch) {
+          await ThermalPrinterModule.printText(`Starch: ${item.starch}\n`);
         }
-        await BluetoothEscposPrinter.printText(`  $${(item.price * item.quantity).toFixed(2)}\n`, {});
+        
+        if (item.pressOnly) {
+          await ThermalPrinterModule.printText(`Press Only\n`);
+        }
+        
+        if (item.notes && item.notes.length > 0) {
+          await ThermalPrinterModule.printText(`Note: ${item.notes[0]}\n`);
+        }
+        
+        // Print QR code
+        await ThermalPrinterModule.printQRCode({
+          value: qrData,
+          size: 8,
+          align: 'center'
+        });
+        
+        // Add spacing between items
+        await ThermalPrinterModule.printText(`\n\n`);
       }
       
-      // Print divider
-      await BluetoothEscposPrinter.printText("--------------------------------\n", {});
+      // Cut the paper
+      await ThermalPrinterModule.printCut();
       
-      // Print total
-      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.RIGHT);
-      await BluetoothEscposPrinter.printText(`TOTAL: $${order.total.toFixed(2)}\n\n`, {
-        fonttype: 1,
-        widthtimes: 1,
-        heigthtimes: 1
-      });
-      
-      // Print QR code
-      await BluetoothEscposPrinter.printerAlign(BluetoothEscposPrinter.ALIGN.CENTER);
-      
-      // Generate QR code as data URL
-      const qrCodeDataURL = await QRCode.toDataURL(order.id, {
-        errorCorrectionLevel: 'H',
-        margin: 1,
-        width: 150,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
+      return true;
+    } catch (error) {
+      this.lastError = `Failed to print QR codes: ${error}`;
+      this.connectionStatus = PrinterConnectionStatus.ERROR;
+      console.error('QR code printing error:', error);
+      return false;
+    }
+  }
 
-      // Convert data URL to image data
-      const base64Data = qrCodeDataURL.replace('data:image/png;base64,', '');
-      const imageData = Buffer.from(base64Data, 'base64');
+  /**
+   * Print text directly to the printer
+   * @param text The text to print
+   */
+  static async printText(text: string): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      console.warn('Text printing is not available on web platform');
+      return false;
+    }
+    
+    try {
+      if (this.connectionStatus !== PrinterConnectionStatus.CONNECTED) {
+        const initialized = await this.initialize();
+        if (!initialized) {
+          throw new Error('Printer not connected');
+        }
+      }
       
-      // Print QR code
-      await BluetoothEscposPrinter.printPic(imageData, { width: 150, left: 150 });
+      await ThermalPrinterModule.printText(text);
+      return true;
+    } catch (error) {
+      this.lastError = `Failed to print text: ${error}`;
+      this.connectionStatus = PrinterConnectionStatus.ERROR;
+      console.error('Text printing error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Print a receipt for an order
+   * @param order The order details to print
+   * @param businessName The business name to print on the receipt
+   */
+  static async printReceipt(order: Order, businessName: string): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      console.warn('Receipt printing is not available on web platform');
+      return false;
+    }
+    
+    try {
+      if (this.connectionStatus !== PrinterConnectionStatus.CONNECTED) {
+        const initialized = await this.initialize();
+        if (!initialized) {
+          throw new Error('Printer not connected');
+        }
+      }
       
-      // Print footer
-      await BluetoothEscposPrinter.printText("\nThank you for your business!\n", {});
-      await BluetoothEscposPrinter.printText("Please present this receipt or QR code\nwhen picking up your order.\n\n\n", {});
+      // Print business name
+      await ThermalPrinterModule.printText(`\n${businessName}\n\n`);
       
-      // Cut paper
-      await BluetoothEscposPrinter.cutOnePoint();
+      // Print order details
+      await ThermalPrinterModule.printText(`Order: ${order.id}\n`);
+      await ThermalPrinterModule.printText(`Date: ${new Date(order.createdAt).toLocaleDateString()}\n`);
+      
+      if (order.pickupDate) {
+        await ThermalPrinterModule.printText(`Pickup: ${new Date(order.pickupDate).toLocaleDateString()}\n`);
+      }
+      
+      await ThermalPrinterModule.printText(`Status: ${order.status}\n`);
+      await ThermalPrinterModule.printText(`--------------------------------\n`);
+      
+      // Print items
+      await ThermalPrinterModule.printText(`ITEMS:\n`);
+      
+      for (const item of order.items) {
+        await ThermalPrinterModule.printText(`${item.name}\n`);
+        
+        if (item.starch) {
+          await ThermalPrinterModule.printText(`  Starch: ${item.starch}\n`);
+        }
+        
+        if (item.pressOnly) {
+          await ThermalPrinterModule.printText(`  Press Only\n`);
+        }
+        
+        await ThermalPrinterModule.printText(`  $${(item.price || 0).toFixed(2)}\n`);
+      }
+      
+      await ThermalPrinterModule.printText(`--------------------------------\n`);
+      await ThermalPrinterModule.printText(`TOTAL: $${order.total.toFixed(2)}\n\n`);
+      await ThermalPrinterModule.printText(`Thank you for your business!\n`);
+      await ThermalPrinterModule.printText(`\n\n\n`);
+      
+      // Cut the paper
+      await ThermalPrinterModule.printCut();
       
       return true;
     } catch (error) {
@@ -284,12 +334,9 @@ export class PrinterService {
     if (Platform.OS === 'web') {
       return false;
     }
-
+    
     try {
-      if (this.connectionStatus === PrinterConnectionStatus.CONNECTED) {
-        await BluetoothEscposPrinter.disconnect();
-        this.connectionStatus = PrinterConnectionStatus.DISCONNECTED;
-      }
+      this.connectionStatus = PrinterConnectionStatus.DISCONNECTED;
       return true;
     } catch (error) {
       this.lastError = `Failed to disconnect printer: ${error}`;

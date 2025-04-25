@@ -30,7 +30,7 @@ import {
 } from './';
 import CheckoutScreenCustomerFormModal from './CheckoutScreenCustomerFormModal';
 import { generateClient } from 'aws-amplify/api';
-import { PrinterService } from '../../utils/PrinterService';
+import PrinterService from '../../utils/PrinterService';
 
 // Order type interface - using existing Order interface properties but with CheckoutItem[]
 interface OrderWithCheckoutItems {
@@ -314,7 +314,8 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       
       // Print receipt if requested
       if (printReceipt) {
-        await PrinterService.printReceipt(newOrder);
+        // Use businessId as the business name, fallback to empty string if not present
+        await PrinterService.printReceipt(newOrder, currentCustomer.businessId || '');
       }
       
       setTransactionId(newOrder.id);

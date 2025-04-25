@@ -1,5 +1,4 @@
-// src/screens/Dashboard/Dashboard.tsx - Updated version with fixes for dashboard loading issues
-
+// src/screens/Dashboard/Dashboard.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useBusiness, resetBusinessRefetchState } from '../../hooks/useBusiness';
@@ -10,93 +9,123 @@ import CategoriesGrid from './CategoriesGrid';
 import CustomerQuickSearch from './CustomerQuickSearch';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-export default function Dashboard({ user, refresh }: { user: AuthUser | null, refresh?: number }) {
+export default function Dashboard({ 
+  user, 
+  refresh,
+  employeeId,
+  firstName,
+  lastName 
+}: { 
+  user: AuthUser | null;
+  refresh?: number;
+  employeeId?: string;
+  firstName?: string;
+  lastName?: string;
+}) {
   const [showBusinessModal, setShowBusinessModal] = useState(false);
   const [hasAutoOpenedModal, setHasAutoOpenedModal] = useState(false);
   const [localRefresh, setLocalRefresh] = useState(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const { user: authUser } = useAuthenticator((context) => [context.user]);
   const navigation = useNavigation<any>();
+  const customerSearchRef = useRef<any>(null);
   
-  // Track initial render to prevent double-fetching
-  const initialRenderRef = useRef(true);
-  
-  // Track if dashboard is currently focused
-  const isFocusedRef = useRef(false);
-
-  // Get business data with forceRefreshOnMount set to true
-  const { business, isLoading, error, refetch } = useBusiness({
+  // Get business data
+  const { 
+    business, 
+    isLoading, 
+    error, 
+    refetch, 
+    createBusiness 
+  } = useBusiness({
     userId: user?.userId,
     refresh: localRefresh + (refresh || 0),
-    authUser,
-    forceRefreshOnMount: true // Use the new parameter to force refresh on mount
+    authUser
   });
 
-  // Reset refetch state and force refresh when dashboard gains focus
+  // Log the component's mounting state
+  useEffect(() => {
+    console.log('[Dashboard] Component mounted');
+    return () => {
+      console.log('[Dashboard] Component unmounted');
+    };
+  }, []);
+
+  // Log important state changes for debugging
+  useEffect(() => {
+    console.log('[Dashboard] State:', { 
+      isLoading, 
+      hasBusiness: !!business,
+      error,
+      showModal: showBusinessModal,
+      isInitialLoad
+    });
+  }, [isLoading, business, error, showBusinessModal, isInitialLoad]);
+
+  // Handle focus effect to refresh data when returning to this screen
   useFocusEffect(
     useCallback(() => {
       console.log('[Dashboard] Screen focused');
-      isFocusedRef.current = true;
       
-      // Reset the global refetch state to ensure we can fetch
-      resetBusinessRefetchState();
-      
-      // Force a refresh when returning to this screen
-      if (!initialRenderRef.current) {
-        console.log('[Dashboard] Not initial render, triggering refresh');
+      // Don't refresh on first render, we'll do that in component mount
+      if (!isInitialLoad) {
+        console.log('[Dashboard] Screen refocused, triggering refresh');
+        resetBusinessRefetchState();
         setLocalRefresh(prev => prev + 1);
       }
       
       return () => {
         console.log('[Dashboard] Screen unfocused');
-        isFocusedRef.current = false;
       };
-    }, [])
+    }, [isInitialLoad])
   );
 
-  // Handle initial fetch
+  // Set initial load to false after first render
   useEffect(() => {
-    if (initialRenderRef.current && user?.userId) {
-      initialRenderRef.current = false;
-      console.log('[Dashboard] Initial render, triggering business fetch');
-      refetch(true);
+    if (isInitialLoad && !isLoading) {
+      console.log('[Dashboard] Initial load complete');
+      setIsInitialLoad(false);
     }
-  }, [user?.userId, refetch]);
+  }, [isLoading, isInitialLoad]);
 
-  // Handle business form success
-  const handleBusinessFormSuccess = useCallback(() => {
-    // Close the modal
-    setShowBusinessModal(false);
-    
-    // Reset the global refetch state
-    resetBusinessRefetchState();
-    
-    // Force a refresh with a small delay to ensure dashboard is visible
-    setTimeout(() => {
-      console.log('[Dashboard] Business form success, triggering refresh');
-      setLocalRefresh(prev => prev + 1);
-    }, 300);
-  }, []);
-
-  // Only auto-open business modal once on first load with no business
+  // Auto-open business modal if no business exists
   useEffect(() => {
-    if (!isLoading && !business && !showBusinessModal && !hasAutoOpenedModal) {
+    // Only show the modal when we're sure no business exists AND we've completed loading
+    if (!isLoading && !business && !hasAutoOpenedModal && !showBusinessModal) {
+      console.log('[Dashboard] No business found, showing create form');
       setShowBusinessModal(true);
       setHasAutoOpenedModal(true);
     }
-  }, [isLoading, business, showBusinessModal, hasAutoOpenedModal]);
+  }, [isLoading, business, hasAutoOpenedModal, showBusinessModal]);
 
-  // Automatically close business modal if a business is present
+  // Close business modal if business exists
   useEffect(() => {
     if (business && showBusinessModal) {
+      console.log('[Dashboard] Business exists, closing modal');
       setShowBusinessModal(false);
     }
   }, [business, showBusinessModal]);
 
-  // Debug log for render state
-  console.log('[Dashboard] Render', { isLoading, business });
+  // Handle business creation success
+  const handleBusinessCreated = useCallback(() => {
+    console.log('[Dashboard] Business created successfully');
+    setShowBusinessModal(false);
+    resetBusinessRefetchState();
+    
+    // Small delay to ensure UI is updated before refetching
+    setTimeout(() => {
+      setLocalRefresh(prev => prev + 1);
+    }, 300);
+  }, []);
 
-  // Show loading spinner only on first load before modal auto-open
-  if (!business && isLoading && !hasAutoOpenedModal) {
+  // Handle modal close without creating a business
+  const handleCloseModal = useCallback(() => {
+    console.log('[Dashboard] Modal closed without creating business');
+    setShowBusinessModal(false);
+  }, []);
+
+  // Show proper loading state only during initial load
+  if (isInitialLoad && isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007bff" />
@@ -105,7 +134,7 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
     );
   }
 
-  // If no business, show create business screen
+  // Show create business screen if no business exists
   if (!business) {
     return (
       <View style={styles.noBusiness}>
@@ -124,18 +153,14 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
 
         <BusinessForm
           visible={showBusinessModal}
-          onClose={() => {
-            setShowBusinessModal(false);
-            // Reset refetch state only; do NOT force a refetch on cancel
-            resetBusinessRefetchState();
-          }}
-          onSuccess={handleBusinessFormSuccess}
+          onClose={handleCloseModal}
+          onSuccess={handleBusinessCreated}
         />
       </View>
     );
   }
 
-  // Define dashboard categories for quick actions grid
+  // Define dashboard categories
   const dashboardCategories = [
     { id: 'customers', title: 'Customers', count: 0, screen: 'Customers' },
     { id: 'orders', title: 'Orders', count: 0, screen: 'Orders' },
@@ -145,30 +170,30 @@ export default function Dashboard({ user, refresh }: { user: AuthUser | null, re
     { id: 'reports', title: 'Reports', count: 0, screen: 'Reports' },
   ];
 
-  // If we have a business, show the dashboard
+  // Show dashboard with business data
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.businessName}>{business.businessName}</Text>
+        {employeeId && (
+          <Text style={styles.employeeInfo}>
+            Signed in as: {firstName} {lastName}
+          </Text>
+        )}
       </View>
 
-      <CustomerQuickSearch />
+      <CustomerQuickSearch ref={customerSearchRef} />
 
       <Text style={styles.sectionTitle}>Quick Actions</Text>
       <CategoriesGrid
         categories={dashboardCategories}
-        onSelectCategory={(category: any) => navigation.navigate(category.screen)}
-      />
-
-      <BusinessForm
-        visible={showBusinessModal}
-        onClose={() => {
-          setShowBusinessModal(false);
-          // Reset refetch state and force refresh when modal is closed
-          resetBusinessRefetchState();
-          setTimeout(() => refetch(true), 300);
+        onSelectCategory={(category) => {
+          if (category.screen === 'Products') {
+            navigation.navigate('Products', { businessId: business._id });
+          } else {
+            navigation.navigate(category.screen);
+          }
         }}
-        onSuccess={handleBusinessFormSuccess}
       />
     </View>
   );
@@ -198,6 +223,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+  },
+  employeeInfo: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 18,

@@ -61,6 +61,12 @@ export async function getProductsByCategoryId(categoryId: string) {
   return products.map(mapProduct);
 }
 
+export async function getProductsByBusinessAndCategoryId(businessId: string, categoryId: string) {
+  const realm = await getRealm();
+  const products = realm.objects('Product').filtered('businessId == $0 && categoryId == $1', businessId, categoryId);
+  return products.map(mapProduct);
+}
+
 export async function getProductsByBusinessId(businessId: string) {
   const realm = await getRealm();
   const products = realm.objects('Product').filtered('businessId == $0', businessId);

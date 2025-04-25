@@ -72,7 +72,7 @@ export default function Navigation({ user, refresh }: { user: AuthUser, refresh:
             {(props) => <OrdersScreen {...props} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
           </Stack.Screen>
           <Stack.Screen name="Products">
-            {(props) => <ProductsScreen {...props} business={business} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
+            {(props) => <ProductsScreen {...props} business={business} businessId={business?.id} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
           </Stack.Screen>
           <Stack.Screen name="Employees">
             {(props) => <EmployeesScreen {...props} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
