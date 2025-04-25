@@ -1,4 +1,4 @@
-// src/screens/Checkout/CheckoutScreen.tsx
+// src/screens/Checkout/CheckoutScreen.tsx - Updated with fixed props
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -11,7 +11,13 @@ import {
   Text
 } from 'react-native';
 import { RouteProp, useRoute, useNavigation, NavigationProp } from '@react-navigation/native';
-import { Customer, Product, Category } from '../../types';
+import { 
+  Customer, 
+  Product, 
+  Category, 
+  OrderStatus,
+  CheckoutItem
+} from '../../types';
 import { useCategories } from '../../hooks/useCategories';
 import { useProducts } from '../../hooks/useProducts';
 import { 
@@ -22,37 +28,12 @@ import {
   PickupCalendar,
   PaymentModal
 } from './';
-
 import CheckoutScreenCustomerFormModal from './CheckoutScreenCustomerFormModal';
 import { generateClient } from 'aws-amplify/api';
 import { PrinterService } from '../../utils/PrinterService';
 
-// Define types for our checkout items
-type CheckoutItem = {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  type: 'service' | 'product';
-  serviceId?: string;
-  options?: {
-    starch?: 'none' | 'light' | 'medium' | 'heavy';
-    pressOnly?: boolean;
-    notes?: string;
-  };
-};
-
-// Order status tracking
-enum OrderStatus {
-  PENDING = 'pending',
-  PROCESSING = 'processing',
-  READY = 'ready',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled'
-}
-
-// Order type
-interface Order {
+// Order type interface - using existing Order interface properties but with CheckoutItem[]
+interface OrderWithCheckoutItems {
   id: string;
   customerId: string;
   items: CheckoutItem[];
@@ -74,7 +55,7 @@ export type RootStackParamList = {
   Checkout: CheckoutScreenRouteParams;
   DASHBOARD: undefined;
   OrderManagement: undefined;
-  Receipt: { orderDetails: Order };
+  Receipt: { orderDetails: OrderWithCheckoutItems };
 };
 
 type CheckoutScreenRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
@@ -110,7 +91,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
   // Receipt options
   const [printReceipt, setPrintReceipt] = useState(true);
   
-  // Order state
+  // Order state - using CheckoutItem[] as defined in types
   const [orderItems, setOrderItems] = useState<CheckoutItem[]>([]);
   const [pickupDate, setPickupDate] = useState<Date | null>(null);
   const [transactionId, setTransactionId] = useState<string | null>(null);
@@ -240,7 +221,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             name: product.name,
             price: product.price || 0,
             quantity: 1,
-            type: product.type as 'service' | 'product',
+            type: product.type as 'service' | 'product' || 'product',
             serviceId: product.serviceId,
             options
           }
@@ -277,6 +258,13 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
     ));
   };
 
+  // Handle edit item
+  const handleEditItem = (item: CheckoutItem) => {
+    // Implement item editing functionality
+    console.log('Edit item:', item);
+    // You could open a modal here to edit the item
+  };
+
   // Calculate total price
   const calculateTotal = () => {
     return orderItems.reduce((total, item) => {
@@ -306,9 +294,9 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
       setPaymentMethod(method);
       
       // Create a new order
-      const newOrder: Order = {
+      const newOrder: OrderWithCheckoutItems = {
         id: `order-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        customerId: currentCustomer.id,
+        customerId: currentCustomer._id,
         items: orderItems,
         total: calculateTotal(),
         status: OrderStatus.PENDING,
@@ -381,7 +369,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             categories={categories || []}
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
-            loading={loadingCategories}
+            isLoading={loadingCategories} // Changed from loading to isLoading
           />
           
           <ProductGrid
@@ -397,6 +385,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({
             onUpdateQuantity={handleUpdateQuantity}
             onUpdateOptions={handleUpdateOptions}
             total={calculateTotal()}
+            onEdit={handleEditItem} // Added missing onEdit prop
           />
           
           <PickupCalendar

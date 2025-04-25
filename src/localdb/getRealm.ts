@@ -1,6 +1,6 @@
 // src/localdb/getRealm.ts
 import Realm from 'realm';
-import { BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema, EmployeeSchema, LocationSchema } from './schemas';
+import { AllSchemas } from './schemas';
 // DEV ONLY: Remove Realm file if schema error is likely
 import { resetRealmIfSchemaError } from './devRealmTools';
 
@@ -21,8 +21,8 @@ export async function getRealm(): Promise<Realm> {
     // }
     const config: Realm.Configuration = {
       path: 'pos-dryclean.realm',
-      schema: [BusinessSchema, CustomerSchema, CategorySchema, ProductSchema, OrderSchema, EmployeeSchema, LocationSchema],
-      schemaVersion: 1,
+      schema: AllSchemas,
+      schemaVersion: 2,
       onMigration: (oldRealm, newRealm) => {
         // Migration logic if needed
         console.log(`Migrating Realm from ${oldRealm.schemaVersion} to ${newRealm.schemaVersion}`);

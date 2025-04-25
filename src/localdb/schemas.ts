@@ -1,3 +1,6 @@
+// src/localdb/schemas.ts
+// Updated schema definitions to ensure compatibility with type definitions
+
 export const LocationSchema = {
   name: 'Location',
   embedded: true,
@@ -48,7 +51,7 @@ export const CustomerSchema = {
     cognitoId: 'string?',
     notes: 'string[]',
     createdAt: 'date',
-    updatedAt: 'date?',
+    updatedAt: 'date',
     dob: 'date?', // Date of birth
   },
 };
@@ -61,39 +64,45 @@ export const CategorySchema = {
     name: 'string',
     description: 'string?',
     products: 'Product[]',
+    color: 'string?',
+    businessId: 'string',
   },
 };
 
+// Updated ProductSchema to include type and serviceId
 export const ProductSchema = {
   name: 'Product',
   primaryKey: '_id',
   properties: {
     _id: 'string',
     name: 'string',
+    description: 'string?',
     price: 'double',
     discount: 'double?',
     additionalPrice: 'double?',
-    description: 'string?',
     categoryId: 'string?',
     businessId: 'string?',
     customerId: 'string?',
     employeeId: 'string?',
     orderId: 'string?',
     orderItemId: 'string?',
-    starch: 'string?',
+    starch: 'string?', // 'none', 'light', 'medium', 'heavy'
     pressOnly: 'bool?',
     imageName: 'string?',
     imageUrl: 'string?',
     notes: 'string[]',
     status: 'string',
-    createdAt: 'date?',
-    updatedAt: 'date?',
-    dob: 'date?', // Date of birth
+    createdAt: 'date',
+    updatedAt: 'date',
+    // Add missing properties
+    type: 'string', // 'service' or 'product'
+    serviceId: 'string?',
   },
 };
 
-export const OrderSchema = {
-  name: 'Order',
+// Add OrderItemSchema
+export const OrderItemSchema = {
+  name: 'OrderItem',
   primaryKey: '_id',
   properties: {
     _id: 'string',
@@ -106,14 +115,31 @@ export const OrderSchema = {
     discount: 'double?',
     total: 'double',
     notes: 'string[]',
-    pickupDate: 'date?',
     status: 'string',
     createdAt: 'date',
-    updatedAt: 'date?',
-    dob: 'date?', // Date of birth
+    updatedAt: 'date',
+    options: 'mixed?', // For storing options as JSON
   },
 };
 
+// Add OrderSchema
+export const OrderSchema = {
+  name: 'Order',
+  primaryKey: 'id',
+  properties: {
+    id: 'string',
+    customerId: 'string',
+    items: 'OrderItem[]',
+    total: 'double',
+    status: 'string', // 'pending', 'processing', 'ready', 'completed', 'cancelled'
+    createdAt: 'date',
+    pickupDate: 'date?',
+    employeeId: 'string',
+    notes: 'string?',
+  },
+};
+
+// Add EmployeeSchema back to support existing Realm data
 export const EmployeeSchema = {
   name: 'Employee',
   primaryKey: '_id',
@@ -137,3 +163,15 @@ export const EmployeeSchema = {
     dob: 'date?', // Date of birth
   },
 };
+
+// Export all schemas
+export const AllSchemas = [
+  LocationSchema,
+  BusinessSchema,
+  CustomerSchema,
+  CategorySchema,
+  ProductSchema,
+  OrderItemSchema,
+  OrderSchema,
+  EmployeeSchema,
+];

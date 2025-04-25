@@ -4,10 +4,15 @@ import QRCode from 'qrcode';
 import { Buffer } from 'buffer';
 
 // Import the appropriate printer library based on platform
-let BluetoothEscposPrinter: any;
+let BluetoothEscposPrinter: any = null;
 if (Platform.OS !== 'web') {
-  // Only import on native platforms
-  BluetoothEscposPrinter = require('react-native-bluetooth-escpos-printer').BluetoothEscposPrinter;
+  try {
+    const escpos = require('react-native-bluetooth-escpos-printer');
+    BluetoothEscposPrinter = escpos?.BluetoothEscposPrinter || escpos;
+  } catch (error) {
+    console.error('Failed to load BluetoothEscposPrinter module', error);
+    BluetoothEscposPrinter = null;
+  }
 }
 
 // Type for Order to be printed
@@ -45,6 +50,13 @@ export class PrinterService {
   static async initialize(): Promise<boolean> {
     if (Platform.OS === 'web') {
       console.warn('Printer service is not available on web platform');
+      return false;
+    }
+
+    // Ensure printer module is loaded
+    if (!BluetoothEscposPrinter) {
+      this.lastError = 'BluetoothEscposPrinter module not available';
+      this.connectionStatus = PrinterConnectionStatus.ERROR;
       return false;
     }
 

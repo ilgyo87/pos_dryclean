@@ -1,24 +1,24 @@
-// src/screens/Checkout/OrderSummary.tsx
-// Update the OrderSummary component props interface
-
+// src/screens/Checkout/OrderSummary_final_fixed.tsx
 import React from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { OrderItem } from '../../types';
+import { CheckoutItem } from '../../types';
 import OrderItemRow from './OrderItemRow';
 
 // Update the props interface to match the expected props
 export interface OrderSummaryProps {
-  items: OrderItem[];
+  items: CheckoutItem[];
   onUpdateQuantity: (itemId: string, options: any, quantity: number) => void;
   onUpdateOptions: (itemId: string, oldOptions: any, newOptions: any) => void;
   total: number;
+  onEdit: (item: CheckoutItem) => void; // Added missing onEdit prop
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({ 
   items, 
   onUpdateQuantity, 
   onUpdateOptions,
-  total 
+  total,
+  onEdit // Added missing onEdit prop
 }) => {
   return (
     <View style={styles.container}>
@@ -36,16 +36,22 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
               <OrderItemRow
                 item={item}
                 onUpdateQuantity={(quantity) => {
-                  onUpdateQuantity(item._id, item.options, quantity);
+                  // Convert string to number if needed
+                  const numericQuantity = typeof quantity === 'string' 
+                    ? parseInt(quantity, 10) 
+                    : quantity;
+                  
+                  onUpdateQuantity(item.id, item.options, numericQuantity);
                 }}
                 onUpdateOptions={(newOptions) => {
-                  onUpdateOptions(item._id, item.options, newOptions);
+                  onUpdateOptions(item.id, item.options, newOptions);
                 }}
+                onEdit={() => onEdit(item)} // Pass the onEdit prop
               />
             )}
             keyExtractor={(item) => {
               const optionsStr = item.options ? JSON.stringify(item.options) : '';
-              return `${item._id}_${optionsStr}`;
+              return `${item.id}_${optionsStr}`;
             }}
             style={styles.itemsList}
           />
