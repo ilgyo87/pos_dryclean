@@ -43,9 +43,12 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   const { customer } = route.params;
   
   const { categories, loading: loadingCategories } = useCategories();
-  const { products, loading: loadingProducts } = useProducts();
-  
+  // Category selection must come first so it is defined before useProducts
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  // Use only customer.businessId (business is not a property on Customer)
+  const businessId = customer.businessId ?? '';
+  // Ensure selectedCategory is defined before calling useProducts
+  const { products, loading: loadingProducts } = useProducts(businessId, selectedCategory || undefined);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [pickupDate, setPickupDate] = useState<Date | null>(null);
   const [currentPage, setCurrentPage] = useState(0);

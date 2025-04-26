@@ -80,7 +80,8 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
     console.warn('[DefaultServicesButton] Rendered without a businessId! Button will be disabled.');
   }
   const { createCategory, categories, fetchCategories } = useCategories();
-  const { createProduct, fetchProducts } = useProducts();
+  // Use the correct businessId and categoryId (if available) for product operations
+  const { createProduct, fetchProducts } = useProducts(businessId);
 
   const handleAddDefaults = async () => {
     try {
@@ -90,6 +91,7 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
         return;
       }
       for (const cat of DEFAULT_SERVICES) {
+        // Always fetch the category from the DB after creation to get the persistent _id
         let category = categories.find(
           (c) => c.name.trim().toLowerCase() === cat.name.trim().toLowerCase()
         );
@@ -97,13 +99,17 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
         if (!category) {
           await createCategory({ _id: categoryId, name: cat.name, businessId });
 
-          await fetchCategories();
-          category = categories.find(
-            (c) => c.name.trim().toLowerCase() === cat.name.trim().toLowerCase()
-          );
-          categoryId = category ? category._id : categoryId;
+          // Fetch the actual category from DB after creation
+          const { getCategoryById } = await import('../../../localdb/services/categoryService');
+          const dbCategory = await getCategoryById(categoryId);
+          if (dbCategory && dbCategory._id) {
+            categoryId = dbCategory._id.toString();
+            console.log(`[DefaultServicesButton] Created and fetched category '${cat.name}' with _id:`, categoryId);
+          } else {
+            console.warn(`[DefaultServicesButton] Could not fetch created category '${cat.name}' by id:`, categoryId);
+          }
         } else {
-
+          console.log(`[DefaultServicesButton] Found existing category '${cat.name}' with _id:`, categoryId);
         }
         for (const prod of cat.products) {
           const availableImages = [
@@ -130,6 +136,7 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
             createdAt: new Date(),
             updatedAt: new Date(),
           };
+          console.log(`[DefaultServicesButton] Creating product '${prodObj.name}' with categoryId: ${categoryId}, businessId: ${businessId}`);
           await createProduct(prodObj);
 
         }
