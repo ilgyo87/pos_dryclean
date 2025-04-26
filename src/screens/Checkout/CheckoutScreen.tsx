@@ -173,16 +173,17 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     }));
   }
   
-  // Add item to order
-  const handleAddItem = (product: Product) => {
+  // Utility: get a unique key for an order item based on product id and options
+  const getOrderItemKey = (product: Product, options: any) => {
+    const optionsStr = options ? JSON.stringify(options) : '';
+    return `${product._id}_${hashString(optionsStr)}`;
+  };
+
+  // Add item to order: if same product+options exists, increment qty; otherwise, add new line
+  const handleAddItem = (product: Product, options?: any) => {
     setOrderItems(prevItems => {
-      // Extract options from product, fallback to undefined if not present
-      const allowedStarch = ['none', 'light', 'medium', 'heavy'] as const;
-      const starch = allowedStarch.includes(product.starch as any)
-        ? (product.starch as 'none' | 'light' | 'medium' | 'heavy')
-        : undefined;
-      const options = {
-        starch,
+      const orderOptions = options || {
+        starch: (product as any).starch,
         pressOnly: (product as any).pressOnly,
         notes: Array.isArray((product as any).notes)
           ? (product as any).notes
@@ -190,49 +191,50 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
             ? [(product as any).notes]
             : [],
       };
-      // Find an existing item with the same _id and the same options
-      const existingItemIndex = prevItems.findIndex(item => {
-        if (item._id !== product._id) return false;
-        // Compare options deeply
-        const itemOptions = item.options || {};
-        return (
-          itemOptions.starch === options.starch &&
-          itemOptions.pressOnly === options.pressOnly &&
-          itemOptions.notes === options.notes
-        );
+      const newKey = getOrderItemKey(product, orderOptions);
+      const existingIndex = prevItems.findIndex(item => {
+        const itemKey = getOrderItemKey(item, item.options);
+        return itemKey === newKey;
       });
-      if (existingItemIndex >= 0) {
-        // Increment quantity if found
-        const updatedItems = [...prevItems];
-        updatedItems[existingItemIndex] = {
-          ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + 1
+      if (existingIndex >= 0) {
+        // Increment quantity for existing line
+        const updated = [...prevItems];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + 1
         };
-        return updatedItems;
+        return updated;
       } else {
-        // Add as new entry with options
+        // Add new line for this unique product+options combo
         return [
           ...prevItems,
-          { ...product, quantity: 1, options }
+          { ...product, quantity: 1, options: orderOptions }
         ];
       }
     });
   };
 
-  // Update item quantity
-  const handleUpdateQuantity = (productId: string, quantity: number) => {
+  // Update item quantity using unique key (product id + options hash)
+  const handleUpdateQuantity = (itemKey: string, quantity: number) => {
     setOrderItems(prevItems => {
       if (quantity <= 0) {
         // Remove item if quantity is zero or negative
-        return prevItems.filter(item => item._id !== productId);
+        return prevItems.filter(item => {
+          const optionsStr = item.options ? JSON.stringify(item.options) : '';
+          const key = `${item._id}_${hashString(optionsStr)}`;
+          return key !== itemKey;
+        });
       } else {
-        // Update quantity
-        return prevItems.map(item => 
-          item._id === productId ? { ...item, quantity } : item
-        );
+        // Update quantity for the correct instance only
+        return prevItems.map(item => {
+          const optionsStr = item.options ? JSON.stringify(item.options) : '';
+          const key = `${item._id}_${hashString(optionsStr)}`;
+          return key === itemKey ? { ...item, quantity } : item;
+        });
       }
     });
   };
+
   
   // Update item options
   const handleUpdateOptions = (itemKey: string, update: any) => {

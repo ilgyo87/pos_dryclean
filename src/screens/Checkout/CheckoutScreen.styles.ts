@@ -31,8 +31,8 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
   },
   rightPanel: {
-    flex: 1.2, // Make the order summary more narrow in horizontal layout
-    maxWidth: 320, // Prevent it from getting too wide
+    flex: 1.4, // Make the order summary more narrow in horizontal layout
+    maxWidth: 245, // Prevent it from getting too wide
     borderLeftWidth: 1,
     borderLeftColor: '#e0e0e0',
     backgroundColor: '#fff',
@@ -48,7 +48,8 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   smallScreenRightPanel: {
-    flex: 1, // Give more space to order summary on small screens
+    flex: 1,
+    width: '100%', // Full width for vertical layout
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     backgroundColor: '#fff',

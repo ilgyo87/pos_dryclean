@@ -105,26 +105,26 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           )}
         </Text>
         <View style={styles.itemRow}>
+          <View style={styles.quantityControl}>
+            <TouchableOpacity
+              style={styles.quantityButton}
+              onPress={() => onUpdateQuantity(itemKey, item.quantity - 1)}
+            >
+              <MaterialIcons name="remove" size={18} color="#666" />
+            </TouchableOpacity>
+            <Text style={styles.quantityLabel}> {item.quantity} </Text>
+            <TouchableOpacity
+              style={styles.quantityButton}
+              onPress={() => onUpdateQuantity(itemKey, item.quantity + 1)}
+            >
+              <MaterialIcons name="add" size={18} color="#666" />
+            </TouchableOpacity>
+          </View>
           <View style={styles.itemLeft}>
             {/* (empty or other attributes if needed) */}
           </View>
           <View style={styles.itemRightRow}>
-            <Text style={styles.quantityLabel}>{item.quantity}</Text>
-            <View style={styles.quantityControl}>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={() => onUpdateQuantity(item._id, item.quantity - 1)}
-              >
-                <MaterialIcons name="remove" size={18} color="#666" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quantityButton}
-                onPress={() => onUpdateQuantity(item._id, item.quantity + 1)}
-              >
-                <MaterialIcons name="add" size={18} color="#666" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.itemPrice}>${itemTotal.toFixed(2)}</Text>
+            <Text style={styles.itemPrice}>${itemTotal.toFixed(2)}  </Text>
             <TouchableOpacity
               style={styles.optionsButton}
               onPress={() => handleEditItem(item)}
