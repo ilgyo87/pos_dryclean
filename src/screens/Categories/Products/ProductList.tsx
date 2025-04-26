@@ -6,11 +6,11 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Image } from 'react-native';
 import { getGarmentImage } from '../../../utils/ImageMapping';
-
 import type { Product } from '../../../types';
 
 interface ProductListProps {
@@ -18,6 +18,7 @@ interface ProductListProps {
   categoryName: string;
   onAddProduct: () => void;
   onEditProduct: (product: Product) => void;
+  loading?: boolean;
 }
 
 const ProductList: React.FC<ProductListProps> = ({
@@ -25,12 +26,24 @@ const ProductList: React.FC<ProductListProps> = ({
   categoryName,
   onAddProduct,
   onEditProduct,
+  loading = false
 }) => {
+  // Debug log
+  console.log(`[ProductList] Rendering ${products.length} products for ${categoryName}`);
+  
+  // Log first few products for debugging (if any)
+  if (products.length > 0) {
+    console.log('[ProductList] First product sample:', products[0]);
+  }
+
   const renderProductItem = ({ item }: { item: Product }) => {
+    console.log(`[ProductList] Rendering product: ${item.name}, ID: ${item._id}`);
+    
     return (
       <TouchableOpacity 
         style={styles.productItem}
         onPress={() => onEditProduct(item)}
+        key={item._id}
       >
         <View style={styles.productImageContainer}>
           {item.imageName ? (
@@ -50,8 +63,8 @@ const ProductList: React.FC<ProductListProps> = ({
         <View style={styles.productInfo}>
           <Text style={styles.productName}>{item.name}</Text>
           <Text style={styles.productPrice}>
-  {item.price !== undefined ? `$${item.price.toFixed(2)}` : 'N/A'}
-</Text>
+            {item.price !== undefined ? `$${item.price.toFixed(2)}` : 'N/A'}
+          </Text>
         </View>
         <TouchableOpacity 
           style={styles.editButton}
@@ -78,18 +91,30 @@ const ProductList: React.FC<ProductListProps> = ({
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={products}
-        renderItem={renderProductItem}
-        keyExtractor={item => item._id}
-        contentContainerStyle={styles.productsList}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No products in this category</Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007bff" />
+          <Text style={styles.loadingText}>Loading products...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={products}
+          renderItem={renderProductItem}
+          keyExtractor={item => item._id}
+          contentContainerStyle={[
+            styles.productsList,
+            products.length === 0 && styles.emptyList
+          ]}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No products in this category</Text>
+              <Text style={styles.emptySubtext}>
+                Click "Add Product" to create a new product
+              </Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 };
@@ -135,6 +160,11 @@ const styles = StyleSheet.create({
   productsList: {
     padding: 12,
   },
+  emptyList: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   productItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -150,6 +180,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
     overflow: 'hidden',
+    backgroundColor: '#f9f9f9',
   },
   productInfo: {
     flex: 1,
@@ -157,22 +188,40 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 16,
     fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
   },
   productPrice: {
     fontSize: 14,
     color: '#666',
-    marginTop: 4,
   },
   editButton: {
     padding: 10,
   },
   emptyContainer: {
-    padding: 20,
+    padding: 30,
     alignItems: 'center',
   },
   emptyText: {
     color: '#888',
+    fontWeight: '500',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    color: '#aaa',
     fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
   },
 });
 

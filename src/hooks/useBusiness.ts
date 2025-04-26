@@ -52,8 +52,8 @@ export const useBusiness = ({
 
     try {
       console.log('[useBusiness] Fetching business data for userId:', userId);
-      setIsLoading(true);
-      setError(null);
+      if (isMountedRef.current) setIsLoading(true);
+      if (isMountedRef.current) setError(null);
       
       const response = await client.models.Business.list({
         filter: { userId: { eq: userId } }
@@ -61,11 +61,13 @@ export const useBusiness = ({
       
       console.log(`[useBusiness] API returned ${response.data.length} businesses`);
       
-      if (response.data && response.data.length > 0) {
-        setBusiness(response.data[0]);
-      } else {
-        console.log('[useBusiness] No businesses found in API for userId:', userId);
-        setBusiness(null);
+      if (isMountedRef.current) {
+        if (response.data && response.data.length > 0) {
+          setBusiness(response.data[0]);
+        } else {
+          console.log('[useBusiness] No businesses found in API for userId:', userId);
+          setBusiness(null);
+        }
       }
       
       // Update our tracking refs
@@ -74,10 +76,10 @@ export const useBusiness = ({
       needsRefetch = false;
     } catch (err: any) {
       console.error('[useBusiness] Error fetching business:', err);
-      setError(err.message || 'Failed to fetch business data');
-      setBusiness(null);
+      if (isMountedRef.current) setError(err.message || 'Failed to fetch business data');
+      if (isMountedRef.current) setBusiness(null);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) setIsLoading(false);
     }
   }, [userId, refresh]);
 
@@ -131,6 +133,7 @@ export const useBusiness = ({
     return () => {
       console.log('[useBusiness] Component unmounted');
       isMountedRef.current = false;
+      setIsLoading(false); // Ensure loading is never stuck on unmount
     };
   }, [forceRefreshOnMount]);
 
@@ -138,7 +141,9 @@ export const useBusiness = ({
   useEffect(() => {
     if (userId) {
       fetchBusiness();
-    } else {
+    }
+    if (!userId) {
+      setBusiness(null);
       setIsLoading(false);
     }
   }, [userId, fetchBusiness, refresh]);

@@ -1,32 +1,17 @@
 // src/screens/Categories/ProductsScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { useAuthenticator } from '@aws-amplify/ui-react-native';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Alert 
-} from 'react-native';
-
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import CategoryTabs from '../Products/CategoryTabs';
 import ProductList from '../Products/ProductList';
 import DefaultServicesButton from '../Products/DefaultServicesButton';
-import { useBusiness } from '../../../hooks/useBusiness';
 import CategoryForm from '../Products/CategoryForm';
 import ProductForm from '../Products/ProductForm';
 import { useCategories } from '../../../hooks/useCategories';
 import { useProducts } from '../../../hooks/useProducts';
 import type { Category, Product } from '../../../types';
 
-
-
-import type { Business } from '../../../types';
-
-import { useRoute } from '@react-navigation/native';
-
 interface ProductsScreenProps {
-  business?: Business;
+  business?: any;
   businessId?: string;
   employeeId?: string;
   firstName?: string;
@@ -34,12 +19,12 @@ interface ProductsScreenProps {
 }
 
 const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
-  // DEBUG: Log all props to diagnose missing businessId
   console.log('[ProductsScreen] props:', props);
   console.log('[ProductsScreen] business:', props.business);
   console.log('[ProductsScreen] businessId:', props.businessId);
-  const business = props.business;
+
   const businessId = props.businessId;
+  
   // Defensive UI if businessId is missing
   if (!businessId) {
     return (
@@ -50,58 +35,73 @@ const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
       </View>
     );
   }
-  const { employeeId, firstName, lastName } = props;
-
-  // Guard: Only render if businessId is present
-  if (!businessId) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Loading business...</Text>
-      </View>
-    );
-  }
-
-  const { categories, loading: loadingCategories, createCategory, editCategory, removeCategory, fetchCategories } = useCategories();
-  const { products, loading: loadingProducts, createProduct, editProduct, removeProduct, fetchProducts } = useProducts();
-
-
+  
+  const { categories, loading: loadingCategories, fetchCategories } = useCategories();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Only fetch products for the selected category
+  const { 
+    products, 
+    loading: loadingProducts, 
+    fetchProducts,
+    createProduct, 
+    editProduct, 
+    removeProduct 
+  } = useProducts(businessId, selectedCategory || undefined);
+
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
+  console.log('[ProductsScreen] Selected category:', selectedCategory);
+  console.log('[ProductsScreen] Categories count:', categories.length);
+  console.log('[ProductsScreen] Products count:', products.length);
+
+  // Select the first category if none is selected and categories exist
   useEffect(() => {
     if (
       categories.length > 0 &&
       (!selectedCategory || !categories.find(c => c._id === selectedCategory))
     ) {
+      console.log('[ProductsScreen] Setting initial category to:', categories[0]._id);
       setSelectedCategory(categories[0]._id);
     }
-  }, [categories]);
+  }, [categories, selectedCategory]);
 
-  const filteredProducts = selectedCategory
-    ? products.filter(product => product.categoryId === selectedCategory)
-    : [];
+  // Fetch products when selected category changes
+  useEffect(() => {
+    if (selectedCategory) {
+      console.log('[ProductsScreen] Fetching products for category:', selectedCategory);
+      fetchProducts();
+    }
+  }, [selectedCategory, fetchProducts, refreshTrigger]);
 
-  const handleAddDefaultServices = () => {
-    // Placeholder for future implementation
-    Alert.alert("Success", "Default services added successfully!");
-  };
+  // Helper to refresh all data
+  const refreshData = useCallback(() => {
+    console.log('[ProductsScreen] Refreshing all data');
+    fetchCategories();
+    setRefreshTrigger(prev => prev + 1); // This will trigger a product refetch
+  }, [fetchCategories]);
 
   // CATEGORY HANDLERS
   const handleAddCategory = () => {
     setEditingCategory(null);
     setShowCategoryForm(true);
   };
+  
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
     setShowCategoryForm(true);
   };
+  
   const handleCategoryFormSuccess = (cat?: Category) => {
     setShowCategoryForm(false);
     fetchCategories();
-    if (cat && !selectedCategory) setSelectedCategory(cat._id);
+    if (cat && (!selectedCategory || selectedCategory !== cat._id)) {
+      setSelectedCategory(cat._id);
+    }
   };
 
   // PRODUCT HANDLERS
@@ -109,14 +109,21 @@ const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
     setEditingProduct(null);
     setShowProductForm(true);
   };
+  
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setShowProductForm(true);
   };
+  
   const handleProductFormSuccess = () => {
     setShowProductForm(false);
-    fetchProducts();
+    fetchProducts(); // Refetch products for the current category
   };
+
+  // Get category name for selected category
+  const selectedCategoryName = selectedCategory
+    ? categories.find(c => c._id === selectedCategory)?.name || ""
+    : "";
 
   return (
     <View style={styles.container}>
@@ -128,6 +135,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
         category={editingCategory}
         businessId={businessId}
       />
+      
       {/* Product Modal */}
       <ProductForm
         visible={showProductForm}
@@ -137,10 +145,10 @@ const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
         categories={categories}
         businessId={businessId}
       />
+      
       {/* Categories Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Services</Text>
-
       </View>
 
       {/* Categories Tabs */}
@@ -164,23 +172,27 @@ const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
 
             <DefaultServicesButton 
               businessId={businessId}
-              onComplete={async () => {
-                await fetchCategories();
-                await fetchProducts();
-              }}
+              onComplete={refreshData}
             />
           </View>
         ) : (
           <ProductList
-            products={filteredProducts}
-            categoryName={selectedCategory 
-              ? categories.find(c => c._id === selectedCategory)?.name || ""
-              : ""}
+            products={products}
+            categoryName={selectedCategoryName}
             onAddProduct={handleAddProduct}
             onEditProduct={handleEditProduct}
           />
         )}
       </View>
+      
+      {/* Loading and Debug Info (you can remove this in production) */}
+      {(loadingCategories || loadingProducts) && (
+        <View style={styles.loadingInfo}>
+          <Text style={styles.loadingText}>
+            {loadingCategories ? 'Loading categories...' : 'Loading products...'}
+          </Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -227,16 +239,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: '#666',
   },
-  emptyStateButton: {
-    backgroundColor: '#007bff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 6,
+  loadingInfo: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 8,
+    borderRadius: 5,
   },
-  emptyStateButtonText: {
+  loadingText: {
     color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 12,
   },
 });
 

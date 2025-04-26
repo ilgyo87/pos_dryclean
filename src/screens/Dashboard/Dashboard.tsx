@@ -122,6 +122,7 @@ export default function Dashboard({
   const handleCloseModal = useCallback(() => {
     console.log('[Dashboard] Modal closed without creating business');
     setShowBusinessModal(false);
+    setIsInitialLoad(false); // Prevent loading indicator after cancel
   }, []);
 
   // Show proper loading state only during initial load

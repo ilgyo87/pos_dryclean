@@ -5,12 +5,10 @@ import { getGarmentImage } from '../../../utils/ImageMapping';
 import FormModal from '../../../components/FormModal';
 import CrudButtons from '../../../components/CrudButtons';
 import type { Product, Category } from '../../../types';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../../amplify/data/resource';
 import { useAuthenticator } from '@aws-amplify/ui-react-native';
 import { useProducts } from '../../../hooks/useProducts';
-
-const client = generateClient<Schema>();
+import { v4 as uuidv4 } from 'uuid';
+import { getRealm } from '../../../localdb/getRealm';
 
 interface ProductFormProps {
   visible: boolean;
@@ -44,8 +42,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [form, setForm] = useState(initialState);
   const [error, setError] = useState<string | null>(null);
-  const { createProduct, editProduct, removeProduct, loading: productsLoading, error: productsError } = useProducts();
-  const loading = productsLoading;
+  const [loading, setLoading] = useState(false);
   const { user: authUser } = useAuthenticator((context) => [context.user]);
 
   useEffect(() => {
@@ -63,11 +60,23 @@ const ProductForm: React.FC<ProductFormProps> = ({
           status: product.status || 'active',
         });
       } else {
+        // Set initial category if there's one available and none selected
+        const initialState = {
+          name: '',
+          description: '',
+          price: '',
+          categoryId: categories.length > 0 ? categories[0]._id : '',
+          imageName: '',
+          discount: 0,
+          additionalPrice: 0,
+          notes: [] as string[],
+          status: 'active',
+        };
         setForm(initialState);
       }
       setError(null);
     }
-  }, [product, visible]);
+  }, [product, visible, categories]);
 
   useEffect(() => {
     if (error) Alert.alert('Error', error);
@@ -99,7 +108,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
         status: product.status || 'active',
       });
     } else {
-      setForm(initialState);
+      // Reset to initial state but keep the selected category if there is one
+      setForm({
+        ...initialState,
+        categoryId: categories.length > 0 ? categories[0]._id : '',
+      });
     }
     setError(null);
   };
@@ -115,15 +128,35 @@ const ProductForm: React.FC<ProductFormProps> = ({
           style: 'destructive',
           onPress: async () => {
             try {
+              if (!product || !product._id) {
+                throw new Error('No product to delete');
+              }
               
+              setLoading(true);
               setError(null);
-              await removeProduct(product!._id);
+              
+              // Use direct Realm access for deletion
+              const realm = await getRealm();
+              let deleted = false;
+              
+              realm.write(() => {
+                const productToDelete = realm.objectForPrimaryKey('Product', product._id);
+                if (productToDelete) {
+                  realm.delete(productToDelete);
+                  deleted = true;
+                }
+              });
+              
+              if (!deleted) {
+                throw new Error('Product not found');
+              }
+              
               if (onSuccess) onSuccess();
               onClose();
             } catch (err: any) {
               setError(err.message || 'Error deleting product');
             } finally {
-              
+              setLoading(false);
             }
           },
         },
@@ -133,53 +166,67 @@ const ProductForm: React.FC<ProductFormProps> = ({
 
   const handleSubmit = async () => {
     try {
-      
+      setLoading(true);
       setError(null);
+      
       const priceNum = parseFloat(form.price);
       if (!form.name || !form.categoryId || isNaN(priceNum)) {
         setError('Name, category, and valid price are required');
+        setLoading(false);
         return;
       }
-      if (product) {
-        // Update
-        await editProduct(product._id, {
-          name: form.name,
-          description: form.description,
-          price: priceNum,
-          categoryId: form.categoryId,
-          imageName: form.imageName,
-          discount: typeof form.discount === 'number' ? form.discount : 0,
-          additionalPrice: typeof form.additionalPrice === 'number' ? form.additionalPrice : 0,
-          notes: Array.isArray(form.notes) ? form.notes : [],
-          status: form.status || 'active',
-          updatedAt: new Date(),
-        });
-        if (onSuccess) onSuccess({ ...product, ...form, price: priceNum });
-      } else {
-        // Create
-        const newProduct: Product = {
-          _id: Date.now().toString(), // or use your preferred ID generator
-          name: form.name,
-          description: form.description,
-          price: priceNum,
-          categoryId: form.categoryId,
-          businessId,
-          imageName: form.imageName,
-          discount: typeof form.discount === 'number' ? form.discount : 0,
-          additionalPrice: typeof form.additionalPrice === 'number' ? form.additionalPrice : 0,
-          notes: [],
-          status: 'active',
-          createdAt: new Date(),
-          updatedAt: undefined,
-        };
-        await createProduct(newProduct);
-        if (onSuccess) onSuccess(newProduct);
+      
+      // Use direct Realm access for better reliability
+      const realm = await getRealm();
+      
+      realm.write(() => {
+        if (product && product._id) {
+          // Update existing product
+          const existingProduct = realm.objectForPrimaryKey('Product', product._id);
+          if (existingProduct) {
+            existingProduct.name = form.name;
+            existingProduct.description = form.description || '';
+            existingProduct.price = priceNum;
+            existingProduct.categoryId = form.categoryId;
+            existingProduct.imageName = form.imageName || '';
+            existingProduct.discount = typeof form.discount === 'number' ? form.discount : 0;
+            existingProduct.additionalPrice = typeof form.additionalPrice === 'number' ? form.additionalPrice : 0;
+            existingProduct.notes = Array.isArray(form.notes) ? form.notes : [];
+            existingProduct.status = form.status || 'active';
+            existingProduct.updatedAt = new Date();
+          }
+        } else {
+          // Create new product
+          const newProduct = {
+            _id: uuidv4(),
+            name: form.name,
+            description: form.description || '',
+            price: priceNum,
+            categoryId: form.categoryId,
+            businessId: businessId,
+            imageName: form.imageName || '',
+            discount: typeof form.discount === 'number' ? form.discount : 0,
+            additionalPrice: typeof form.additionalPrice === 'number' ? form.additionalPrice : 0,
+            notes: Array.isArray(form.notes) ? form.notes : [],
+            status: 'active',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          
+          realm.create('Product', newProduct);
+        }
+      });
+      
+      if (onSuccess) {
+        // We don't need to pass the product back since we'll re-fetch
+        onSuccess();
       }
+      
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error saving product');
     } finally {
-      
+      setLoading(false);
     }
   };
 
