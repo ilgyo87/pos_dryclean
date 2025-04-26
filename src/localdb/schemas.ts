@@ -24,7 +24,7 @@ export const BusinessSchema = {
     zipCode: 'string?',
     phone: 'string',
     location: 'Location?',
-    email: 'string', // required
+    email: 'string', // user email
     website: 'string?',
     hours: 'string[]',
     logoUrl: 'string?',
@@ -53,6 +53,7 @@ export const CustomerSchema = {
     createdAt: 'date',
     updatedAt: 'date',
     dob: 'date?', // Date of birth
+    credit: 'double?',
   },
 };
 
@@ -91,12 +92,8 @@ export const ProductSchema = {
     imageName: 'string?',
     imageUrl: 'string?',
     notes: 'string[]',
-    status: 'string',
     createdAt: 'date',
     updatedAt: 'date',
-    // Add missing properties
-    type: 'string', // 'service' or 'product'
-    serviceId: 'string?',
   },
 };
 
@@ -106,36 +103,47 @@ export const OrderItemSchema = {
   primaryKey: '_id',
   properties: {
     _id: 'string',
+    orderId: 'string',
+    productId: 'string',
     businessId: 'string',
     customerId: 'string',
     employeeId: 'string',
-    items: 'Product[]',
     paymentMethod: 'string',
     additionalPrice: 'double?',
     discount: 'double?',
     total: 'double',
     notes: 'string[]',
+    starch: 'string?', // 'none', 'light', 'medium', 'heavy'
+    pressOnly: 'bool?',
     status: 'string',
     createdAt: 'date',
+    processedAt: 'date?',
+    cleanedAt: 'date?',
+    completedAt: 'date?',
+    cancelledAt: 'date?',
+    deliveredAt: 'date?',
     updatedAt: 'date',
-    options: 'mixed?', // For storing options as JSON
   },
 };
 
 // Add OrderSchema
 export const OrderSchema = {
   name: 'Order',
-  primaryKey: 'id',
+  primaryKey: '_id',
   properties: {
-    id: 'string',
+    _id: 'string',
     customerId: 'string',
+    businessId: 'string',
     items: 'OrderItem[]',
+    discount: 'double?',
+    additionalPrice: 'double?',
+    paymentMethod: 'string',
     total: 'double',
     status: 'string', // 'pending', 'processing', 'ready', 'completed', 'cancelled'
     createdAt: 'date',
     pickupDate: 'date?',
     employeeId: 'string',
-    notes: 'string?',
+    notes: 'string[]',
   },
 };
 
@@ -159,7 +167,7 @@ export const EmployeeSchema = {
     pin: 'string?',
     role: 'string',
     createdAt: 'date',
-    updatedAt: 'date?',
+    updatedAt: 'date',
     dob: 'date?', // Date of birth
   },
 };

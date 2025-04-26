@@ -33,9 +33,8 @@ function mapProduct(item: any): Product {
       imageName: String(item.imageName || ''),
       imageUrl: String(item.imageUrl || ''),
       notes: Array.isArray(item.notes) ? [...item.notes] : [],
-      status: String(item.status || 'active'),
-      createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-      updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
+      createdAt: new Date(item.createdAt || Date.now()),
+      updatedAt: new Date(item.updatedAt || Date.now()),
     };
     
     return product;
@@ -47,7 +46,8 @@ function mapProduct(item: any): Product {
       name: 'Error',
       price: 0,
       notes: [],
-      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
     } as Product;
   }
 }

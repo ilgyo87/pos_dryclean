@@ -26,7 +26,7 @@ export interface Category {
   businessId?: string;
 }
 
-// Updated Product interface with type and serviceId properties
+// Updated Product interface to match Product schema; removed deprecated fields
 export interface Product {
   _id: string;
   name: string;
@@ -37,7 +37,6 @@ export interface Product {
   categoryId?: string;
   businessId?: string;
   customerId?: string;
-  customer?: Customer;
   employeeId?: string;
   orderId?: string;
   orderItemId?: string;
@@ -46,12 +45,8 @@ export interface Product {
   imageName?: string;
   imageUrl?: string;
   notes: string[];
-  status: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  // Add missing properties
-  type?: 'service' | 'product';
-  serviceId?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Customer {
@@ -138,7 +133,7 @@ export interface OrderItem {
   options?: {
     starch?: 'none' | 'light' | 'medium' | 'heavy';
     pressOnly?: boolean;
-    notes?: string;
+    notes?: string[];
   };
 }
 
@@ -181,6 +176,6 @@ export type CheckoutItem = {
   options?: {
     starch?: 'none' | 'light' | 'medium' | 'heavy';
     pressOnly?: boolean;
-    notes?: string;
+    notes?: string[];
   };
 };

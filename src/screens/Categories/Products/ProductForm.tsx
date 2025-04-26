@@ -28,7 +28,6 @@ const initialState = {
   discount: 0,
   additionalPrice: 0,
   notes: [] as string[],
-  status: 'active',
 };
 
 const ProductForm: React.FC<ProductFormProps> = ({
@@ -57,7 +56,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
           discount: typeof product.discount === 'number' ? product.discount : 0,
           additionalPrice: typeof product.additionalPrice === 'number' ? product.additionalPrice : 0,
           notes: Array.isArray(product.notes) ? product.notes : [],
-          status: product.status || 'active',
         });
       } else {
         // Set initial category if there's one available and none selected
@@ -70,7 +68,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
           discount: 0,
           additionalPrice: 0,
           notes: [] as string[],
-          status: 'active',
         };
         setForm(initialState);
       }
@@ -105,7 +102,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
         discount: typeof product.discount === 'number' ? product.discount : 0,
         additionalPrice: typeof product.additionalPrice === 'number' ? product.additionalPrice : 0,
         notes: Array.isArray(product.notes) ? product.notes : [],
-        status: product.status || 'active',
       });
     } else {
       // Reset to initial state but keep the selected category if there is one
@@ -192,7 +188,6 @@ const ProductForm: React.FC<ProductFormProps> = ({
             existingProduct.discount = typeof form.discount === 'number' ? form.discount : 0;
             existingProduct.additionalPrice = typeof form.additionalPrice === 'number' ? form.additionalPrice : 0;
             existingProduct.notes = Array.isArray(form.notes) ? form.notes : [];
-            existingProduct.status = form.status || 'active';
             existingProduct.updatedAt = new Date();
           }
         } else {
@@ -200,15 +195,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
           const newProduct = {
             _id: uuidv4(),
             name: form.name,
-            description: form.description || '',
+            description: form.description,
             price: priceNum,
             categoryId: form.categoryId,
-            businessId: businessId,
-            imageName: form.imageName || '',
-            discount: typeof form.discount === 'number' ? form.discount : 0,
+            businessId,
+            imageName: form.imageName,
             additionalPrice: typeof form.additionalPrice === 'number' ? form.additionalPrice : 0,
             notes: Array.isArray(form.notes) ? form.notes : [],
-            status: 'active',
             createdAt: new Date(),
             updatedAt: new Date(),
           };
