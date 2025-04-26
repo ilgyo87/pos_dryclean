@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useCategories } from '../../../hooks/useCategories';
 import { v4 as uuidv4 } from 'uuid';
-import { addProduct } from '../../../localdb/services/productService';
+import { getRealm } from '../../../localdb/getRealm';
 import type { Category, Product } from '../../../types';
 
 interface DefaultServicesButtonProps {
@@ -17,8 +17,21 @@ interface DefaultServicesButtonProps {
   businessId?: string;
 }
 
+// Define product item interface for default services
+interface DefaultProductItem {
+  name: string;
+  imageName: string;
+  price: number;
+}
+
+// Define default service interface
+interface DefaultService {
+  name: string;
+  products: DefaultProductItem[];
+}
+
 // Define default services with complete product objects
-const DEFAULT_SERVICES = [
+const DEFAULT_SERVICES: DefaultService[] = [
   {
     name: 'dry cleaning',
     products: [
@@ -73,7 +86,7 @@ const DEFAULT_SERVICES = [
 ];
 
 // List of available image keys
-const AVAILABLE_IMAGES = [
+const AVAILABLE_IMAGES: string[] = [
   'blankets', 'blazer', 'boxed-shirts', 'buttons', 'clothes-cut', 'comforter', 'curtain',
   'dress-shirt', 'dress', 'hem', 'jacket', 'jeans', 'jersey', 'kids-clothes', 'leather-jacket',
   'pants', 'patch', 'pillow', 'polo', 'rug', 'sari', 'sewing', 'shirt-cut', 'shoes', 'skirt',
@@ -83,7 +96,7 @@ const AVAILABLE_IMAGES = [
 
 const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplete, businessId }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { createCategory, categories, fetchCategories } = useCategories();
+  const { fetchCategories } = useCategories();
 
   // Helper function to get a valid image name
   const getValidImageName = (name: string): string => {
@@ -91,6 +104,56 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
     const withHyphens = name.replace(/ /g, '-');
     if (AVAILABLE_IMAGES.includes(withHyphens)) return withHyphens;
     return 't-shirt'; // Default fallback
+  };
+
+  // Create a product directly using Realm
+  const createProductInRealm = (
+    realm: Realm,
+    productInfo: DefaultProductItem,
+    categoryId: string,
+    businessId: string
+  ): void => {
+    const productId = uuidv4();
+    const now = new Date();
+    const productName = productInfo.name.replace(/-/g, ' ');
+    
+    // Check if product already exists by name in this category
+    const existingProducts = realm.objects('Product').filtered(
+      'name BEGINSWITH[c] $0 AND categoryId == $1', 
+      productName, 
+      categoryId
+    );
+    
+    if (existingProducts.length > 0) {
+      console.log(`[DefaultServices] Product ${productName} already exists in category ${categoryId}, skipping`);
+      return;
+    }
+    
+    try {
+      // Create product with essential fields
+      const newProduct = {
+        _id: productId,
+        name: productName,
+        price: productInfo.price,
+        description: '',
+        discount: 0,
+        additionalPrice: 0,
+        categoryId: categoryId,
+        businessId: businessId,
+        imageName: getValidImageName(productInfo.imageName || productInfo.name),
+        notes: [] as string[],
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      // Create the product
+      realm.create('Product', newProduct);
+      
+      console.log(`[DefaultServices] Created product: ${productName} in category ${categoryId}`);
+    } catch (productError) {
+      console.error(`[DefaultServices] Error creating product ${productName}:`, productError);
+    }
   };
 
   const handleAddDefaults = async () => {
@@ -103,80 +166,59 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
       setIsLoading(true);
       console.log('[DefaultServices] Starting to add default services');
       
-      // Fetch existing categories first to avoid duplicates
-      await fetchCategories();
+      // Get Realm instance for all operations
+      const realm = await getRealm();
       
-      // Loop through each service category and create it with its products
-      for (const service of DEFAULT_SERVICES) {
-        console.log(`[DefaultServices] Processing category: ${service.name}`);
-        
-        // Check if this category already exists (case-insensitive)
-        let existingCategory = categories.find(
-          c => c.name.trim().toLowerCase() === service.name.trim().toLowerCase()
-        );
-        
-        let categoryId: string;
-        
-        if (!existingCategory) {
-          // Create a new category
-          const newCategoryId = uuidv4();
-          const categoryToCreate: Category = {
-            _id: newCategoryId,
-            name: service.name,
-            businessId
-          };
+      // Create all categories first
+      const categoryMap: Record<string, string> = {};
+      
+      realm.write(() => {
+        for (const service of DEFAULT_SERVICES) {
+          const categoryId = uuidv4();
           
-          console.log(`[DefaultServices] Creating new category: ${categoryToCreate.name}`);
-          await createCategory(categoryToCreate);
+          console.log(`[DefaultServices] Processing category: ${service.name}`);
           
-          // Refresh categories to get the updated list
-          await fetchCategories();
+          // Check if category exists by name
+          const existingCategories = realm.objects('Category').filtered('name BEGINSWITH[c] $0 AND businessId == $1', service.name, businessId);
           
-          // Find the newly created category
-          existingCategory = categories.find(c => c._id === newCategoryId || 
-            c.name.trim().toLowerCase() === service.name.trim().toLowerCase());
-          
-          if (!existingCategory) {
-            console.error(`[DefaultServices] Failed to find newly created category: ${service.name}`);
-            continue; // Skip to next category
-          }
-          
-          categoryId = existingCategory._id;
-        } else {
-          // Use existing category
-          categoryId = existingCategory._id;
-          console.log(`[DefaultServices] Using existing category: ${existingCategory.name} (${categoryId})`);
-        }
-        
-        // Now add all products for this category - using direct DB access for better performance
-        console.log(`[DefaultServices] Adding ${service.products.length} products to category ${categoryId}`);
-        
-        for (const productInfo of service.products) {
-          // Create complete product object with all required fields
-          const productToCreate: Product = {
-            _id: uuidv4(),
-            name: productInfo.name.replace(/-/g, ' '),
-            price: productInfo.price || 0,
-            imageName: getValidImageName(productInfo.imageName || productInfo.name),
-            categoryId,
-            businessId,
-            notes: [],
-            status: 'active',
-            createdAt: new Date(),
-            discount: 0,
-            additionalPrice: 0,
-          };
-          
-          console.log(`[DefaultServices] Creating product: ${productToCreate.name}`);
-          
-          try {
-            // Use direct DB access to add product
-            await addProduct(productToCreate);
-          } catch (err) {
-            console.error(`[DefaultServices] Error creating product ${productToCreate.name}:`, err);
+          if (existingCategories.length > 0) {
+            console.log(`[DefaultServices] Category ${service.name} already exists, using existing ID`);
+            categoryMap[service.name] = String(existingCategories[0]._id);
+          } else {
+            // Create new category
+            realm.create('Category', {
+              _id: categoryId,
+              name: service.name,
+              businessId: businessId,
+              // Include optional fields with default values
+              description: '',
+              color: '',
+            });
+            
+            categoryMap[service.name] = categoryId;
+            console.log(`[DefaultServices] Created new category: ${service.name} with ID ${categoryId}`);
           }
         }
-      }
+        
+        // Add products for each category in the same transaction
+        for (const service of DEFAULT_SERVICES) {
+          const categoryId = categoryMap[service.name];
+          
+          if (!categoryId) {
+            console.error(`[DefaultServices] Missing category ID for ${service.name}`);
+            continue;
+          }
+          
+          console.log(`[DefaultServices] Adding ${service.products.length} products to category ${service.name} (${categoryId})`);
+          
+          for (const productInfo of service.products) {
+            createProductInRealm(realm, productInfo, categoryId, businessId);
+          }
+        }
+      });
+      
+      // Refresh categories in the UI
+      await fetchCategories();
       
       console.log('[DefaultServices] Successfully added all default services');
       Alert.alert('Success', 'Default categories and products added successfully!');

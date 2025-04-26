@@ -3,7 +3,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthUser } from "@aws-amplify/auth";
 import Dashboard from "../screens/Dashboard/Dashboard";
 import OrdersScreen from '../screens/Categories/Orders/OrdersScreen';
-import { useBusiness } from '../hooks/useBusiness';
 import CustomersScreen from '../screens/Categories/Customers/CustomersScreen';
 import SettingsScreen from '../screens/Settings/SettingsScreen';
 import ReportsScreen from '../screens/Reports/ReportsScreen';
@@ -14,13 +13,12 @@ import PrinterManagementScreen from './PrinterManagementScreen';
 
 const Stack = createNativeStackNavigator();
 
-import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
 import { EmployeePinModal } from './EmployeePinModal';
 import { getAllEmployees } from '../localdb/services/employeeService';
 
-export default function Navigation({ user, refresh }: { user: AuthUser, refresh: number }) {
-  const { business } = useBusiness({ userId: user?.userId, authUser: user });
+export default function Navigation({ user, business, refresh }: { user: AuthUser, business?: any, refresh: number }) {
   const [showPinModal, setShowPinModal] = useState(false);
   const [employees, setEmployees] = useState<Array<{ _id: string; firstName: string; lastName: string; pin: string }>>([]);
   const [signedInEmployee, setSignedInEmployee] = useState<{ employeeId: string; firstName: string; lastName: string } | null>(null);
@@ -31,15 +29,12 @@ export default function Navigation({ user, refresh }: { user: AuthUser, refresh:
       setEmployees(arr);
     });
   }, [showPinModal]);
-  
 
-  if (!business) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
+  // Check if we have a valid business with ID
+  const businessToUse = business || null;
+  const businessId = businessToUse?.id || businessToUse?._id || '';
+
+  console.log(`[Navigation] Business ID: ${businessId}, Name: ${businessToUse?.businessName || 'None'}`);
 
   return (
     <>
@@ -63,7 +58,7 @@ export default function Navigation({ user, refresh }: { user: AuthUser, refresh:
           })}
         >
           <Stack.Screen name="DASHBOARD">
-            {(props) => <Dashboard {...props} user={user} refresh={refresh} {...(signedInEmployee || {})} />}
+            {(props) => <Dashboard {...props} user={user} business={businessToUse} refresh={refresh} {...(signedInEmployee || {})} />}
           </Stack.Screen>
           <Stack.Screen name="Customers">
             {(props) => <CustomersScreen {...props} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
@@ -72,7 +67,7 @@ export default function Navigation({ user, refresh }: { user: AuthUser, refresh:
             {(props) => <OrdersScreen {...props} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
           </Stack.Screen>
           <Stack.Screen name="Products">
-            {(props) => <ProductsScreen {...props} business={business} businessId={business?.id} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
+            {(props) => <ProductsScreen {...props} business={businessToUse} businessId={businessId} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
           </Stack.Screen>
           <Stack.Screen name="Employees">
             {(props) => <EmployeesScreen {...props} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}

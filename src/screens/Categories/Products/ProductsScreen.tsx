@@ -1,11 +1,11 @@
-// src/screens/Categories/ProductsScreen.tsx
+// src/screens/Categories/Products/ProductsScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
-import CategoryTabs from '../Products/CategoryTabs';
-import ProductList from '../Products/ProductList';
-import DefaultServicesButton from '../Products/DefaultServicesButton';
-import CategoryForm from '../Products/CategoryForm';
-import ProductForm from '../Products/ProductForm';
+import CategoryTabs from './CategoryTabs';
+import ProductList from './ProductList';
+import DefaultServicesButton from './DefaultServicesButton';
+import CategoryForm from './CategoryForm';
+import ProductForm from './ProductForm';
 import { useCategories } from '../../../hooks/useCategories';
 import { useProducts } from '../../../hooks/useProducts';
 import type { Category, Product } from '../../../types';
@@ -16,14 +16,17 @@ interface ProductsScreenProps {
   employeeId?: string;
   firstName?: string;
   lastName?: string;
+  route?: any;
+  navigation?: any;
 }
 
 const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
   console.log('[ProductsScreen] props:', props);
-  console.log('[ProductsScreen] business:', props.business);
-  console.log('[ProductsScreen] businessId:', props.businessId);
-
-  const businessId = props.businessId;
+  
+  // Get businessId from props or route params
+  const businessId = props.businessId || (props.route?.params?.businessId);
+  
+  console.log('[ProductsScreen] Using businessId:', businessId);
   
   // Defensive UI if businessId is missing
   if (!businessId) {
@@ -59,6 +62,11 @@ const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
   console.log('[ProductsScreen] Categories count:', categories.length);
   console.log('[ProductsScreen] Products count:', products.length);
 
+  // Initial fetch of categories
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
   // Select the first category if none is selected and categories exist
   useEffect(() => {
     if (
@@ -82,7 +90,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
   const refreshData = useCallback(() => {
     console.log('[ProductsScreen] Refreshing all data');
     fetchCategories();
-    setRefreshTrigger(prev => prev + 1); // This will trigger a product refetch
+    setRefreshTrigger(prev => prev + 1); // This will trigger a product refetch via useEffect
   }, [fetchCategories]);
 
   // CATEGORY HANDLERS
@@ -181,6 +189,7 @@ const ProductsScreen: React.FC<ProductsScreenProps> = (props) => {
             categoryName={selectedCategoryName}
             onAddProduct={handleAddProduct}
             onEditProduct={handleEditProduct}
+            loading={loadingProducts}
           />
         )}
       </View>
