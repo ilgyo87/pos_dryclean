@@ -17,17 +17,17 @@ export function useCategories(businessId?: string) {
     setLoading(true);
     setError(null);
     try {
-      console.log(`[useCategories] Fetching categories with businessId: '${businessId || ''}'`);
+      // // console.log(`[useCategories] Fetching categories with businessId: '${businessId || ''}'`);
       
       let results;
       if (businessId) {
         // If businessId is provided, filter categories by business
         results = await getCategoriesByBusinessId(businessId);
-        console.log(`[useCategories] Fetched ${results.length} categories for business '${businessId}'`);
+        // // console.log(`[useCategories] Fetched ${results.length} categories for business '${businessId}'`);
       } else {
         // Otherwise get all categories
         results = await getAllCategories();
-        console.log(`[useCategories] Fetched ${results.length} categories (all businesses)`);
+        // // console.log(`[useCategories] Fetched ${results.length} categories (all businesses)`);
       }
       
       setCategories(Array.from(results).map((item: any) => ({ ...item })));

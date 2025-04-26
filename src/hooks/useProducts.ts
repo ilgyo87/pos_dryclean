@@ -24,7 +24,7 @@ export function useProducts(businessId?: string, categoryId?: string) {
     if (!isMountedRef.current) return;
     
     // More verbose logging for debugging
-    console.log(`[useProducts] Starting fetch with businessId: '${businessId}' (${typeof businessId}), categoryId: '${categoryId}' (${typeof categoryId})`);
+    // console.log(`[useProducts] Starting fetch with businessId: '${businessId}' (${typeof businessId}), categoryId: '${categoryId}' (${typeof categoryId})`);
     
     // Skip if we don't have necessary IDs, but be more lenient for businessId (common required param)
     if ((!businessId || businessId === '') && (!categoryId || categoryId === '')) {
@@ -41,13 +41,13 @@ export function useProducts(businessId?: string, categoryId?: string) {
       let results: Product[] = [];
       
       if (businessId && businessId !== '' && categoryId && categoryId !== '') {
-        console.log(`[useProducts] Fetching by business and category: '${businessId}', '${categoryId}'`);
+        // console.log(`[useProducts] Fetching by business and category: '${businessId}', '${categoryId}'`);
         results = await getProductsByBusinessAndCategoryId(businessId, categoryId);
       } else if (businessId && businessId !== '') {
-        console.log(`[useProducts] Fetching by business: '${businessId}'`);
+        // console.log(`[useProducts] Fetching by business: '${businessId}'`);
         results = await getProductsByBusinessId(businessId);
       } else if (categoryId && categoryId !== '') {
-        console.log(`[useProducts] Fetching by category: '${categoryId}'`);
+        // console.log(`[useProducts] Fetching by category: '${categoryId}'`);
         results = await getProductsByCategoryId(categoryId);
       } else {
         console.warn('[useProducts] No valid parameters for fetching products');
@@ -59,7 +59,7 @@ export function useProducts(businessId?: string, categoryId?: string) {
       
       // Convert Realm Results to plain JS objects and log counts for debugging
       const plainResults = Array.from(results).map((item: any) => ({ ...item }));
-      console.log(`[useProducts] Fetched ${plainResults.length} products`);
+      // console.log(`[useProducts] Fetched ${plainResults.length} products`);
       
       if (isMountedRef.current) {
         setProducts(plainResults);
@@ -77,7 +77,7 @@ export function useProducts(businessId?: string, categoryId?: string) {
   }, [businessId, categoryId]);
 
   const createProduct = async (product: Product) => {
-    console.log('[useProducts] Creating product:', product.name);
+    // console.log('[useProducts] Creating product:', product.name);
     
     // Enhanced validation with detailed logging
     if (!product.businessId && !businessId) {
@@ -101,20 +101,14 @@ export function useProducts(businessId?: string, categoryId?: string) {
       // Ensure the product has businessId and categoryId
       const productToCreate: Product = {
         ...product,
-        businessId: product.businessId || businessId,
-        categoryId: product.categoryId || categoryId,
+        businessId: product.businessId || businessId || '',
+        categoryId: product.categoryId || categoryId || '',
       };
       
-      console.log('[useProducts] Creating product with:', {
-        name: productToCreate.name,
-        id: productToCreate._id,
-        businessId: productToCreate.businessId,
-        categoryId: productToCreate.categoryId,
-        price: productToCreate.price
-      });
+
       
       await addProduct(productToCreate);
-      console.log(`[useProducts] Successfully created product: ${productToCreate.name}`);
+      // console.log(`[useProducts] Successfully created product: ${productToCreate.name}`);
       
       // Refresh products list
       await fetchProducts();
@@ -127,7 +121,7 @@ export function useProducts(businessId?: string, categoryId?: string) {
   };
 
   const editProduct = async (id: string, updates: Partial<Product>) => {
-    console.log(`[useProducts] Editing product ${id}:`, updates);
+    // console.log(`[useProducts] Editing product ${id}:`, updates);
     setLoading(true);
     setError(null);
     
@@ -143,7 +137,7 @@ export function useProducts(businessId?: string, categoryId?: string) {
   };
 
   const removeProduct = async (id: string) => {
-    console.log(`[useProducts] Removing product: ${id}`);
+    // console.log(`[useProducts] Removing product: ${id}`);
     setLoading(true);
     setError(null);
     

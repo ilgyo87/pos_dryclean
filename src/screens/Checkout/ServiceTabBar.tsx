@@ -24,13 +24,13 @@ const ServiceTabBar: React.FC<ServiceTabBarProps> = ({
   isLoading
 }) => {
   // Debug log to verify the categories being passed to the component
-  console.log(`[ServiceTabBar] Rendering with ${categories?.length || 0} categories, isLoading: ${isLoading}`);
+  // // console.log(`[ServiceTabBar] Rendering with ${categories?.length || 0} categories, isLoading: ${isLoading}`);
   if (categories && categories.length > 0) {
-    console.log('[ServiceTabBar] First category:', categories[0].name);
+    // // console.log('[ServiceTabBar] First category:', categories[0].name);
   }
   
   // Debug selected category
-  console.log(`[ServiceTabBar] Selected category: ${selectedCategory}`);
+  // // console.log(`[ServiceTabBar] Selected category: ${selectedCategory}`);
   
   if (isLoading) {
     return (

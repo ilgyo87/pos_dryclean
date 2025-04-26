@@ -42,13 +42,27 @@ function mapProduct(item: any): Product {
     console.error('[productService] Error mapping product:', error);
     // Return minimal valid product to avoid errors
     return {
-      _id: String(item._id || Date.now()),
+      _id: String(item && item._id ? item._id : Date.now()),
       name: 'Error',
       price: 0,
+      discount: 0,
+      additionalPrice: 0,
+      description: '',
+      categoryId: '',
+      businessId: '',
+      customerId: '',
+      employeeId: '',
+      orderId: '',
+      orderItemId: '',
+      starch: undefined,
+      pressOnly: false,
+      imageName: '',
+      imageUrl: '',
       notes: [],
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as Product;
+    };
+
   }
 }
 
@@ -56,7 +70,7 @@ function mapProduct(item: any): Product {
  * Add a new product to the database
  */
 export async function addProduct(product: Product): Promise<Product> {
-  console.log('[productService] Adding product:', product.name);
+  // console.log('[productService] Adding product:', product.name);
   
   // Validate required fields
   if (!product._id) {
@@ -86,22 +100,22 @@ export async function addProduct(product: Product): Promise<Product> {
         notes: Array.isArray(product.notes) ? product.notes : [],
       };
       
-      console.log('[productService] Creating product in Realm:', productToCreate.name);
+      // console.log('[productService] Creating product in Realm:', productToCreate.name);
       createdProduct = realm.create('Product', productToCreate);
       
       // Get the category and add the product to its products array
       const category = realm.objectForPrimaryKey('Category', product.categoryId);
       if (category) {
-        console.log(`[productService] Adding product to category '${category.name}'`);
+        // console.log(`[productService] Adding product to category '${category.name}'`);
         // Add the product to the category's products list
-        category.products.push(createdProduct);
+        (category.products as unknown as Product[]).push(createdProduct);
       } else {
         console.warn(`[productService] Category not found for id: ${product.categoryId}`);
       }
     });
     
     const mappedProduct = mapProduct(createdProduct);
-    console.log('[productService] Successfully created product:', mappedProduct.name);
+    // console.log('[productService] Successfully created product:', mappedProduct.name);
     return mappedProduct;
   } catch (error) {
     console.error('[productService] Error adding product:', error);
@@ -116,7 +130,7 @@ export async function getAllProducts(): Promise<Product[]> {
   const realm = await getRealm();
   try {
     const products = realm.objects('Product');
-    console.log(`[productService] Found ${products.length} products`);
+    // console.log(`[productService] Found ${products.length} products`);
     return Array.from(products).map(mapProduct);
   } catch (error) {
     console.error('[productService] Error getting all products:', error);
@@ -152,7 +166,7 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
     return null;
   }
   
-  console.log(`[productService] Updating product ${id}:`, updates);
+  // console.log(`[productService] Updating product ${id}:`, updates);
   const realm = await getRealm();
   let updatedProduct;
   
@@ -175,7 +189,7 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
     });
     
     const mappedProduct = updatedProduct ? mapProduct(updatedProduct) : null;
-    console.log(`[productService] Successfully updated product ${id}`);
+    // console.log(`[productService] Successfully updated product ${id}`);
     return mappedProduct;
   } catch (error) {
     console.error(`[productService] Error updating product ${id}:`, error);
@@ -192,7 +206,7 @@ export async function deleteProduct(id: string): Promise<boolean> {
     return false;
   }
   
-  console.log(`[productService] Deleting product ${id}`);
+  // console.log(`[productService] Deleting product ${id}`);
   const realm = await getRealm();
   let deleted = false;
   
@@ -209,7 +223,7 @@ export async function deleteProduct(id: string): Promise<boolean> {
       deleted = true;
     });
     
-    console.log(`[productService] Successfully deleted product ${id}`);
+    // console.log(`[productService] Successfully deleted product ${id}`);
     return deleted;
   } catch (error) {
     console.error(`[productService] Error deleting product ${id}:`, error);
@@ -226,16 +240,16 @@ export async function getProductsByCategoryId(categoryId: string): Promise<Produ
     return [];
   }
   
-  console.log(`[productService] Getting products for category ${categoryId}`);
+  // console.log(`[productService] Getting products for category ${categoryId}`);
   const realm = await getRealm();
   
   try {
     const products = realm.objects('Product').filtered('categoryId == $0', categoryId);
-    console.log(`[productService] Found ${products.length} products for category ${categoryId}`);
+    // console.log(`[productService] Found ${products.length} products for category ${categoryId}`);
     
     // Log sample product for debugging if available
     if (products.length > 0) {
-      console.log('[productService] Sample product:', products[0]);
+      // console.log('[productService] Sample product:', products[0]);
     }
     
     return Array.from(products).map(mapProduct);
@@ -254,16 +268,16 @@ export async function getProductsByBusinessAndCategoryId(businessId: string, cat
     return [];
   }
   
-  console.log(`[productService] Getting products for business ${businessId} and category ${categoryId}`);
+  // console.log(`[productService] Getting products for business ${businessId} and category ${categoryId}`);
   const realm = await getRealm();
   
   try {
     const products = realm.objects('Product').filtered('businessId == $0 && categoryId == $1', businessId, categoryId);
-    console.log(`[productService] Found ${products.length} products for business ${businessId} and category ${categoryId}`);
+    // console.log(`[productService] Found ${products.length} products for business ${businessId} and category ${categoryId}`);
     
     // Log sample product for debugging if available
     if (products.length > 0) {
-      console.log('[productService] Sample product:', products[0]);
+      // console.log('[productService] Sample product:', products[0]);
     }
     
     return Array.from(products).map(mapProduct);
@@ -282,16 +296,16 @@ export async function getProductsByBusinessId(businessId: string): Promise<Produ
     return [];
   }
   
-  console.log(`[productService] Getting products for business ${businessId}`);
+  // console.log(`[productService] Getting products for business ${businessId}`);
   const realm = await getRealm();
   
   try {
     const products = realm.objects('Product').filtered('businessId == $0', businessId);
-    console.log(`[productService] Found ${products.length} products for business ${businessId}`);
+    // console.log(`[productService] Found ${products.length} products for business ${businessId}`);
     
     // Log sample product for debugging if available
     if (products.length > 0) {
-      console.log('[productService] Sample product:', products[0]);
+      // console.log('[productService] Sample product:', products[0]);
     }
     
     return Array.from(products).map(mapProduct);

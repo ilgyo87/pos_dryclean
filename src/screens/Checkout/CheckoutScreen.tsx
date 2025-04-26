@@ -52,13 +52,15 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   // Category selection must come first so it is defined before useProducts
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
-  // Log customer info for debugging
-  console.log('[CheckoutScreen] Customer info:', JSON.stringify({
-    id: customer?._id,
-    name: customer ? `${customer.firstName} ${customer.lastName}` : 'Unknown',
-    businessId: businessId,
-  }));
-  
+  // Log customer info for debugging (only once on mount)
+  useEffect(() => {
+    console.log('[CheckoutScreen] Customer info:', JSON.stringify({
+      id: customer?._id,
+      name: customer ? `${customer.firstName} ${customer.lastName}` : 'Unknown',
+      businessId: businessId,
+    }));
+  }, []); // Only on first mount
+
   // Safety check - if businessId is missing, show error
   useEffect(() => {
     if (!businessId) {
@@ -70,15 +72,15 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
       );
     }
   }, [businessId, customer, navigation]);
-  
+
   // Ensure selectedCategory is defined before calling useProducts
   // Pass businessId as the first parameter, and selectedCategory as the second
   const { products, loading: loadingProducts, error: productsError } = useProducts(
     businessId, 
     selectedCategory || undefined
   );
-  
-  // Log any errors with fetching products
+
+  // Only log errors
   useEffect(() => {
     if (productsError) {
       console.error('[CheckoutScreen] Error loading products:', productsError);
@@ -110,16 +112,13 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   
   // More robust initial category selection with better logging
   useEffect(() => {
-    console.log(`[CheckoutScreen] Categories changed: ${categories?.length || 0} categories available`);
     if (categories && Array.isArray(categories)) {
       categories.forEach((cat, index) => {
-        console.log(`[CheckoutScreen] Category ${index}: ${cat.name}, ID: ${cat._id}, businessId: ${cat.businessId}`);
       });
     }
     
     if (categories && categories.length > 0) {
       if (!selectedCategory) {
-        console.log(`[CheckoutScreen] Setting initial category to: ${categories[0].name} (${categories[0]._id})`);
         setSelectedCategory(categories[0]._id);
       } else {
         // Check if selected category still exists in the categories list
@@ -130,14 +129,9 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
         }
       }
     } else {
-      console.log('[CheckoutScreen] No categories available to select');
+      // console.log('[CheckoutScreen] No categories available to select');
     }
   }, [categories, selectedCategory]);
-  
-  // Debug logs to help diagnose issues
-  console.log('[CheckoutScreen] businessId:', businessId);
-  console.log('[CheckoutScreen] selectedCategory:', selectedCategory);
-  console.log('[CheckoutScreen] products.length:', products?.length || 0);
   
   // Find selected category object
   const selectedCategoryObject = selectedCategory 
@@ -151,28 +145,6 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     ? selectedCategoryObject.products.map((p: any) => ({ ...p }))  // Use products from category
     : (products || []);  // Fallback to useProducts hook results
     
-  // Log the selected category and its products (if any)
-  if (selectedCategoryObject) {
-    console.log(`[CheckoutScreen] Selected category: ${selectedCategoryObject.name}, ID: ${selectedCategoryObject._id}`);
-    
-    // If the products array exists on the category object, use it directly
-    if (selectedCategoryObject.products && selectedCategoryObject.products.length > 0) {
-      console.log(`[CheckoutScreen] Found ${selectedCategoryObject.products.length} products directly in category`);
-    }
-  }
-  
-  // Log the filtered products
-  console.log('[CheckoutScreen] Products from useProducts hook:', products?.length || 0);
-  console.log('[CheckoutScreen] Filtered products length:', categoryProducts.length);
-  if (categoryProducts.length > 0) {
-    console.log('[CheckoutScreen] First product:', JSON.stringify({
-      name: categoryProducts[0].name,
-      id: categoryProducts[0]._id,
-      categoryId: categoryProducts[0].categoryId,
-      businessId: categoryProducts[0].businessId,
-    }));
-  }
-  
   // Utility: get a unique key for an order item based on product id and options
   const getOrderItemKey = (product: Product, options: any) => {
     const optionsStr = options ? JSON.stringify(options) : '';
@@ -271,9 +243,18 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     }
     
     // Implement checkout logic here
+    // Helper to expand items by quantity
+    const expandOrderItems = (items: typeof orderItems) => {
+      return items.flatMap(item =>
+        Array.from({ length: item.quantity }).map((_, i) => ({ ...item, quantity: 1, _expandedIdx: i + 1 }))
+      );
+    };
+
+    const expandedOrderItems = expandOrderItems(orderItems);
+
     const orderDetails = {
       customer,
-      items: orderItems,
+      items: expandedOrderItems,
       total: calculateTotal(),
       pickupDate,
       employeeId: employeeId || 'unknown',
@@ -281,9 +262,14 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
       dateCreated: new Date(),
       status: 'pending'
     };
-    
-    console.log('Checkout with:', orderDetails);
-    
+
+    console.log('Checkout Order Object:', orderDetails);
+    if (expandedOrderItems && Array.isArray(expandedOrderItems)) {
+      expandedOrderItems.forEach((item, idx) => {
+        console.log(`Checkout OrderItem[${idx}]:`, item);
+      });
+    }
+
     Alert.alert(
       "Order Placed",
       `Order for ${customer.firstName} ${customer.lastName} placed successfully! Pickup scheduled for ${pickupDate ? pickupDate.toLocaleString() : 'not specified'}.`,

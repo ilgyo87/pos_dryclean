@@ -11,11 +11,11 @@ export async function addCategory(category: Category) {
       ...category,
       products: [] // Initialize empty products array
     };
-    console.log(`[categoryService] Creating category '${category.name}' with businessId: ${category.businessId}`);
+    // console.log(`[categoryService] Creating category '${category.name}' with businessId: ${category.businessId}`);
     createdCategory = realm.create('Category', categoryToCreate);
   });
   
-  console.log(`[categoryService] Successfully created category: ${category.name}`);
+  // console.log(`[categoryService] Successfully created category: ${category.name}`);
   return createdCategory;
 }
 
@@ -70,20 +70,20 @@ export async function getCategoriesByBusinessId(businessId: string) {
     return [];
   }
   
-  console.log(`[categoryService] Getting categories for business: '${businessId}'`);
+  // console.log(`[categoryService] Getting categories for business: '${businessId}'`);
   const realm = await getRealm();
   
   try {
     const categories = realm.objects('Category').filtered('businessId == $0', businessId);
-    console.log(`[categoryService] Found ${categories.length} categories for business '${businessId}'`);
+    // console.log(`[categoryService] Found ${categories.length} categories for business '${businessId}'`);
     
     // Debug logging for found categories
     if (categories.length > 0) {
       categories.forEach((cat, index) => {
-        console.log(`[categoryService] Category ${index}: '${cat.name}', ID: ${cat._id}, products: ${Array.isArray(cat.products) ? cat.products.length : 0}`);
+        // console.log(`[categoryService] Category ${index}: '${cat.name}', ID: ${cat._id}, products: ${Array.isArray(cat.products) ? cat.products.length : 0}`);
       });
     } else {
-      console.log(`[categoryService] No categories found for business '${businessId}'`);
+      // console.log(`[categoryService] No categories found for business '${businessId}'`);
     }
     
     return categories.map(mapCategory);

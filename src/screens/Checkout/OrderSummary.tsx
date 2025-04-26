@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
-  ListRenderItem
+  ListRenderItem,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Product } from '../../types';
@@ -186,77 +188,79 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         visible={showOptionsModal}
         transparent
         animationType="fade"
+        onRequestClose={() => setShowOptionsModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Item Options</Text>
-            <Text style={styles.modalItemName}>{editingItem?.name}</Text>
-            
-            <View style={styles.optionSection}>
-              <Text style={styles.optionSectionTitle}>Starch Level</Text>
-              <View style={styles.starchOptions}>
-                {(['none', 'light', 'medium', 'heavy'] as const).map(level => (
-                  <TouchableOpacity
-                    key={level}
-                    style={[
-                      styles.starchOption,
-                      starchOption === level && styles.selectedStarchOption
-                    ]}
-                    onPress={() => setStarchOption(level)}
-                  >
-                    <Text 
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Item Options</Text>
+              <Text style={styles.modalItemName}>{editingItem?.name}</Text>
+              <View style={styles.optionSection}>
+                <Text style={styles.optionSectionTitle}>Starch Level</Text>
+                <View style={styles.starchOptions}>
+                  {(['none', 'light', 'medium', 'heavy'] as const).map(level => (
+                    <TouchableOpacity
+                      key={level}
                       style={[
-                        styles.starchOptionText,
-                        starchOption === level && styles.selectedStarchOptionText
+                        styles.starchOption,
+                        starchOption === level && styles.selectedStarchOption
                       ]}
+                      onPress={() => setStarchOption(level)}
                     >
-                      {level.charAt(0).toUpperCase() + level.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text 
+                        style={
+                          starchOption === level
+                            ? styles.selectedStarchOptionText
+                            : styles.starchOptionText
+                        }
+                      >
+                        {level.charAt(0).toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <View style={styles.optionSection}>
+                <TouchableOpacity
+                  style={styles.pressOnlyOption}
+                  onPress={() => setPressOnly(!pressOnly)}
+                >
+                  <View style={styles.checkbox}>
+                    {pressOnly && <MaterialIcons name="check" size={16} color="#007bff" />}
+                  </View>
+                  <Text style={styles.pressOnlyText}>Press Only</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.optionSection}>
+                <Text style={styles.optionSectionTitle}>Notes</Text>
+                <TextInput
+                  style={styles.notesInput}
+                  value={itemNotes}
+                  onChangeText={setItemNotes}
+                  placeholder="Add special instructions"
+                  multiline
+                />
+              </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowOptionsModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleSaveOptions}
+                >
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
               </View>
             </View>
-            
-            <View style={styles.optionSection}>
-              <TouchableOpacity
-                style={styles.pressOnlyOption}
-                onPress={() => setPressOnly(!pressOnly)}
-              >
-                <View style={styles.checkbox}>
-                  {pressOnly && <MaterialIcons name="check" size={16} color="#007bff" />}
-                </View>
-                <Text style={styles.pressOnlyText}>Press Only</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.optionSection}>
-              <Text style={styles.optionSectionTitle}>Notes</Text>
-              <TextInput
-                style={styles.notesInput}
-                value={itemNotes}
-                onChangeText={setItemNotes}
-                placeholder="Add special instructions"
-                multiline
-              />
-            </View>
-            
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowOptionsModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={handleSaveOptions}
-              >
-                <Text style={styles.saveButtonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
