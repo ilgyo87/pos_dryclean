@@ -23,7 +23,9 @@ export interface Category {
   _id: string;
   name: string;
   color?: string;
-  businessId?: string;
+  businessId: string; // Required
+  description?: string;
+  products?: Product[]; // Link to products
 }
 
 // Updated Product interface to match Product schema; removed deprecated fields
@@ -34,8 +36,8 @@ export interface Product {
   discount?: number;
   additionalPrice?: number;
   description?: string;
-  categoryId?: string;
-  businessId?: string;
+  categoryId: string; // Required - every product must belong to a category
+  businessId: string; // Required - every product must belong to a business
   customerId?: string;
   employeeId?: string;
   orderId?: string;

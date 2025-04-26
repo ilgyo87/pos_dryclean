@@ -10,6 +10,7 @@ import { useCategories } from '../../../hooks/useCategories';
 import { useProducts } from '../../../hooks/useProducts';
 import { v4 as uuidv4 } from 'uuid';
 import { Product } from '../../../types';
+import { getRealm } from '../../../localdb/getRealm';
 
 interface DefaultServicesButtonProps {
   onComplete?: () => void;
@@ -79,9 +80,13 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
   if (!businessId) {
     console.warn('[DefaultServicesButton] Rendered without a businessId! Button will be disabled.');
   }
-  const { createCategory, categories, fetchCategories } = useCategories();
-  // Use the correct businessId and categoryId (if available) for product operations
+  // Pass the businessId to useCategories to get only relevant categories
+  const { createCategory, categories, fetchCategories } = useCategories(businessId);
+  // Use the correct businessId for product operations
   const { createProduct, fetchProducts } = useProducts(businessId);
+  
+  // Debug log to confirm businessId
+  console.log(`[DefaultServicesButton] Using businessId: '${businessId || ''}'`);
 
   const handleAddDefaults = async () => {
     try {
@@ -151,13 +156,64 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
   };
 
 
+  // Function to reset categories and products (for debugging)
+  const handleReset = async () => {
+    if (!businessId) {
+      Alert.alert('Error', 'No business found. Please create a business first.');
+      return;
+    }
+    
+    try {
+      // Delete all products and categories
+      const realm = await getRealm();
+      
+      realm.write(() => {
+        // Delete all products for this business
+        const products = realm.objects('Product').filtered('businessId == $0', businessId);
+        console.log(`[DefaultServicesButton] Deleting ${products.length} products`);
+        realm.delete(products);
+        
+        // Delete all categories for this business
+        const categories = realm.objects('Category').filtered('businessId == $0', businessId);
+        console.log(`[DefaultServicesButton] Deleting ${categories.length} categories`);
+        realm.delete(categories);
+      });
+      
+      console.log('[DefaultServicesButton] Reset complete');
+      Alert.alert('Success', 'All products and categories have been reset');
+      
+      // Refetch data
+      await fetchCategories();
+      await fetchProducts();
+      
+      if (onComplete) onComplete();
+    } catch (err: any) {
+      console.error('[DefaultServicesButton] Reset error:', err);
+      Alert.alert('Error', err.message || 'Failed to reset services');
+    }
+  };
+
   const handlePress = () => {
     Alert.alert(
-      'Add Default Services',
-      'This will add common dry cleaning services to your catalog.',
+      'Service Options',
+      'What would you like to do with the services?',
       [
+        { 
+          text: 'Reset All',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Confirm Reset',
+              'This will DELETE ALL existing services. Are you sure?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Reset', style: 'destructive', onPress: handleReset }
+              ]
+            );
+          }
+        },
+        { text: 'Add Default Services', onPress: handleAddDefaults },
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Add', onPress: handleAddDefaults },
       ]
     );
   };

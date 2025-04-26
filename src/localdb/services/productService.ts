@@ -56,7 +56,7 @@ function mapProduct(item: any): Product {
  * Add a new product to the database
  */
 export async function addProduct(product: Product): Promise<Product> {
-  console.log('[productService] Adding product:', product);
+  console.log('[productService] Adding product:', product.name);
   
   // Validate required fields
   if (!product._id) {
@@ -65,6 +65,14 @@ export async function addProduct(product: Product): Promise<Product> {
   
   if (!product.name) {
     throw new Error('Product must have a name');
+  }
+  
+  if (!product.businessId) {
+    throw new Error('Product must have a businessId');
+  }
+  
+  if (!product.categoryId) {
+    throw new Error('Product must have a categoryId');
   }
   
   const realm = await getRealm();
@@ -78,12 +86,22 @@ export async function addProduct(product: Product): Promise<Product> {
         notes: Array.isArray(product.notes) ? product.notes : [],
       };
       
-      console.log('[productService] Creating product in Realm:', productToCreate);
+      console.log('[productService] Creating product in Realm:', productToCreate.name);
       createdProduct = realm.create('Product', productToCreate);
+      
+      // Get the category and add the product to its products array
+      const category = realm.objectForPrimaryKey('Category', product.categoryId);
+      if (category) {
+        console.log(`[productService] Adding product to category '${category.name}'`);
+        // Add the product to the category's products list
+        category.products.push(createdProduct);
+      } else {
+        console.warn(`[productService] Category not found for id: ${product.categoryId}`);
+      }
     });
     
     const mappedProduct = mapProduct(createdProduct);
-    console.log('[productService] Successfully created product:', mappedProduct);
+    console.log('[productService] Successfully created product:', mappedProduct.name);
     return mappedProduct;
   } catch (error) {
     console.error('[productService] Error adding product:', error);

@@ -4,9 +4,18 @@ import { Category } from './../../types';
 export async function addCategory(category: Category) {
   const realm = await getRealm();
   let createdCategory;
+  
   realm.write(() => {
-    createdCategory = realm.create('Category', category);
+    // Make sure the category has a products array initialized
+    const categoryToCreate = {
+      ...category,
+      products: [] // Initialize empty products array
+    };
+    console.log(`[categoryService] Creating category '${category.name}' with businessId: ${category.businessId}`);
+    createdCategory = realm.create('Category', categoryToCreate);
   });
+  
+  console.log(`[categoryService] Successfully created category: ${category.name}`);
   return createdCategory;
 }
 

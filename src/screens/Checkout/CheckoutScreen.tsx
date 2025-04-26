@@ -5,6 +5,7 @@ import { Customer, Product, Category } from '../../types';
 import { useCategories } from '../../hooks/useCategories';
 import { useProducts } from '../../hooks/useProducts';
 import { CustomerHeader, ServiceTabBar, ProductGrid, OrderSummary, PickupCalendar } from './';
+import { hashString } from '../../utils/hashString';
 import styles from './CheckoutScreen.styles';
 
 // Route params type for navigation
@@ -42,13 +43,46 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { customer } = route.params;
   
-  const { categories, loading: loadingCategories } = useCategories();
+  // Get businessId from customer and ensure it's a valid string
+  const businessId = (customer?.businessId || '').trim();
+  
+  // Now use businessId to filter categories
+  const { categories, loading: loadingCategories } = useCategories(businessId);
   // Category selection must come first so it is defined before useProducts
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  // Use only customer.businessId (business is not a property on Customer)
-  const businessId = customer.businessId ?? '';
+  
+  // Log customer info for debugging
+  console.log('[CheckoutScreen] Customer info:', JSON.stringify({
+    id: customer?._id,
+    name: customer ? `${customer.firstName} ${customer.lastName}` : 'Unknown',
+    businessId: businessId,
+  }));
+  
+  // Safety check - if businessId is missing, show error
+  useEffect(() => {
+    if (!businessId) {
+      console.error('[CheckoutScreen] Missing businessId for customer:', customer?._id);
+      Alert.alert(
+        "Error", 
+        "Missing business information for this customer. Please update the customer record with a valid business ID.",
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+    }
+  }, [businessId, customer, navigation]);
+  
   // Ensure selectedCategory is defined before calling useProducts
-  const { products, loading: loadingProducts } = useProducts(businessId, selectedCategory || undefined);
+  // Pass businessId as the first parameter, and selectedCategory as the second
+  const { products, loading: loadingProducts, error: productsError } = useProducts(
+    businessId, 
+    selectedCategory || undefined
+  );
+  
+  // Log any errors with fetching products
+  useEffect(() => {
+    if (productsError) {
+      console.error('[CheckoutScreen] Error loading products:', productsError);
+    }
+  }, [productsError]);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [pickupDate, setPickupDate] = useState<Date | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -80,10 +114,44 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     }
   }, [categories, selectedCategory]);
   
-  // Filter products by selected category
-  const categoryProducts = selectedCategory && products && products.length > 0
-    ? products.filter(p => p.categoryId === selectedCategory)
-    : [];
+  // Debug logs to help diagnose issues
+  console.log('[CheckoutScreen] businessId:', businessId);
+  console.log('[CheckoutScreen] selectedCategory:', selectedCategory);
+  console.log('[CheckoutScreen] products.length:', products?.length || 0);
+  
+  // Find selected category object
+  const selectedCategoryObject = selectedCategory 
+    ? categories.find(c => c._id === selectedCategory) 
+    : null;
+    
+  // Get products either from the category object directly OR from the useProducts hook
+  const categoryProducts = (selectedCategoryObject && 
+                           selectedCategoryObject.products && 
+                           selectedCategoryObject.products.length > 0)
+    ? selectedCategoryObject.products.map((p: any) => ({ ...p }))  // Use products from category
+    : (products || []);  // Fallback to useProducts hook results
+    
+  // Log the selected category and its products (if any)
+  if (selectedCategoryObject) {
+    console.log(`[CheckoutScreen] Selected category: ${selectedCategoryObject.name}, ID: ${selectedCategoryObject._id}`);
+    
+    // If the products array exists on the category object, use it directly
+    if (selectedCategoryObject.products && selectedCategoryObject.products.length > 0) {
+      console.log(`[CheckoutScreen] Found ${selectedCategoryObject.products.length} products directly in category`);
+    }
+  }
+  
+  // Log the filtered products
+  console.log('[CheckoutScreen] Products from useProducts hook:', products?.length || 0);
+  console.log('[CheckoutScreen] Filtered products length:', categoryProducts.length);
+  if (categoryProducts.length > 0) {
+    console.log('[CheckoutScreen] First product:', JSON.stringify({
+      name: categoryProducts[0].name,
+      id: categoryProducts[0]._id,
+      categoryId: categoryProducts[0].categoryId,
+      businessId: categoryProducts[0].businessId,
+    }));
+  }
   
   // Add item to order
   const handleAddItem = (product: Product) => {
@@ -159,16 +227,6 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     );
   };
 
-  function hashString(str: string): string {
-    let hash = 0, i, chr;
-    if (str.length === 0) return '0';
-    for (i = 0; i < str.length; i++) {
-      chr = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + chr;
-      hash |= 0; // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString();
-  }
 
   // Calculate total price
   const calculateTotal = () => {

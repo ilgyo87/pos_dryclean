@@ -23,30 +23,38 @@ export function useProducts(businessId?: string, categoryId?: string) {
     // Skip if component is unmounted
     if (!isMountedRef.current) return;
     
-    // Skip if we don't have necessary IDs
-    if (!businessId && !categoryId) {
-      console.log('[useProducts] No businessId or categoryId provided, skipping fetch');
+    // More verbose logging for debugging
+    console.log(`[useProducts] Starting fetch with businessId: '${businessId}' (${typeof businessId}), categoryId: '${categoryId}' (${typeof categoryId})`);
+    
+    // Skip if we don't have necessary IDs, but be more lenient for businessId (common required param)
+    if ((!businessId || businessId === '') && (!categoryId || categoryId === '')) {
+      console.warn('[useProducts] No businessId or categoryId provided, skipping fetch');
       setProducts([]);
       setError('No businessId or categoryId provided');
       return;
     }
     
-    console.log(`[useProducts] Fetching products - businessId: ${businessId}, categoryId: ${categoryId}`);
     setLoading(true);
     setError(null);
     
     try {
       let results: Product[] = [];
       
-      if (businessId && categoryId) {
-        console.log(`[useProducts] Fetching by business and category: ${businessId}, ${categoryId}`);
+      if (businessId && businessId !== '' && categoryId && categoryId !== '') {
+        console.log(`[useProducts] Fetching by business and category: '${businessId}', '${categoryId}'`);
         results = await getProductsByBusinessAndCategoryId(businessId, categoryId);
-      } else if (businessId) {
-        console.log(`[useProducts] Fetching by business: ${businessId}`);
+      } else if (businessId && businessId !== '') {
+        console.log(`[useProducts] Fetching by business: '${businessId}'`);
         results = await getProductsByBusinessId(businessId);
-      } else if (categoryId) {
-        console.log(`[useProducts] Fetching by category: ${categoryId}`);
+      } else if (categoryId && categoryId !== '') {
+        console.log(`[useProducts] Fetching by category: '${categoryId}'`);
         results = await getProductsByCategoryId(categoryId);
+      } else {
+        console.warn('[useProducts] No valid parameters for fetching products');
+        setProducts([]);
+        setError('Invalid parameters for fetching products');
+        setLoading(false);
+        return;
       }
       
       // Convert Realm Results to plain JS objects and log counts for debugging
@@ -69,13 +77,19 @@ export function useProducts(businessId?: string, categoryId?: string) {
   }, [businessId, categoryId]);
 
   const createProduct = async (product: Product) => {
-    console.log('[useProducts] Creating product:', product);
+    console.log('[useProducts] Creating product:', product.name);
+    
+    // Enhanced validation with detailed logging
     if (!product.businessId && !businessId) {
+      console.error('[useProducts] No businessId provided for product:', 
+        { productBizId: product.businessId, hookBizId: businessId });
       setError('No businessId provided for product');
       return;
     }
     
     if (!product.categoryId && !categoryId) {
+      console.error('[useProducts] No categoryId provided for product:', 
+        { productCatId: product.categoryId, hookCatId: categoryId });
       setError('No categoryId provided for product');
       return;
     }
@@ -91,8 +105,18 @@ export function useProducts(businessId?: string, categoryId?: string) {
         categoryId: product.categoryId || categoryId,
       };
       
-      console.log('[useProducts] Creating product with:', productToCreate);
+      console.log('[useProducts] Creating product with:', {
+        name: productToCreate.name,
+        id: productToCreate._id,
+        businessId: productToCreate.businessId,
+        categoryId: productToCreate.categoryId,
+        price: productToCreate.price
+      });
+      
       await addProduct(productToCreate);
+      console.log(`[useProducts] Successfully created product: ${productToCreate.name}`);
+      
+      // Refresh products list
       await fetchProducts();
     } catch (err: any) {
       console.error('[useProducts] Error creating product:', err);

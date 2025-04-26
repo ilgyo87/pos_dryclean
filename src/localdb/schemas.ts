@@ -81,8 +81,8 @@ export const ProductSchema = {
     price: 'double',
     discount: 'double?',
     additionalPrice: 'double?',
-    categoryId: 'string?',
-    businessId: 'string?',
+    categoryId: 'string', // Required - every product must belong to a category
+    businessId: 'string', // Required - every product must belong to a business
     customerId: 'string?',
     employeeId: 'string?',
     orderId: 'string?',

@@ -97,12 +97,24 @@ const CustomerQuickSearch = forwardRef<any, any>((props, ref) => {
     Keyboard.dismiss();
     
     // Make a clean copy of the customer to pass to navigation
+    // Ensure all required fields are included, especially businessId
     const cleanCustomer = {
       ...customer,
+      _id: customer._id || '',
+      firstName: customer.firstName || '',
+      lastName: customer.lastName || '',
+      phone: customer.phone || '',
+      businessId: customer.businessId || '', // Explicitly include businessId
       createdAt: customer.createdAt ? new Date(customer.createdAt).toISOString() : new Date().toISOString(),
       updatedAt: customer.updatedAt ? new Date(customer.updatedAt).toISOString() : null,
       notes: Array.isArray(customer.notes) ? [...customer.notes] : [],
     };
+    
+    console.log('[CustomerQuickSearch] Navigating to Checkout with customer:', JSON.stringify({
+      _id: cleanCustomer._id,
+      name: `${cleanCustomer.firstName} ${cleanCustomer.lastName}`,
+      businessId: cleanCustomer.businessId,
+    }));
     
     navigation.navigate('Checkout', { customer: cleanCustomer });
   }, [navigation]);
@@ -136,12 +148,24 @@ const CustomerQuickSearch = forwardRef<any, any>((props, ref) => {
     handleCloseModal();
     if (createdCustomer) {
       // Clean the customer object before navigation
+      // Ensure all required fields are included, especially businessId
       const cleanCustomer = {
         ...createdCustomer,
+        _id: createdCustomer._id || '',
+        firstName: createdCustomer.firstName || '',
+        lastName: createdCustomer.lastName || '',
+        phone: createdCustomer.phone || '',
+        businessId: createdCustomer.businessId || '', // Explicitly include businessId
         createdAt: createdCustomer.createdAt ? new Date(createdCustomer.createdAt).toISOString() : new Date().toISOString(),
         updatedAt: createdCustomer.updatedAt ? new Date(createdCustomer.updatedAt).toISOString() : null,
         notes: Array.isArray(createdCustomer.notes) ? [...createdCustomer.notes] : [],
       };
+      
+      console.log('[CustomerQuickSearch] Navigating to Checkout with new customer:', JSON.stringify({
+        _id: cleanCustomer._id,
+        name: `${cleanCustomer.firstName} ${cleanCustomer.lastName}`,
+        businessId: cleanCustomer.businessId,
+      }));
       navigation.navigate('Checkout', { customer: cleanCustomer });
     }
   }, [handleCloseModal, navigation]);
