@@ -23,6 +23,15 @@ const ServiceTabBar: React.FC<ServiceTabBarProps> = ({
   onSelectCategory,
   isLoading
 }) => {
+  // Debug log to verify the categories being passed to the component
+  console.log(`[ServiceTabBar] Rendering with ${categories?.length || 0} categories, isLoading: ${isLoading}`);
+  if (categories && categories.length > 0) {
+    console.log('[ServiceTabBar] First category:', categories[0].name);
+  }
+  
+  // Debug selected category
+  console.log(`[ServiceTabBar] Selected category: ${selectedCategory}`);
+  
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -33,6 +42,7 @@ const ServiceTabBar: React.FC<ServiceTabBarProps> = ({
   }
 
   if (!categories || categories.length === 0) {
+
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>No categories available</Text>
@@ -42,7 +52,6 @@ const ServiceTabBar: React.FC<ServiceTabBarProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Services</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -70,10 +79,6 @@ const ServiceTabBar: React.FC<ServiceTabBarProps> = ({
               >
                 {category.name}
               </Text>
-              {isSelected && <View style={[
-                styles.indicator,
-                category.color ? { backgroundColor: category.color } : null
-              ]} />}
             </TouchableOpacity>
           );
         })}
@@ -94,12 +99,6 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
-  },
   tabsContainer: {
     paddingBottom: 4,
   },
@@ -112,9 +111,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   selectedTab: {
-    backgroundColor: '#e6f0ff',
+    borderColor: '#007bff',
+    borderWidth: 4,
   },
   tabText: {
     fontSize: 14,
@@ -124,16 +126,6 @@ const styles = StyleSheet.create({
   selectedTabText: {
     color: '#007bff',
     fontWeight: '600',
-  },
-  indicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: '50%',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#007bff',
-    marginLeft: -3,
   },
   loadingContainer: {
     flexDirection: 'row',

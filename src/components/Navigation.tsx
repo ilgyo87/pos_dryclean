@@ -13,7 +13,7 @@ import PrinterManagementScreen from './PrinterManagementScreen';
 
 const Stack = createNativeStackNavigator();
 
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 import { useEffect, useState } from 'react';
 import { EmployeePinModal } from './EmployeePinModal';
 import { getAllEmployees } from '../localdb/services/employeeService';
@@ -79,7 +79,7 @@ export default function Navigation({ user, business, refresh }: { user: AuthUser
             {(props) => <ReportsScreen {...props} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
           </Stack.Screen>
           <Stack.Screen name="Checkout">
-            {(props) => <CheckoutScreen {...props} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
+            {(props) => <CheckoutScreen {...props} business={businessToUse} businessId={businessId} employeeId={signedInEmployee?.employeeId} firstName={signedInEmployee?.firstName} lastName={signedInEmployee?.lastName} />}
           </Stack.Screen>
           <Stack.Screen
             name="PrinterManagement"

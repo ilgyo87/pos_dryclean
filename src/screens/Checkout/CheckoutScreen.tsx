@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Dimensions, SafeAreaView, Alert } from 'react-native';
-import { RouteProp, useRoute, useNavigation, NavigationProp, ParamListBase } from '@react-navigation/native';
-import { Customer, Product, Category } from '../../types';
+import { RouteProp, useRoute, useNavigation, NavigationProp } from '@react-navigation/native';
+import { Customer, Product } from '../../types';
 import { useCategories } from '../../hooks/useCategories';
 import { useProducts } from '../../hooks/useProducts';
 import { CustomerHeader, ServiceTabBar, ProductGrid, OrderSummary, PickupCalendar } from './';
@@ -36,15 +36,16 @@ interface CheckoutScreenProps {
   employeeId?: string;
   firstName?: string;
   lastName?: string;
+  business?: any; 
+  businessId?: string;
 }
 
-const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, lastName }) => {
+const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, lastName, business, businessId: propBusinessId }) => {
   const route = useRoute<CheckoutScreenRouteProp>();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { customer } = route.params;
   
-  // Get businessId from customer and ensure it's a valid string
-  const businessId = (customer?.businessId || '').trim();
+  const businessId = propBusinessId || '';
   
   // Now use businessId to filter categories
   const { categories, loading: loadingCategories } = useCategories(businessId);
@@ -107,10 +108,29 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
     };
   }, []);
   
-  // Initial category selection
+  // More robust initial category selection with better logging
   useEffect(() => {
-    if (categories && categories.length > 0 && !selectedCategory) {
-      setSelectedCategory(categories[0]._id);
+    console.log(`[CheckoutScreen] Categories changed: ${categories?.length || 0} categories available`);
+    if (categories && Array.isArray(categories)) {
+      categories.forEach((cat, index) => {
+        console.log(`[CheckoutScreen] Category ${index}: ${cat.name}, ID: ${cat._id}, businessId: ${cat.businessId}`);
+      });
+    }
+    
+    if (categories && categories.length > 0) {
+      if (!selectedCategory) {
+        console.log(`[CheckoutScreen] Setting initial category to: ${categories[0].name} (${categories[0]._id})`);
+        setSelectedCategory(categories[0]._id);
+      } else {
+        // Check if selected category still exists in the categories list
+        const categoryExists = categories.some(cat => cat._id === selectedCategory);
+        if (!categoryExists && categories.length > 0) {
+          console.log(`[CheckoutScreen] Selected category no longer exists, resetting to: ${categories[0].name}`);
+          setSelectedCategory(categories[0]._id);
+        }
+      }
+    } else {
+      console.log('[CheckoutScreen] No categories available to select');
     }
   }, [categories, selectedCategory]);
   

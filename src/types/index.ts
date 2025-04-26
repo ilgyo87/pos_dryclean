@@ -25,7 +25,11 @@ export interface Category {
   color?: string;
   businessId: string; // Required
   description?: string;
-  products?: Product[]; // Link to products
+  /**
+   * Always a Product[] for Realm/TypeScript compatibility.
+   * Never optional, avoids 'length' errors in code.
+   */
+  products: Product[];
 }
 
 // Updated Product interface to match Product schema; removed deprecated fields

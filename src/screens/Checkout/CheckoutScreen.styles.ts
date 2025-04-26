@@ -31,11 +31,12 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
   },
   rightPanel: {
-    flex: 1.5, // Decreased from 2 to 1.5 to make the order summary narrower
+    flex: 1.2, // Make the order summary more narrow in horizontal layout
+    maxWidth: 320, // Prevent it from getting too wide
     borderLeftWidth: 1,
     borderLeftColor: '#e0e0e0',
     backgroundColor: '#fff',
-    padding: 10,
+    padding: 1,
   },
   // Alternative layout for smaller screens
   smallScreenContent: {
@@ -47,14 +48,14 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   smallScreenRightPanel: {
-    flex: 1, // Order summary takes less space on small screens
+    flex: 1, // Give more space to order summary on small screens
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     backgroundColor: '#fff',
     padding: 10,
   },
   checkoutSection: {
-    marginTop: 15,
+    marginTop: 5,
   },
   dateButton: {
     backgroundColor: '#f0f0f0',
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 6,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
   checkoutButtonDisabled: {
     backgroundColor: '#c8e6c9',

@@ -65,7 +65,30 @@ export async function deleteCategory(id: string) {
 
 // Get categories by business ID
 export async function getCategoriesByBusinessId(businessId: string) {
+  if (!businessId) {
+    console.error('[categoryService] getCategoriesByBusinessId called with empty businessId');
+    return [];
+  }
+  
+  console.log(`[categoryService] Getting categories for business: '${businessId}'`);
   const realm = await getRealm();
-  const categories = realm.objects('Category').filtered('businessId == $0', businessId);
-  return categories.map(mapCategory);
+  
+  try {
+    const categories = realm.objects('Category').filtered('businessId == $0', businessId);
+    console.log(`[categoryService] Found ${categories.length} categories for business '${businessId}'`);
+    
+    // Debug logging for found categories
+    if (categories.length > 0) {
+      categories.forEach((cat, index) => {
+        console.log(`[categoryService] Category ${index}: '${cat.name}', ID: ${cat._id}, products: ${Array.isArray(cat.products) ? cat.products.length : 0}`);
+      });
+    } else {
+      console.log(`[categoryService] No categories found for business '${businessId}'`);
+    }
+    
+    return categories.map(mapCategory);
+  } catch (error) {
+    console.error(`[categoryService] Error getting categories for business '${businessId}':`, error);
+    return [];
+  }
 }

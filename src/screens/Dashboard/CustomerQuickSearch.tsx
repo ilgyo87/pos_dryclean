@@ -8,7 +8,12 @@ import type { Customer } from '../../types';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
-const CustomerQuickSearch = forwardRef<any, any>((props, ref) => {
+interface CustomerQuickSearchProps {
+  businessId?: string;
+}
+
+const CustomerQuickSearch = forwardRef<any, CustomerQuickSearchProps>((props, ref) => {
+  const { businessId } = props;
   const [search, setSearch] = useState('');
   const [focused, setFocused] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);

@@ -12,6 +12,21 @@ import { v4 as uuidv4 } from 'uuid';
 import { Product } from '../../../types';
 import { getRealm } from '../../../localdb/getRealm';
 
+// Helper function to generate a random color for categories
+function getRandomColor() {
+  const colors = [
+    '#007bff', // blue
+    '#28a745', // green
+    '#dc3545', // red
+    '#fd7e14', // orange
+    '#6f42c1', // purple
+    '#20c997', // teal
+    '#17a2b8', // cyan
+    '#6c757d', // gray
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
 interface DefaultServicesButtonProps {
   onComplete?: () => void;
   businessId?: string;
@@ -20,7 +35,8 @@ interface DefaultServicesButtonProps {
 const DEFAULT_SERVICES = [
   {
     _id: uuidv4(),
-    name: 'dry cleaning',
+    name: 'Dry Cleaning',
+    color: '#007bff', // blue
     products: [
       { _id: uuidv4(), name: 'pants', imageName: 'pants', price: 5.0 },
       { _id: uuidv4(), name: 'dress-shirt', imageName: 'dress-shirt', price: 4.0 },
@@ -38,7 +54,8 @@ const DEFAULT_SERVICES = [
   },
   {
     _id: uuidv4(),
-    name: 'washing',
+    name: 'Washing',
+    color: '#28a745', // green
     products: [
       { _id: uuidv4(), name: 'dress-shirt', imageName: 'dress-shirt', price: 2.5 },
       { _id: uuidv4(), name: 'boxed-shirts', imageName: 'boxed-shirts', price: 3.0 },
@@ -48,7 +65,8 @@ const DEFAULT_SERVICES = [
   },
   {
     _id: uuidv4(),
-    name: 'alterations',
+    name: 'Alterations',
+    color: '#fd7e14', // orange
     products: [
       { _id: uuidv4(), name: 'buttons', imageName: 'buttons', price: 1.0 },
       { _id: uuidv4(), name: 'patch', imageName: 'patch', price: 2.0 },
@@ -62,7 +80,8 @@ const DEFAULT_SERVICES = [
   },
   {
     _id: uuidv4(),
-    name: 'special',
+    name: 'Special',
+    color: '#6f42c1', // purple
     products: [
       { _id: uuidv4(), name: 'comforter', imageName: 'comforter', price: 15.0 },
       { _id: uuidv4(), name: 'blankets', imageName: 'blankets', price: 10.0 },
@@ -102,7 +121,15 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
         );
         let categoryId = category ? category._id : uuidv4();
         if (!category) {
-          await createCategory({ _id: categoryId, name: cat.name, businessId });
+          // Create a complete category object
+          await createCategory({ 
+            _id: categoryId, 
+            name: cat.name,
+            businessId: businessId,
+            products: [], // Initialize with empty products array
+            description: `Default ${cat.name} services`,
+            color: cat.color || getRandomColor() // Add some color
+          });
 
           // Fetch the actual category from DB after creation
           const { getCategoryById } = await import('../../../localdb/services/categoryService');
@@ -180,7 +207,11 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
       });
       
       console.log('[DefaultServicesButton] Reset complete');
-      Alert.alert('Success', 'All products and categories have been reset');
+      
+      // Immediately add default categories and products
+      await handleAddDefaults();
+      
+      // Alert.alert('Success', 'All products and categories have been reset and defaults added');
       
       // Refetch data
       await fetchCategories();
@@ -224,7 +255,9 @@ const DefaultServicesButton: React.FC<DefaultServicesButtonProps> = ({ onComplet
       onPress={handlePress}
       disabled={!businessId}
     >
-      <Text style={[styles.buttonText, !businessId && { color: '#aaa' }]}>Add Default Services</Text>
+      <Text style={[styles.buttonText, !businessId && { color: '#aaa' }]}>
+        Reset & Add Default Services
+      </Text>
       {!businessId && (
         <Text style={{ color: '#d00', fontSize: 12, marginTop: 4, textAlign: 'center' }}>
           Business not found. Please create a business first.

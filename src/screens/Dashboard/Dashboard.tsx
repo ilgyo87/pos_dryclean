@@ -56,7 +56,7 @@ export default function Dashboard({
         )}
       </View>
 
-      <CustomerQuickSearch />
+      <CustomerQuickSearch businessId={business._id || business.id} />
 
       <Text style={styles.sectionTitle}>Quick Actions</Text>
       <CategoriesGrid
