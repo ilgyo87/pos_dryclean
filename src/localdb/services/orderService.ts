@@ -1,5 +1,6 @@
 import { getRealm } from '../getRealm';
 import { Order, Product } from '../../types';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Map a Realm order object to a plain JavaScript object
@@ -113,6 +114,124 @@ function mapOrder(item: any): Order {
       status: 'CREATED',
       createdAt: new Date()
     } as any;
+  }
+}
+
+/**
+ * Create a new order in the local database
+ * @param orderData The order data including items, customer, employee, etc.
+ * @returns The created order
+ */
+export async function createOrder(orderData: {
+  customer: any;
+  items: any[];
+  total: number;
+  pickupDate: Date | null;
+  employeeId: string;
+  employee?: { firstName?: string; lastName?: string };
+  businessId: string;
+  paymentMethod: string;
+}): Promise<Order> {
+  const realm = await getRealm();
+  let createdOrder: any = null;
+  
+  try {
+    console.log('[ORDER][LOCAL] Creating new order');
+    
+    // Generate order ID
+    const orderId = uuidv4();
+    
+    // Current date/time
+    const now = new Date();
+    
+    // Prepare order notes if employee is specified
+    const employeeName = orderData.employee && orderData.employee.firstName 
+      ? `${orderData.employee.firstName} ${orderData.employee.lastName || ''}`
+      : `Employee ID: ${orderData.employeeId}`;
+    
+    const orderCreatedNote = `Order created by ${employeeName} at ${now.toLocaleString()}`;
+    
+    // Create orderItems first
+    const orderItems: any[] = [];
+    
+    realm.write(() => {
+      console.log(`[ORDER][LOCAL] Creating ${orderData.items.length} order items`);
+      
+      // Create OrderItems
+      orderData.items.forEach((item, index) => {
+        const orderItemId = uuidv4();
+        
+        console.log(`[ORDER][LOCAL] Creating order item ${index + 1}: ${item.name}`);
+        
+        // Get the starch value, ensuring it's a valid option
+        let starchValue: 'none' | 'light' | 'medium' | 'heavy' | undefined = undefined;
+        if (item.options?.starch) {
+          const starch = item.options.starch;
+          if (starch === 'none' || starch === 'light' || starch === 'medium' || starch === 'heavy') {
+            starchValue = starch;
+          }
+        }
+        
+        // Create OrderItem in Realm
+        const orderItem = realm.create('OrderItem', {
+          _id: orderItemId,
+          orderId: orderId,
+          productId: item._id,
+          name: item.name,
+          price: typeof item.price === 'number' ? item.price : 0,
+          discount: typeof item.discount === 'number' ? item.discount : 0,
+          description: item.description || '',
+          businessId: orderData.businessId,
+          customerId: orderData.customer._id,
+          employeeId: orderData.employeeId,
+          paymentMethod: orderData.paymentMethod, // Fix: add paymentMethod for schema
+          total: (typeof item.price === 'number' ? item.price : 0) + (typeof item.additionalPrice === 'number' ? item.additionalPrice : 0) - (typeof item.discount === 'number' ? item.discount : 0),
+          starch: starchValue,
+          pressOnly: !!item.options?.pressOnly,
+          notes: Array.isArray(item.options?.notes)
+            ? item.options.notes.map((n: any) => String(n))
+            : [],
+          status: 'CREATED',
+          createdAt: now,
+          updatedAt: now
+        });
+        console.log('[ORDER][LOCAL] Created OrderItem:', JSON.stringify(orderItem, null, 2));
+        orderItems.push(orderItem);
+      });
+      
+      // Create the order with references to the created items
+      console.log(`[ORDER][LOCAL] Creating order with ID: ${orderId}`);
+      
+      createdOrder = realm.create('Order', {
+        _id: orderId,
+        businessId: orderData.businessId,
+        customerId: orderData.customer._id,
+        employeeId: orderData.employeeId,
+        items: orderItems,
+        paymentMethod: orderData.paymentMethod,
+        additionalPrice: 0,
+        discount: 0,
+        total: orderData.total,
+        notes: [orderCreatedNote],
+        pickupDate: orderData.pickupDate || undefined,
+        status: 'CREATED',
+        createdAt: now,
+        updatedAt: now
+      });
+    });
+    
+    console.log('[ORDER][LOCAL] Order creation successful');
+    console.log(`[ORDER][LOCAL] Order ID: ${orderId}`);
+    console.log(`[ORDER][LOCAL] Order items: ${orderItems.length}`);
+    console.log(`[ORDER][LOCAL] Total: $${orderData.total.toFixed(2)}`);
+    console.log(`[ORDER][LOCAL] Customer: ${orderData.customer.firstName} ${orderData.customer.lastName}`);
+    console.log('[ORDER][LOCAL] Created Order object:', JSON.stringify(createdOrder, null, 2));
+    
+    // Map the created order to a plain JS object before returning
+    return mapOrder(createdOrder);
+  } catch (error) {
+    console.error('[ORDER][LOCAL] Error creating order:', error);
+    throw error;
   }
 }
 

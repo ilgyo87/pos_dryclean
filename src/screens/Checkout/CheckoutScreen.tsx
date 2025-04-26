@@ -4,9 +4,10 @@ import { RouteProp, useRoute, useNavigation, NavigationProp } from '@react-navig
 import { Customer, Product } from '../../types';
 import { useCategories } from '../../hooks/useCategories';
 import { useProducts } from '../../hooks/useProducts';
-import { CustomerHeader, ServiceTabBar, ProductGrid, OrderSummary, PickupCalendar } from './';
+import { CustomerHeader, ServiceTabBar, ProductGrid, OrderSummary, PickupCalendar, PaymentModal } from './';
 import { hashString } from '../../utils/hashString';
 import styles from './CheckoutScreen.styles';
+import { createOrder } from '../../localdb/services/orderService';
 
 // Route params type for navigation
 interface CheckoutScreenRouteParams {
@@ -52,15 +53,6 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   // Category selection must come first so it is defined before useProducts
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
-  // Log customer info for debugging (only once on mount)
-  useEffect(() => {
-    console.log('[CheckoutScreen] Customer info:', JSON.stringify({
-      id: customer?._id,
-      name: customer ? `${customer.firstName} ${customer.lastName}` : 'Unknown',
-      businessId: businessId,
-    }));
-  }, []); // Only on first mount
-
   // Safety check - if businessId is missing, show error
   useEffect(() => {
     if (!businessId) {
@@ -86,10 +78,16 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
       console.error('[CheckoutScreen] Error loading products:', productsError);
     }
   }, [productsError]);
+  
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [pickupDate, setPickupDate] = useState<Date | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [printReceipt, setPrintReceipt] = useState(true);
   
   // Check screen size for responsive layout
   useEffect(() => {
@@ -112,24 +110,16 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   
   // More robust initial category selection with better logging
   useEffect(() => {
-    if (categories && Array.isArray(categories)) {
-      categories.forEach((cat, index) => {
-      });
-    }
-    
-    if (categories && categories.length > 0) {
+    if (categories && Array.isArray(categories) && categories.length > 0) {
       if (!selectedCategory) {
         setSelectedCategory(categories[0]._id);
       } else {
         // Check if selected category still exists in the categories list
         const categoryExists = categories.some(cat => cat._id === selectedCategory);
-        if (!categoryExists && categories.length > 0) {
-          console.log(`[CheckoutScreen] Selected category no longer exists, resetting to: ${categories[0].name}`);
+        if (!categoryExists) {
           setSelectedCategory(categories[0]._id);
         }
       }
-    } else {
-      // console.log('[CheckoutScreen] No categories available to select');
     }
   }, [categories, selectedCategory]);
   
@@ -231,7 +221,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
   };
 
   // Handle checkout process
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (orderItems.length === 0) {
       Alert.alert("Error", "Please add items to the order");
       return;
@@ -242,47 +232,103 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
       return;
     }
     
-    // Implement checkout logic here
-    // Helper to expand items by quantity
-    const expandOrderItems = (items: typeof orderItems) => {
-      return items.flatMap(item =>
-        Array.from({ length: item.quantity }).map((_, i) => ({ ...item, quantity: 1, _expandedIdx: i + 1 }))
-      );
-    };
-
-    const expandedOrderItems = expandOrderItems(orderItems);
-
-    const orderDetails = {
-      customer,
-      items: expandedOrderItems,
-      total: calculateTotal(),
-      pickupDate,
-      employeeId: employeeId || 'unknown',
-      employee: employeeId ? { firstName, lastName } : undefined,
-      dateCreated: new Date(),
-      status: 'pending'
-    };
-
-    console.log('Checkout Order Object:', orderDetails);
-    if (expandedOrderItems && Array.isArray(expandedOrderItems)) {
-      expandedOrderItems.forEach((item, idx) => {
-        console.log(`Checkout OrderItem[${idx}]:`, item);
-      });
+    if (!employeeId) {
+      Alert.alert("Error", "No employee is signed in. Please sign in to complete the order.");
+      return;
     }
-
-    Alert.alert(
-      "Order Placed",
-      `Order for ${customer.firstName} ${customer.lastName} placed successfully! Pickup scheduled for ${pickupDate ? pickupDate.toLocaleString() : 'not specified'}.`,
-      [
-        { 
-          text: "OK", 
-          onPress: () => navigation.goBack()
-        }
-      ]
-    );
     
-    // Navigate back to dashboard 
-    // navigation.navigate('Receipt', { orderDetails });
+    if (!businessId) {
+      Alert.alert("Error", "Missing business ID. Please ensure the business is properly set up.");
+      return;
+    }
+    
+    // Show payment selection modal
+    setShowPaymentModal(true);
+  };
+
+  // Handle payment completion
+  const handlePaymentComplete = async (method: 'cash' | 'card' | 'other') => {
+  console.log('[DEBUG][Checkout] handlePaymentComplete called with method:', method);
+    try {
+      setIsProcessing(true);
+      
+      // Expand order items by quantity before saving
+      const expandOrderItems = (items: typeof orderItems) => {
+        return items.flatMap(item =>
+          Array.from({ length: item.quantity }).map((_, i) => ({ ...item, quantity: 1, _expandedIdx: i + 1 }))
+        );
+      };
+      const expandedOrderItems = expandOrderItems(orderItems);
+
+      // Create the order in the local database
+      const orderData = {
+        customer,
+        items: expandedOrderItems,
+        total: calculateTotal(),
+        pickupDate,
+        employeeId: employeeId || 'unknown',
+        employee: employeeId ? { firstName, lastName } : undefined,
+        businessId: businessId || '',
+        paymentMethod: method
+      };
+      
+      // Debug log for paymentMethod
+      console.log('[DEBUG][Checkout] orderData.paymentMethod:', orderData.paymentMethod);
+      // Defensive: check paymentMethod
+      if (!orderData.paymentMethod) {
+        throw new Error('Missing payment method for order creation');
+      }
+      const createdOrder = await createOrder(orderData);
+      
+      // Handle receipt printing if enabled
+      if (printReceipt) {
+        try {
+          // Import the printer service
+          const printerService = await import('../../utils/PrinterService').then(m => m.default);
+          
+          // Print the receipt
+          await printerService.printReceipt({
+            id: createdOrder._id,
+            customerId: createdOrder.customerId,
+            items: createdOrder.items,
+            total: createdOrder.total,
+            status: createdOrder.status as any,
+            createdAt: createdOrder.createdAt,
+            pickupDate: createdOrder.pickupDate as any,
+            employeeId: createdOrder.employeeId,
+            notes: createdOrder.notes?.join('\n')
+          }, business?.businessName || 'Your Business');
+        } catch (printError) {
+          console.error('[Checkout] Error printing receipt:', printError);
+          // Show error but continue with checkout
+          Alert.alert(
+            "Printing Error", 
+            "Failed to print receipt, but the order was created successfully."
+          );
+        }
+      }
+      
+      // Show success message
+      Alert.alert(
+        "Order Placed",
+        `Order for ${customer.firstName} ${customer.lastName} placed successfully! Pickup scheduled for ${pickupDate ? pickupDate.toLocaleString() : 'not specified'}.`,
+        [
+          { 
+            text: "OK", 
+            onPress: () => navigation.goBack()
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('[Checkout] Error processing order:', error);
+      Alert.alert(
+        "Error",
+        "Failed to create order. Please try again."
+      );
+    } finally {
+      setIsProcessing(false);
+      setShowPaymentModal(false);
+    }
   };
   
   return (
@@ -364,6 +410,17 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
           </View>
         </View>
       )}
+      
+      {/* Payment Modal */}
+      <PaymentModal
+        visible={showPaymentModal}
+        total={calculateTotal()}
+        onClose={() => setShowPaymentModal(false)}
+        onComplete={handlePaymentComplete}
+        printReceipt={printReceipt}
+        setPrintReceipt={setPrintReceipt}
+        loading={isProcessing}
+      />
     </SafeAreaView>
   );
 };
