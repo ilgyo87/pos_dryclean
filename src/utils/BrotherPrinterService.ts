@@ -1,5 +1,6 @@
 // src/utils/BrotherPrinterService.ts
 import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Product } from '../types';
 import { generateQRCodeData } from './QRCodeGenerator';
@@ -450,6 +451,14 @@ class BrotherPrinterService {
    * @returns Array of discovered printer devices
    */
   static async searchPrinters(): Promise<any[]> {
+    // Debug: log platform and network info
+    try {
+      console.log('[BrotherPrinterService] Platform:', Platform.OS);
+      const state = await NetInfo.fetch();
+      console.log('[BrotherPrinterService] Network state:', state);
+    } catch (e) {
+      console.warn('[BrotherPrinterService] Failed to get network info:', e);
+    }
     try {
       console.log('[BrotherPrinterService] Searching for printers...');
       
