@@ -39,37 +39,43 @@ const BrotherPrinterSetupScreen: React.FC = () => {
 
   // Load initial configuration on mount
   useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Initialize printer service
-        await BrotherPrinterService.initialize();
-        
-        // Get saved configuration
-        const savedConfig = BrotherPrinterService.getConfig();
-        if (savedConfig) {
-          setConfig(savedConfig);
-          setSelectedPaperSize(savedConfig.paperSize);
-          setSelectedLabelType(savedConfig.labelType);
-          setHighQuality(savedConfig.highQuality);
-          setOrientation(savedConfig.orientation);
-        }
-        
-        // Get current status
-        const status = BrotherPrinterService.getStatus();
-        setPrinterStatus(status.status);
-        setStatusError(status.error);
-      } catch (error) {
-        console.error('Error loading printer configuration:', error);
-        Alert.alert('Error', 'Failed to load printer configuration');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     loadConfig();
+    
+    // Clean up printer listener when component unmounts
+    return () => {
+      BrotherPrinterService.disconnect();
+    };
   }, []);
+
+  // Function to load printer configuration and status
+  const loadConfig = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Initialize printer service
+      await BrotherPrinterService.initialize();
+      
+      // Get saved configuration
+      const savedConfig = BrotherPrinterService.getConfig();
+      if (savedConfig) {
+        setConfig(savedConfig);
+        setSelectedPaperSize(savedConfig.paperSize);
+        setSelectedLabelType(savedConfig.labelType);
+        setHighQuality(savedConfig.highQuality);
+        setOrientation(savedConfig.orientation);
+      }
+      
+      // Get current status
+      const status = BrotherPrinterService.getStatus();
+      setPrinterStatus(status.status);
+      setStatusError(status.error);
+    } catch (error) {
+      console.error('Error loading printer configuration:', error);
+      Alert.alert('Error', 'Failed to load printer configuration');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Search for available printers
   const handleSearchPrinters = async () => {
@@ -111,6 +117,7 @@ const BrotherPrinterSetupScreen: React.FC = () => {
       const newConfig: BrotherPrinterConfig = {
         address: printer.address,
         macAddress: printer.connectionType === 'bluetooth' ? printer.address : undefined,
+        serialNumber: printer.serialNumber,
         model: printer.model,
         connectionType: printer.connectionType,
         paperSize: selectedPaperSize,
@@ -121,9 +128,11 @@ const BrotherPrinterSetupScreen: React.FC = () => {
       
       // Save configuration
       await BrotherPrinterService.saveConfig(newConfig);
+      
       // Always (re-)initialize to update status
       await BrotherPrinterService.initialize();
-      await loadConfig(); // closure-scoped loadConfig defined in the component, not an import
+      await loadConfig();
+      
       const status = BrotherPrinterService.getStatus();
       if (status.status === BrotherPrinterStatus.CONNECTED) {
         Alert.alert('Connected', `Successfully connected to ${printer.model}`);
@@ -161,9 +170,11 @@ const BrotherPrinterSetupScreen: React.FC = () => {
       
       // Save configuration
       await BrotherPrinterService.saveConfig(newConfig);
+      
       // Always (re-)initialize to update status
       await BrotherPrinterService.initialize();
-      await loadConfig(); // closure-scoped loadConfig defined in the component, not an import
+      await loadConfig();
+      
       const status = BrotherPrinterService.getStatus();
       if (status.status === BrotherPrinterStatus.CONNECTED) {
         Alert.alert('Connected', 'Successfully connected to printer');
@@ -184,7 +195,8 @@ const BrotherPrinterSetupScreen: React.FC = () => {
     try {
       setIsLoading(true);
       const success = await BrotherPrinterService.printTestLabel();
-      await loadConfig(); // closure-scoped loadConfig defined in the component, not an import
+      await loadConfig();
+      
       if (success) {
         Alert.alert('Success', 'Test label printed successfully');
       } else {
@@ -346,8 +358,14 @@ const BrotherPrinterSetupScreen: React.FC = () => {
               onPress={handlePrintTest}
               disabled={isLoading}
             >
-              <MaterialIcons name="print" size={18} color="#fff" />
-              <Text style={styles.testButtonText}>Print Test Label</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <MaterialIcons name="print" size={18} color="#fff" />
+                  <Text style={styles.testButtonText}>Print Test Label</Text>
+                </>
+              )}
             </TouchableOpacity>
           )}
         </View>

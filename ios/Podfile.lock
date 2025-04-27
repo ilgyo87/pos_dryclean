@@ -2,6 +2,7 @@ PODS:
   - AmplifyRTNCore (1.1.8):
     - React-Core
   - boost (1.84.0)
+  - BRLMPrinterKit (4.0.2.1)
   - DoubleConversion (1.1.6)
   - EXConstants (17.0.8):
     - ExpoModulesCore
@@ -1281,6 +1282,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - react-native-brother-printers (0.1.7):
+    - BRLMPrinterKit (= 4.0.2.1)
+    - React
   - react-native-cameraroll (7.10.0):
     - DoubleConversion
     - glog
@@ -1770,6 +1774,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - "react-native-brother-printers (from `../node_modules/@w3lcome/react-native-brother-printers`)"
   - "react-native-cameraroll (from `../node_modules/@react-native-camera-roll/camera-roll`)"
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
@@ -1820,6 +1825,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - BRLMPrinterKit
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -1912,6 +1918,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-brother-printers:
+    :path: "../node_modules/@w3lcome/react-native-brother-printers"
   react-native-cameraroll:
     :path: "../node_modules/@react-native-camera-roll/camera-roll"
   react-native-get-random-values:
@@ -2010,6 +2018,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AmplifyRTNCore: 8939f878a8102f5af882c62f3a0169c332f170ed
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
+  BRLMPrinterKit: 79ca593275bdae5309c8ee93674df2e5177a1b52
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
   EXConstants: a1f35b9aabbb3c6791f8e67722579b1ffcdd3f18
   Expo: 3e53243e3281214a7d613f8a875c0b732d7512c2
@@ -2052,6 +2061,7 @@ SPEC CHECKSUMS:
   React-logger: f9d104eace4ce03d7d5ab96802069d9905082225
   React-Mapbuffer: 23ffe602d0f5ca53b861ef8534cb8c63c4479671
   React-microtasksnativemodule: 258cde5410c578c4739e1d3a3bc902b7a28d4625
+  react-native-brother-printers: bf1e62659b2420363b7175db31210378a9274953
   react-native-cameraroll: 9a1e0fcf731da9092595987466b903771f00387a
   react-native-get-random-values: 21325b2244dfa6b58878f51f9aa42821e7ba3d06
   react-native-netinfo: f0a9899081c185db1de5bb2fdc1c88c202a059ac
