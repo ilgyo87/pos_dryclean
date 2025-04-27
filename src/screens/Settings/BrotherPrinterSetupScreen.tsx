@@ -28,6 +28,8 @@ const BrotherPrinterSetupScreen: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [foundPrinters, setFoundPrinters] = useState<any[]>([]);
   const [manualAddress, setManualAddress] = useState('');
+  const [manualMacAddress, setManualMacAddress] = useState('');
+  const [manualSerialNumber, setManualSerialNumber] = useState('');
   const [printerStatus, setPrinterStatus] = useState<BrotherPrinterStatus>(BrotherPrinterStatus.DISCONNECTED);
   const [statusError, setStatusError] = useState<string | null>(null);
   
@@ -160,6 +162,8 @@ const BrotherPrinterSetupScreen: React.FC = () => {
       // Create configuration from manual input
       const newConfig: BrotherPrinterConfig = {
         address: manualAddress,
+        macAddress: manualMacAddress || undefined,
+        serialNumber: manualSerialNumber || undefined,
         model: 'QL-820NWB', // Default model
         connectionType: manualAddress.includes(':') ? 'bluetooth' : 'wifi',
         paperSize: selectedPaperSize,
@@ -179,6 +183,8 @@ const BrotherPrinterSetupScreen: React.FC = () => {
       if (status.status === BrotherPrinterStatus.CONNECTED) {
         Alert.alert('Connected', 'Successfully connected to printer');
         setManualAddress('');
+        setManualMacAddress('');
+        setManualSerialNumber('');
       } else {
         throw new Error(status.error || 'Failed to connect to printer');
       }
@@ -422,13 +428,26 @@ const BrotherPrinterSetupScreen: React.FC = () => {
             placeholder="192.168.1.100 or 00:11:22:33:44:55"
             autoCapitalize="none"
           />
-          
+          <Text style={styles.inputLabel}>MAC Address (optional)</Text>
+          <TextInput
+            style={styles.input}
+            value={manualMacAddress}
+            onChangeText={setManualMacAddress}
+            placeholder="00:11:22:33:44:55"
+            autoCapitalize="none"
+          />
+          <Text style={styles.inputLabel}>Serial Number (optional)</Text>
+          <TextInput
+            style={styles.input}
+            value={manualSerialNumber}
+            onChangeText={setManualSerialNumber}
+            placeholder="E.g. E12345A6789B"
+            autoCapitalize="characters"
+          />
           {/* Paper size selection */}
           <PaperSizeSelection />
-          
           {/* Label type selection */}
           <LabelTypeSelection />
-          
           {/* Orientation selection */}
           <OrientationSelection />
           

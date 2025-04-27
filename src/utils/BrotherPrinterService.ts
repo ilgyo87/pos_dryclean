@@ -134,8 +134,23 @@ class BrotherPrinterService {
         }
         
         return true;
+      } else if (this.config && this.config.address) {
+        // Fallback: create a virtual printer object using config
+        this.currentPrinter = {
+          modelName: this.config.model,
+          ipAddress: this.config.address,
+          macAddress: this.config.macAddress || '',
+          serialNumber: this.config.serialNumber || '',
+        };
+        console.warn('[BrotherPrinterService] Fallback printer object:', this.currentPrinter);
+        this.status = BrotherPrinterStatus.CONNECTED;
+        console.warn('[BrotherPrinterService] Discovery failed, but using direct IP fallback:', this.config.address);
+        // Record last connection time
+        this.config.lastConnected = new Date().toISOString();
+        await this.saveConfig(this.config);
+        return true;
       } else {
-        this.lastError = `Printer with address ${this.config.address} not found`;
+        this.lastError = `Printer with address ${this.config?.address} not found`;
         this.status = BrotherPrinterStatus.DISCONNECTED;
         return false;
       }
@@ -277,121 +292,8 @@ class BrotherPrinterService {
    * Print QR code labels for order items
    * @param items - Order items to print QR codes for
    * @param customerName - Customer name to include on the label
-   * @param orderId - Order ID for the QR code data
-   */
-  static async printQRCodeLabels(
-    items: Product[],
-    customerName: string,
-    orderId: string
-  ): Promise<boolean> {
-    if (Platform.OS === 'web') {
-      console.warn('Printing is not supported in web browser');
-      return false;
-    }
-    
     try {
-      // Make sure we're connected
-      if (this.status !== BrotherPrinterStatus.CONNECTED) {
-        const initialized = await this.initialize();
-        if (!initialized) {
-          throw new Error('Printer not connected');
-        }
-      }
-      
-      if (!this.currentPrinter) {
-        throw new Error('No printer connected');
-      }
-      
-      console.log(`[BrotherPrinterService] Printing ${items.length} QR code labels`);
-      
-      // Get the correct label size from our configuration
-      const labelSize = paperSizeMapping[this.config?.paperSize || '62mm'] || LabelSize.LabelSizeRollW62RB;
-      
-      // Print each item as a separate label
-      for (const item of items) {
-        // Generate QR code data
-        const qrData = generateQRCodeData('Product', {
-          id: item._id,
-          orderItemId: item.orderItemId || item._id,
-          orderId,
-          customerId: item.customerId || '',
-          businessId: item.businessId || '',
-        });
-        
-        // Create label template with item details
-        const label: QRLabelTemplate = {
-          customerName,
-          itemName: item.name,
-          starchLevel: item.starch,
-          pressOnly: item.pressOnly,
-          itemNotes: item.notes && item.notes.length > 0 ? item.notes[0] : undefined,
-          orderId,
-          qrData
-        };
-        
-        // Create a label image
-        const labelImagePath = await this.createLabelImage(label);
-        
-        // Print the label
-        const printResult = await printImage(
-          this.currentPrinter,
-          labelImagePath,
-          { 
-            labelSize,
-            isHighQuality: this.config?.highQuality || true
-          }
-        );
-        
-        console.log(`[BrotherPrinterService] Label print result:`, printResult);
-        
-        // Clean up the temporary file
-        await FileSystem.deleteAsync(labelImagePath);
-      }
-      
-      console.log('[BrotherPrinterService] QR code labels printed successfully');
-      return true;
-    } catch (error) {
-      this.lastError = `Failed to print QR codes: ${error}`;
-      this.status = BrotherPrinterStatus.ERROR;
-      console.error('[BrotherPrinterService] QR code printing error:', error);
-      return false;
-    }
-  }
-  
-  /**
-   * Print a test label to verify printer connection
-   */
-  static async printTestLabel(): Promise<boolean> {
-    if (Platform.OS === 'web') {
-      console.warn('Printing is not supported in web browser');
-      return false;
-    }
-    
-    try {
-      // Make sure we're connected
-      if (this.status !== BrotherPrinterStatus.CONNECTED) {
-        const initialized = await this.initialize();
-        if (!initialized) {
-          throw new Error('Printer not connected');
-        }
-      }
-      
-      if (!this.currentPrinter) {
-        throw new Error('No printer connected');
-      }
-      
-      console.log('[BrotherPrinterService] Printing test label');
-      
-      // Get the correct label size from our configuration
-      const labelSize = paperSizeMapping[this.config?.paperSize || '62mm'] || LabelSize.LabelSizeRollW62RB;
-      
-      // Create a test label
-      const testLabel: QRLabelTemplate = {
-        customerName: 'Test Customer',
-        itemName: 'Test Item',
-        orderId: 'TEST-ORDER',
-        qrData: 'https://test-qr-code-data.com'
-      };
+      const printPromise = printImage(
       
       // Create a label image
       const labelImagePath = await this.createLabelImage(testLabel);
@@ -490,6 +392,81 @@ class BrotherPrinterService {
       this.lastError = `Failed to search for printers: ${error}`;
       console.error('[BrotherPrinterService] Search error:', error);
       return [];
+    }
+  }
+  /**
+   * Print a test label to verify printer connection
+   */
+  static async printTestLabel(): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      console.warn('Printing is not supported in web browser');
+      return false;
+    }
+
+    try {
+      console.log('[BrotherPrinterService] Starting printTestLabel');
+      // Make sure we're connected
+      if (this.status !== BrotherPrinterStatus.CONNECTED) {
+        const initialized = await this.initialize();
+        if (!initialized) {
+          throw new Error('Printer not connected');
+        }
+      }
+
+      if (!this.currentPrinter) {
+        throw new Error('No printer connected');
+      }
+
+      console.log('[BrotherPrinterService] Printing test label to:', this.currentPrinter);
+      // Get the correct label size from our configuration
+      const labelSize = paperSizeMapping[this.config?.paperSize || '62mm'] || LabelSize.LabelSizeRollW62RB;
+      // Create a test label
+      const testLabel: QRLabelTemplate = {
+        customerName: 'Test Customer',
+        itemName: 'Test Item',
+        orderId: 'TEST-ORDER',
+        qrData: 'https://test-qr-code-data.com'
+      };
+
+      // Create a label image
+      const labelImagePath = await this.createLabelImage(testLabel);
+
+      // Print the label with timeout
+      let printResult;
+      try {
+        const printPromise = printImage(
+          this.currentPrinter,
+          labelImagePath,
+          { 
+            labelSize,
+            isHighQuality: this.config?.highQuality ?? true
+          }
+        );
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Print operation timed out')), 15000)
+        );
+        printResult = await Promise.race([printPromise, timeoutPromise]);
+      } catch (printError) {
+        console.error('[BrotherPrinterService] Print operation error or timeout:', printError);
+        throw printError;
+      }
+
+      console.log('[BrotherPrinterService] Test label print result:', printResult);
+
+      // Clean up the temporary file
+      await FileSystem.deleteAsync(labelImagePath);
+
+      if (printResult) {
+        console.log('[BrotherPrinterService] Test label printed successfully');
+        return true;
+      } else {
+        throw new Error('Print operation failed');
+      }
+    } catch (error) {
+      this.lastError = `Failed to print test label: ${error}`;
+      this.status = BrotherPrinterStatus.ERROR;
+      console.error('[BrotherPrinterService] Test label printing error:', error);
+      return false;
     }
   }
 }
