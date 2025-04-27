@@ -62,11 +62,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ employeeId, firstName, 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.sectionHeader}>Printer Settings</Text>
         <SettingsSection
-          title="Printer Setup"
+          title="Brother Printer Setup"
           icon="print"
           iconColor="#2196F3"
-          description="Configure thermal receipt printers"
-          onPress={() => navigation.navigate('PrinterSetup')}
+          description="Configure your Brother label printer"
+          onPress={() => navigation.navigate('BrotherPrinterSetup')}
         />
         
         <Text style={styles.sectionHeader}>Business Settings</Text>

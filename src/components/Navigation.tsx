@@ -10,6 +10,7 @@ import CheckoutScreen from '../screens/Checkout/CheckoutScreen';
 import EmployeesScreen from '../screens/Categories/Employees/EmployeesScreen';
 import ProductsScreen from '../screens/Categories/Products/ProductsScreen';
 import PrinterManagementScreen from './PrinterManagementScreen';
+import BrotherPrinterSetupScreen from '../screens/Settings/BrotherPrinterSetupScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -85,6 +86,11 @@ export default function Navigation({ user, business, refresh }: { user: AuthUser
             name="PrinterManagement"
             component={PrinterManagementScreen}
             options={{ title: 'Printer Setup' }}
+          />
+          <Stack.Screen
+            name="BrotherPrinterSetup"
+            component={BrotherPrinterSetupScreen}
+            options={{ title: 'Brother Printer Setup' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

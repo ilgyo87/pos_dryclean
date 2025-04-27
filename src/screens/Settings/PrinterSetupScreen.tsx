@@ -209,8 +209,8 @@ const PrinterSetupScreen: React.FC<PrinterSetupScreenProps> = ({ navigation }) =
         notes: 'This is a test receipt. Thank you for using Dry Clean POS!',
       };
       
-      await printerService.printReceipt(testData);
-      Alert.alert('Success', 'Test receipt printed successfully');
+      // await printerService.printReceipt(testData);
+      // Alert.alert('Success', 'Test receipt printed successfully');
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.error('Error printing test receipt:', error.message);
