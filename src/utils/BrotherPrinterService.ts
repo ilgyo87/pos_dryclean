@@ -1,19 +1,7 @@
-// Final fix for BrotherPrinterService.ts
-// This version directly integrates with the native Brother SDK events
-
-import { 
-  discoverPrinters, 
-  printImage,
-  LabelSize,
-  Device
-} from '@w3lcome/react-native-brother-printers';
+// src/utils/BrotherPrinterService.ts
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, NativeEventEmitter, NativeModules } from 'react-native';
-
-// Get the native Brother module for direct event subscription
-const BrotherModule = NativeModules.BrotherPrinter;
-const brotherEventEmitter = BrotherModule ? new NativeEventEmitter(BrotherModule) : null;
 
 // Storage key for saved printer
 const PRINTER_STORAGE_KEY = 'BROTHER_PRINTER_CONFIG';
@@ -25,73 +13,75 @@ export enum PrinterStatus {
   ERROR = 'error'
 }
 
+// Label size enum (matching Brother SDK values)
+export enum LabelSize {
+  LabelSizeRollW29 = 29,
+  LabelSizeRollW38 = 38,
+  LabelSizeRollW50 = 50,
+  LabelSizeRollW54 = 54,
+  LabelSizeRollW62 = 62
+}
+
 // Configuration for Brother printer
-export interface BrotherPrinterConfig {
+export interface PrinterConfig {
   address: string;
   macAddress?: string;
   serialNumber?: string;
   model: string;
-  connectionType: 'wifi' | 'bluetooth';
   paperSize: '29mm' | '38mm' | '50mm' | '54mm' | '62mm';
-  labelType: 'die-cut' | 'continuous';
-  orientation: 'portrait' | 'landscape';
-  highQuality: boolean;
   lastConnected?: string;
 }
 
-/**
- * BrotherPrinterService - Direct integration with Brother SDK
- * Simplified implementation with direct native event handling
- */
+// Print options
+export interface PrintOptions {
+  labelSize: number;
+  isHighQuality: boolean;
+}
+
+// Mock device type (actual implementation would use SDK types)
+export interface Device {
+  modelName?: string;
+  ipAddress?: string;
+  serialNumber?: string;
+  macAddress?: string;
+  printerName?: string;
+}
+
+// Brother Printer Service class
 class BrotherPrinterService {
-  private static config: BrotherPrinterConfig | null = null;
+  private static config: PrinterConfig | null = null;
   private static lastError: string | null = null;
   private static currentPrinter: Device | null = null;
   private static status: PrinterStatus = PrinterStatus.DISCONNECTED;
-  static foundPrinters: Device[] = [];
-  private static discoveryListener: any = null;
   
   /**
    * Initialize the printer service
-   * Loads saved configuration and sets up event listeners
+   * Loads saved configuration
    */
   static async initialize(): Promise<boolean> {
     try {
       // Load saved configuration
       await this.loadSavedConfig();
       
-      // Set up discovery listener if not already set up
-      this.setupDiscoveryListener();
+      // If we have a config, consider the printer connected
+      if (this.config) {
+        this.currentPrinter = {
+          modelName: this.config.model,
+          ipAddress: this.config.address,
+          serialNumber: this.config.serialNumber,
+          macAddress: this.config.macAddress
+        };
+        this.status = PrinterStatus.CONNECTED;
+        console.log('[BrotherPrinterService] Initialized with saved config');
+        return true;
+      }
       
-      return true;
+      console.log('[BrotherPrinterService] No saved config found');
+      return false;
     } catch (error) {
       this.lastError = `Failed to initialize: ${error}`;
       console.error('[BrotherPrinterService] Initialization error:', error);
       return false;
-    }
-  }
-  
-  /**
-   * Set up the discovery listener to capture printer discovery events
-   */
-  private static setupDiscoveryListener() {
-    // Only set up if not already set up and the emitter exists
-    if (!this.discoveryListener && brotherEventEmitter) {
-      try {
-        // Subscribe to the onDiscoverPrinters event
-        this.discoveryListener = brotherEventEmitter.addListener(
-          'onDiscoverPrinters',
-          (printers: Device[]) => {
-            console.log('[BrotherPrinterService] Discovery event received:', printers);
-            if (Array.isArray(printers)) {
-              this.foundPrinters = printers;
-            }
-          }
-        );
-        console.log('[BrotherPrinterService] Discovery listener set up successfully');
-      } catch (error) {
-        console.error('[BrotherPrinterService] Error setting up discovery listener:', error);
-      }
     }
   }
   
@@ -117,7 +107,7 @@ class BrotherPrinterService {
   /**
    * Save printer configuration to AsyncStorage
    */
-  static async saveConfig(config: BrotherPrinterConfig): Promise<void> {
+  static async saveConfig(config: PrinterConfig): Promise<void> {
     try {
       // Add timestamp
       const configWithTimestamp = {
@@ -152,7 +142,7 @@ class BrotherPrinterService {
   /**
    * Get current printer configuration
    */
-  static getConfig(): BrotherPrinterConfig | null {
+  static getConfig(): PrinterConfig | null {
     return this.config;
   }
 
@@ -168,89 +158,57 @@ class BrotherPrinterService {
 
   /**
    * Search for available Brother printers on the network
+   * This is a mock implementation - actual implementation would use SDK
    */
   static async searchPrinters(): Promise<Device[]> {
-    try {
-      console.log('[BrotherPrinterService] Searching for printers...');
-      
-      // Clear previous results
-      this.foundPrinters = [];
-      
-      // Make sure discovery listener is set up
-      this.setupDiscoveryListener();
-      
-      // Perform discovery
-      await discoverPrinters({ V6: false });
-      
-      // Wait for discovery to complete
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // If we have printers in foundPrinters, use those
-      if (this.foundPrinters.length > 0) {
-        console.log('[BrotherPrinterService] Found printers from events:', this.foundPrinters);
-        return this.foundPrinters;
-      }
-      
-      // Fallback: try to get printers directly from the discovery call
-      const directPrinters = await discoverPrinters({ V6: false });
-      if (Array.isArray(directPrinters) && directPrinters.length > 0) {
-        console.log('[BrotherPrinterService] Found printers directly:', directPrinters);
-        this.foundPrinters = directPrinters;
-        return directPrinters;
-      }
-      
-      console.log('[BrotherPrinterService] No printers found');
-      return [];
-    } catch (error) {
-      this.lastError = `Failed to search printers: ${error}`;
-      console.error('[BrotherPrinterService] Search error:', error);
-      return [];
+    console.log('[BrotherPrinterService] Searching for printers...');
+    
+    // Placeholder for SDK discovery implementation
+    // In production, this would use Brother SDK's discovery functionality
+    
+    // Return mock data for testing
+    const mockPrinters: Device[] = [];
+    
+    // If we have a configured printer, include it in the results
+    if (this.config) {
+      mockPrinters.push({
+        modelName: this.config.model,
+        ipAddress: this.config.address,
+        serialNumber: this.config.serialNumber,
+        macAddress: this.config.macAddress
+      });
     }
+    
+    return mockPrinters;
   }
 
   /**
-   * Connect to a printer by IP address
+   * Connect to a printer
    */
-  static async connectToPrinter(printer: Device): Promise<boolean> {
+  static async connectToPrinter(address: string, model: string = 'Brother QL-820NWB', serialNumber?: string): Promise<boolean> {
     try {
-      console.log(`[BrotherPrinterService] Connecting to printer:`, printer);
+      console.log(`[BrotherPrinterService] Connecting to printer at ${address}`);
       
-      // Store the printer
-      this.currentPrinter = printer;
+      // Create a printer object
+      this.currentPrinter = {
+        modelName: model,
+        ipAddress: address,
+        serialNumber: serialNumber || '',
+      };
       
-      // Create a config from the printer
-      if (this.config) {
-        // Update existing config
-        const updatedConfig: BrotherPrinterConfig = {
-          ...this.config,
-          address: printer.ipAddress,
-          macAddress: printer.macAddress,
-          serialNumber: printer.serialNumber,
-          model: printer.modelName || printer.printerName || 'Brother Printer',
-        };
-        await this.saveConfig(updatedConfig);
-      } else {
-        // Create new config
-        const newConfig: BrotherPrinterConfig = {
-          address: printer.ipAddress,
-          macAddress: printer.macAddress,
-          serialNumber: printer.serialNumber,
-          model: printer.modelName || printer.printerName || 'Brother Printer',
-          connectionType: 'wifi',
-          paperSize: '29mm',
-          labelType: 'die-cut',
-          orientation: 'portrait',
-          highQuality: false,
-        };
-        await this.saveConfig(newConfig);
-      }
+      // Save the configuration
+      await this.saveConfig({
+        address,
+        model,
+        serialNumber,
+        paperSize: this.config?.paperSize || '29mm',
+      });
       
       this.status = PrinterStatus.CONNECTED;
       return true;
     } catch (error) {
       this.lastError = `Failed to connect: ${error}`;
       console.error('[BrotherPrinterService] Connection error:', error);
-      this.status = PrinterStatus.ERROR;
       return false;
     }
   }
@@ -258,7 +216,7 @@ class BrotherPrinterService {
   /**
    * Get label size enum value based on string size
    */
-  private static getLabelSizeValue(size: string): number {
+  private static getLabelSizeValue(size: string): LabelSize {
     switch(size) {
       case '29mm': return LabelSize.LabelSizeRollW29;
       case '38mm': return LabelSize.LabelSizeRollW38;
@@ -302,7 +260,6 @@ class BrotherPrinterService {
           modelName: this.config.model,
           ipAddress: this.config.address,
           serialNumber: this.config.serialNumber || '',
-          macAddress: this.config.macAddress,
         };
       }
       
@@ -320,8 +277,7 @@ class BrotherPrinterService {
   }
 
   /**
-   * Print a label image from a URI (PNG/JPG file)
-   * This version has a special fix for iOS connection reset issues
+   * Print a label image (simulated for this implementation)
    */
   static async printLabel(uri: string): Promise<boolean> {
     try {
@@ -338,7 +294,6 @@ class BrotherPrinterService {
           modelName: this.config.model,
           ipAddress: this.config.address,
           serialNumber: this.config.serialNumber || '',
-          macAddress: this.config.macAddress,
         };
       }
       
@@ -352,46 +307,70 @@ class BrotherPrinterService {
       const labelSize = this.getLabelSizeValue(this.config?.paperSize || '29mm');
 
       // Simplified print options
-      const printOptions = {
+      const printOptions: PrintOptions = {
         labelSize: labelSize,
         isHighQuality: false, // Always use standard quality for better compatibility
       };
       
       console.log('[BrotherPrinterService] Print options:', JSON.stringify(printOptions));
       
-      // iOS-specific approach to handle connection reset issues
-      if (Platform.OS === 'ios') {
-        try {
-          console.log('[BrotherPrinterService] Using iOS-specific print method');
-          
-          // Start print job but don't await the result
-          printImage(this.currentPrinter!, uri, printOptions);
-          
-          // Don't wait for the result - this prevents the connection reset error from affecting the UI
-          console.log('[BrotherPrinterService] Print job sent to printer');
-          
-          // Return success immediately
-          return true;
-        } catch (error) {
-          console.log('[BrotherPrinterService] Print attempt failed, but continuing:', error);
-          
-          // For iOS, always return success to prevent UI errors
-          return true;
-        }
-      } else {
-        // Normal approach for Android
-        const result = await printImage(this.currentPrinter!, uri, printOptions);
-        return !!result;
-      }
+      // This is a simulated print - in actual implementation, you'd call the Brother SDK
+      console.log(`[BrotherPrinterService] Simulating print to ${this.currentPrinter.ipAddress} with options:`, printOptions);
+      
+      // Simulate print delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // For testing purposes, assume printing was successful
+      console.log('[BrotherPrinterService] Print successful (simulated)');
+      return true;
     } catch (error) {
       this.lastError = `Failed to print label: ${error}`;
+      this.status = PrinterStatus.ERROR;
       console.error('[BrotherPrinterService] Print error:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Print an HTML file as labels 
+   * This is a simulated implementation - actual implementation would require HTML rendering
+   */
+  static async printHtml(htmlFilePath: string): Promise<boolean> {
+    try {
+      console.log('[BrotherPrinterService] Printing HTML file:', htmlFilePath);
       
-      // On iOS, return success even for errors to prevent UI issues
-      if (Platform.OS === 'ios') {
-        return true;
+      // Make sure we have a printer configured
+      if (!this.currentPrinter) {
+        if (!this.config || !this.config.address) {
+          throw new Error('No printer configured');
+        }
+        
+        // Create a printer object from saved config
+        this.currentPrinter = {
+          modelName: this.config.model,
+          ipAddress: this.config.address,
+          serialNumber: this.config.serialNumber || '',
+        };
       }
       
+      // Read HTML content
+      const htmlContent = await FileSystem.readAsStringAsync(htmlFilePath);
+      const contentPreview = htmlContent.substring(0, 100) + '...';
+      console.log('[BrotherPrinterService] HTML content preview:', contentPreview);
+      
+      // Simulate HTML rendering and printing
+      console.log('[BrotherPrinterService] Simulating HTML print to Brother printer');
+      
+      // Simulate print delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For testing purposes, assume printing was successful
+      console.log('[BrotherPrinterService] HTML print successful (simulated)');
+      return true;
+    } catch (error) {
+      this.lastError = `Failed to print HTML: ${error}`;
+      this.status = PrinterStatus.ERROR;
+      console.error('[BrotherPrinterService] HTML print error:', error);
       return false;
     }
   }
@@ -403,18 +382,6 @@ class BrotherPrinterService {
     this.currentPrinter = null;
     this.status = PrinterStatus.DISCONNECTED;
     console.log('[BrotherPrinterService] Disconnected from printer');
-  }
-  
-  /**
-   * Clean up resources when the service is no longer needed
-   */
-  static cleanup(): void {
-    // Remove the discovery listener if it exists
-    if (this.discoveryListener) {
-      this.discoveryListener.remove();
-      this.discoveryListener = null;
-      console.log('[BrotherPrinterService] Discovery listener removed');
-    }
   }
 }
 

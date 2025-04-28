@@ -1,4 +1,4 @@
-// src/components/QRCodePrintModal.tsx - Modified version
+// src/components/QRCodePrintModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
@@ -10,90 +10,16 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
-  Image
+  Switch,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import QRCode from 'react-native-qrcode-svg';
-import { generateQRCodeData } from '../utils/QRCodeGenerator';
 import { Product } from '../types';
-import ViewShot, { captureRef } from 'react-native-view-shot';
+import ViewShot from 'react-native-view-shot';
 import Share from 'react-native-share';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
-import { useNavigation } from '@react-navigation/native';
-import { getGarmentImage } from '../utils/ImageMapping';
 
-// Format starch level for display
-const formatStarch = (starch?: string): string => {
-  if (!starch || starch === 'none') return '';
-  return starch.charAt(0).toUpperCase() + starch.slice(1);
-};
-
-interface QRItemProps {
-  item: Product;
-  customerName: string;
-  orderId: string;
-  viewShotRef: React.RefObject<any>;
-}
-
-// Component for a single QR code preview with improved item details
-const QRItem: React.FC<QRItemProps> = ({ item, customerName, orderId, viewShotRef }) => {
-  const qrValue = generateQRCodeData('Product', {
-    id: item._id,
-    orderItemId: item.orderItemId || item._id,
-    orderId: orderId || '',
-    customerId: item.customerId || '',
-    businessId: item.businessId || '',
-  });
-
-  return (
-    <View style={styles.qrItemContainer}>
-      <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1.0, result: 'tmpfile' }} style={styles.qrBox}>
-        <View style={styles.qrLeftSection}>
-          <QRCode
-            value={qrValue}
-            size={90}
-          />
-          <View style={styles.optionTags}>
-            {item.starch && item.starch !== 'none' && (
-              <View style={styles.optionTag}>
-                <Text style={styles.optionTagText}>
-                  {formatStarch(item.starch)}
-                </Text>
-              </View>
-            )}
-            {item.pressOnly && (
-              <View style={[styles.optionTag, styles.pressOnlyTag]}>
-                <Text style={styles.optionTagText}>Press Only</Text>
-              </View>
-            )}
-          </View>
-        </View>
-        <View style={styles.qrInfoContainer}>
-          <Text style={styles.customerName}>{customerName || 'Customer'}</Text>
-          <View style={styles.productRow}>
-            <Image 
-              source={getGarmentImage(item.imageName || 'default')} 
-              style={styles.productImage} 
-              resizeMode="contain"
-            />
-            <Text style={styles.productName}>{item.name || 'No Product Name'}</Text>
-          </View>
-          
-          {item.notes && item.notes.length > 0 && (
-            <View style={styles.notesContainer}>
-              <Text style={styles.notesLabel}>Notes:</Text>
-              <Text style={styles.notesText} numberOfLines={2}>
-                {item.notes[0]}
-              </Text>
-            </View>
-          )}
-          
-          <Text style={styles.orderIdText}>Order: #{orderId.substring(0, 8)}</Text>
-        </View>
-      </ViewShot>
-    </View>
-  );
-};
+// Import the updated QRItem component
+import QRItem from './QRItem';
 
 interface QRCodePrintModalProps {
   visible: boolean;
@@ -118,18 +44,27 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [printProgress, setPrintProgress] = useState({ current: 0, total: 0 });
-  const navigation = useNavigation<any>();
+  const [continuousPrint, setContinuousPrint] = useState(true); // Default to continuous printing for vertical stacking
 
   // Refs for view-shot (one per item)
   const viewShotRefs = useRef<React.RefObject<ViewShot>[]>([]);
+  
+  // Track if mounted
+  const isMounted = useRef(true);
+  
   useEffect(() => {
     // Sync refs with items
     if (items.length !== viewShotRefs.current.length) {
       viewShotRefs.current = items.map(() => React.createRef());
     }
+    
+    // Clean up on unmount
+    return () => {
+      isMounted.current = false;
+    };
   }, [items]);
 
-  // Handle print action - UPDATED to use IndividualLabelPrintService
+  // Handle print action with progress tracking
   const handlePrint = async () => {
     if (items.length === 0) {
       Alert.alert('Error', 'No items to print');
@@ -138,21 +73,32 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
 
     try {
       setIsLoading(true);
-      setPrintProgress({ current: 0, total: items.length });
+      setPrintProgress({ current: 0, total: items.length * 2 }); // Double for capture + print
       
       // Import the IndividualLabelPrintService
       const { default: IndividualLabelPrintService } = await import('../utils/IndividualLabelPrintService');
       
-      // Print each item as an individual label
+      // Configure continuous printing
+      IndividualLabelPrintService.setConfig({
+        paperSize: '29mm',
+        labelLength: 90,
+        margin: 1, // Reduced margin for bigger content
+        orientation: 'portrait',
+        continuousPrint: continuousPrint
+      });
+      
+      // Print all selected items
       const success = await IndividualLabelPrintService.printIndividualLabels(
         items,
         customerName,
         orderId,
         viewShotRefs.current,
         (current, total) => {
-          // Update progress in UI
-          setPrintProgress({ current, total });
-          console.log(`Printing label ${current} of ${total}`);
+          // Update progress in UI if component is still mounted
+          if (isMounted.current) {
+            setPrintProgress({ current, total });
+            console.log(`Printing progress: ${current}/${total}`);
+          }
         }
       );
       
@@ -169,13 +115,22 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
     } catch (error) {
       console.error('Print error:', error);
       if (onPrintError) onPrintError(error as Error);
-      Alert.alert('Print Error', `Failed to print QR codes: ${error}`);
+      
+      // Show user-friendly error message
+      Alert.alert(
+        'Print Error', 
+        Platform.OS === 'ios'
+          ? 'Failed to print QR codes. Make sure your printer is connected and has paper.'
+          : `Failed to print QR codes: ${error}`
+      );
       
       // Notify on completion
       if (onPrintComplete) onPrintComplete(false);
     } finally {
-      setIsLoading(false);
-      setPrintProgress({ current: 0, total: 0 });
+      if (isMounted.current) {
+        setIsLoading(false);
+        setPrintProgress({ current: 0, total: 0 });
+      }
     }
   };
 
@@ -273,48 +228,66 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
               </View>
             ) : (
               <>
-                {/* Title section */}
-                <View style={styles.printerStatusContainer}>
-                  <Text style={styles.printerStatusLabel}>QR Code Labels</Text>
-                  <Text style={styles.printerStatusInfo}>
-                    Each item will be printed as a separate 29x90mm label
+                {/* Print options section */}
+                <View style={styles.printerOptionsContainer}>
+                  <Text style={styles.sectionTitle}>Print Options</Text>
+                  
+                  <View style={styles.printOptionRow}>
+                    <Text style={styles.printOptionLabel}>Print vertically as continuous label</Text>
+                    <Switch
+                      value={continuousPrint}
+                      onValueChange={setContinuousPrint}
+                      trackColor={{ false: '#ccc', true: '#bfe3ff' }}
+                      thumbColor={continuousPrint ? '#2196F3' : '#f4f3f4'}
+                    />
+                  </View>
+                  
+                  <Text style={styles.optionHelperText}>
+                    {continuousPrint 
+                      ? "All labels will print vertically stacked on one continuous strip"
+                      : "Labels will print as separate individual labels (not recommended)"}
                   </Text>
                 </View>
                 
+                {/* Labels section */}
                 <Text style={styles.sectionTitle}>
                   Labels to Print ({items.length})
                 </Text>
                 
-                {/* QR code items */}
-                {items.map((item, idx) => (
-                  <View key={item._id + idx} style={styles.itemWrapper}>
-                    <QRItem
-                      item={item}
-                      customerName={customerName}
-                      orderId={orderId}
-                      viewShotRef={viewShotRefs.current[idx]}
-                    />
-                    
-                    {/* Individual item actions */}
-                    <View style={styles.itemActions}>
-                      <TouchableOpacity 
-                        style={styles.itemActionButton}
-                        onPress={() => handleSaveToGallery(idx)}
-                      >
-                        <MaterialIcons name="save-alt" size={16} color="#2196F3" />
-                        <Text style={styles.itemActionText}>Save</Text>
-                      </TouchableOpacity>
+                {/* QR code items - vertical layout optimized for 29x90mm */}
+                <View style={styles.labelsGrid}>
+                  {items.map((item, idx) => (
+                    <View key={item._id + idx} style={styles.labelItem}>
+                      <QRItem
+                        item={item}
+                        customerName={customerName}
+                        orderId={orderId}
+                        viewShotRef={viewShotRefs.current[idx]}
+                        itemIndex={idx}
+                        totalItems={items.length}
+                      />
                       
-                      <TouchableOpacity 
-                        style={styles.itemActionButton}
-                        onPress={() => handleShareQRCode(idx)}
-                      >
-                        <MaterialIcons name="share" size={16} color="#4CAF50" />
-                        <Text style={styles.itemActionText}>Share</Text>
-                      </TouchableOpacity>
+                      {/* Individual item actions */}
+                      <View style={styles.itemActions}>
+                        <TouchableOpacity 
+                          style={styles.itemActionButton}
+                          onPress={() => handleSaveToGallery(idx)}
+                        >
+                          <MaterialIcons name="save-alt" size={16} color="#2196F3" />
+                          <Text style={styles.itemActionText}>Save</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={styles.itemActionButton}
+                          onPress={() => handleShareQRCode(idx)}
+                        >
+                          <MaterialIcons name="share" size={16} color="#4CAF50" />
+                          <Text style={styles.itemActionText}>Share</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  ))}
+                </View>
               </>
             )}
           </ScrollView>
@@ -341,14 +314,14 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
                   <ActivityIndicator size="small" color="#fff" />
                   <Text style={styles.printButtonText}>
                     {printProgress.current > 0 
-                      ? `Printing ${printProgress.current}/${printProgress.total}...` 
+                      ? `${printProgress.current}/${printProgress.total}...` 
                       : 'Printing...'}
                   </Text>
                 </View>
               ) : (
                 <>
                   <MaterialIcons name="print" size={18} color="#fff" />
-                  <Text style={styles.printButtonText}>Print Individual Labels</Text>
+                  <Text style={styles.printButtonText}>Print All Labels</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -359,6 +332,7 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
   );
 };
 
+// Updated styles for vertical layout and continuous printing
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
@@ -368,7 +342,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '90%',
-    maxWidth: 500,
+    maxWidth: 700,
     backgroundColor: '#fff',
     borderRadius: 12,
     maxHeight: '90%',
@@ -392,21 +366,27 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 8,
   },
-  printerStatusContainer: {
-    flexDirection: 'column',
+  printerOptionsContainer: {
     backgroundColor: '#f5f5f5',
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
   },
-  printerStatusLabel: {
+  printOptionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  printOptionLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
+    color: '#333',
   },
-  printerStatusInfo: {
+  optionHelperText: {
     fontSize: 12,
-    color: '#888',
+    color: '#666',
+    fontStyle: 'italic',
     marginTop: 4,
   },
   sectionTitle: {
@@ -415,99 +395,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#333',
   },
-  itemWrapper: {
-    marginBottom: 24,
-  },
-  qrItemContainer: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  qrBox: {
-    flexDirection: 'row',
-    padding: 12,
-  },
-  qrLeftSection: {
-    marginRight: 12,
-  },
-  qrInfoContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  customerName: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  productRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  productImage: {
-    width: 20,
-    height: 20,
-    marginRight: 6,
-  },
-  productName: {
-    fontSize: 13,
-    color: '#0066cc',
-  },
-  optionTags: {
+  labelsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
-  optionTag: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginRight: 4,
-    marginBottom: 4,
-  },
-  pressOnlyTag: {
-    backgroundColor: '#FFF3E0',
-  },
-  optionTagText: {
-    fontSize: 10,
-    color: '#1976D2',
-  },
-  notesContainer: {
-    marginTop: 4,
-  },
-  notesLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#555',
-  },
-  notesText: {
-    fontSize: 11,
-    fontStyle: 'italic',
-    color: '#666',
-  },
-  orderIdText: {
-    fontSize: 11,
-    color: '#757575',
-    marginTop: 4,
-  },
-  itemActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  itemActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 6,
-    marginLeft: 8,
-  },
-  itemActionText: {
-    fontSize: 12,
-    marginLeft: 4,
+  labelItem: {
+    width: '48%', // Adjust based on your design needs
+    marginBottom: 16,
   },
   emptyContainer: {
     padding: 24,
@@ -516,6 +411,22 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: '#666',
+  },
+  itemActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  itemActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 6,
+  },
+  itemActionText: {
+    fontSize: 12,
+    marginLeft: 4,
   },
   modalFooter: {
     flexDirection: 'row',
