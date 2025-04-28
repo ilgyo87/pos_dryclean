@@ -1,4 +1,4 @@
-// src/components/QRCodePrintModal.tsx
+// src/components/QRCodePrintModal.tsx - Modified version
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
@@ -117,6 +117,7 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
   onPrintComplete
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [printProgress, setPrintProgress] = useState({ current: 0, total: 0 });
   const navigation = useNavigation<any>();
 
   // Refs for view-shot (one per item)
@@ -128,7 +129,7 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
     }
   }, [items]);
 
-  // Handle print action using expo-print (AirPrint)
+  // Handle print action - UPDATED to use IndividualLabelPrintService
   const handlePrint = async () => {
     if (items.length === 0) {
       Alert.alert('Error', 'No items to print');
@@ -137,139 +138,34 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
 
     try {
       setIsLoading(true);
+      setPrintProgress({ current: 0, total: items.length });
       
-      // Dynamically import expo modules
-      const Print = await import('expo-print');
-      const FileSystem = await import('expo-file-system');
+      // Import the IndividualLabelPrintService
+      const { default: IndividualLabelPrintService } = await import('../utils/IndividualLabelPrintService');
       
-      // Generate HTML for printing
-      let html = `
-      <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-        <style>
-          body {
-            font-family: Helvetica, Arial, sans-serif;
-            padding: 10px;
-          }
-          .qr-label {
-            display: flex;
-            align-items: center;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 16px;
-            page-break-inside: avoid;
-          }
-          .qr-image {
-            margin-right: 15px;
-          }
-          .customer-name {
-            font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 4px;
-          }
-          .product-name {
-            font-size: 13px;
-            color: #0066cc;
-            margin-bottom: 4px;
-          }
-          .option-tag {
-            display: inline-block;
-            background-color: #E3F2FD;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            margin-right: 4px;
-            margin-bottom: 4px;
-            color: #1976D2;
-          }
-          .press-only-tag {
-            background-color: #FFF3E0;
-          }
-          .notes {
-            font-style: italic;
-            font-size: 11px;
-            color: #666;
-            margin-bottom: 4px;
-          }
-          .order-id {
-            font-size: 11px;
-            color: #757575;
-          }
-        </style>
-      </head>
-      <body>
-        <h2>QR Code Labels</h2>
-      `;
-
-      // Process each item
-      for (const item of items) {
-        try {
-          // Generate QR code data
-          const qrData = generateQRCodeData('Product', {
-            id: item._id,
-            orderItemId: item.orderItemId || item._id,
-            orderId: orderId || '',
-            customerId: item.customerId || '',
-            businessId: item.businessId || '',
-          });
-          
-          // Get QR code image
-          const itemIndex = items.indexOf(item);
-          const ref = viewShotRefs.current[itemIndex];
-          if (!ref || !ref.current) {
-            console.error('ViewShot ref not available for item', itemIndex);
-            continue;
-          }
-          
-          // Capture QR code image
-          const imageUri = await captureRef(ref, { format: 'png', quality: 1 });
-          const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: FileSystem.EncodingType.Base64 });
-          
-          // Add item to HTML
-          html += `
-          <div class="qr-label">
-            <div class="qr-image">
-              <img src="data:image/png;base64,${base64}" width="90" height="90" />
-            </div>
-            <div>
-              <div class="customer-name">${customerName || 'Customer'}</div>
-              <div class="product-name">${item.name || 'No Product Name'}</div>
-              <div>
-                ${item.starch && item.starch !== 'none' ? 
-                  `<span class="option-tag">${formatStarch(item.starch)}</span>` : ''}
-                ${item.pressOnly ? 
-                  `<span class="option-tag press-only-tag">Press Only</span>` : ''}
-              </div>
-              ${item.notes && item.notes.length > 0 ? 
-                `<div class="notes">Notes: ${item.notes[0]}</div>` : ''}
-              <div class="order-id">Order: #${orderId.substring(0, 8)}</div>
-            </div>
-          </div>
-          `;
-        } catch (error) {
-          console.error('Error processing item for print:', error);
+      // Print each item as an individual label
+      const success = await IndividualLabelPrintService.printIndividualLabels(
+        items,
+        customerName,
+        orderId,
+        viewShotRefs.current,
+        (current, total) => {
+          // Update progress in UI
+          setPrintProgress({ current, total });
+          console.log(`Printing label ${current} of ${total}`);
         }
+      );
+      
+      if (success) {
+        // Show success message
+        Alert.alert('Success', 'QR labels printed successfully');
+        
+        // Notify on completion
+        if (onPrintSuccess) onPrintSuccess();
+        if (onPrintComplete) onPrintComplete(true);
+      } else {
+        throw new Error('Some labels failed to print');
       }
-      
-      // Close HTML
-      html += `</body></html>`;
-      
-      // Print using AirPrint
-      await Print.printAsync({
-        html,
-        printerUrl: undefined, // Let the OS choose the printer
-      });
-      
-      // If we get here without error, printing was successful
-      if (onPrintSuccess) onPrintSuccess();
-      
-      // Show success message
-      Alert.alert('Success', 'QR labels printed successfully');
-      
-      // Notify on completion
-      if (onPrintComplete) onPrintComplete(true);
     } catch (error) {
       console.error('Print error:', error);
       if (onPrintError) onPrintError(error as Error);
@@ -279,6 +175,7 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
       if (onPrintComplete) onPrintComplete(false);
     } finally {
       setIsLoading(false);
+      setPrintProgress({ current: 0, total: 0 });
     }
   };
 
@@ -379,6 +276,9 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
                 {/* Title section */}
                 <View style={styles.printerStatusContainer}>
                   <Text style={styles.printerStatusLabel}>QR Code Labels</Text>
+                  <Text style={styles.printerStatusInfo}>
+                    Each item will be printed as a separate 29x90mm label
+                  </Text>
                 </View>
                 
                 <Text style={styles.sectionTitle}>
@@ -439,12 +339,16 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
               {isLoading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color="#fff" />
-                  <Text style={styles.printButtonText}>Printing...</Text>
+                  <Text style={styles.printButtonText}>
+                    {printProgress.current > 0 
+                      ? `Printing ${printProgress.current}/${printProgress.total}...` 
+                      : 'Printing...'}
+                  </Text>
                 </View>
               ) : (
                 <>
                   <MaterialIcons name="print" size={18} color="#fff" />
-                  <Text style={styles.printButtonText}>Print QR Labels</Text>
+                  <Text style={styles.printButtonText}>Print Individual Labels</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -489,8 +393,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   printerStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
     backgroundColor: '#f5f5f5',
     padding: 12,
     borderRadius: 8,
@@ -500,6 +403,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#666',
+  },
+  printerStatusInfo: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
   },
   sectionTitle: {
     fontSize: 16,
@@ -513,109 +421,101 @@ const styles = StyleSheet.create({
   qrItemContainer: {
     backgroundColor: '#f9f9f9',
     borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    flexDirection: 'row',
+    overflow: 'hidden',
   },
   qrBox: {
     flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
+    padding: 12,
   },
   qrLeftSection: {
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  optionTags: {
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  optionTag: {
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  pressOnlyTag: {
-    backgroundColor: '#FFF3E0',
-  },
-  optionTagText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#1976D2',
+    marginRight: 12,
   },
   qrInfoContainer: {
     flex: 1,
     justifyContent: 'center',
   },
   customerName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
+    marginBottom: 4,
   },
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   productImage: {
-    width: 24,
-    height: 24,
-    marginRight: 8,
+    width: 20,
+    height: 20,
+    marginRight: 6,
   },
   productName: {
-    fontSize: 16,
+    fontSize: 13,
     color: '#0066cc',
-    fontWeight: '500',
+  },
+  optionTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    justifyContent: 'center',
+  },
+  optionTag: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 4,
+    marginBottom: 4,
+  },
+  pressOnlyTag: {
+    backgroundColor: '#FFF3E0',
+  },
+  optionTagText: {
+    fontSize: 10,
+    color: '#1976D2',
   },
   notesContainer: {
-    marginBottom: 8,
+    marginTop: 4,
   },
   notesLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
     color: '#555',
   },
   notesText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
     fontStyle: 'italic',
+    color: '#666',
   },
   orderIdText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#757575',
+    marginTop: 4,
   },
   itemActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    paddingTop: 8,
+    padding: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
   itemActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    padding: 6,
     marginLeft: 8,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 4,
   },
   itemActionText: {
     fontSize: 12,
     marginLeft: 4,
-    color: '#333',
   },
   emptyContainer: {
     padding: 24,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
-    fontStyle: 'italic',
   },
   modalFooter: {
     flexDirection: 'row',
@@ -626,29 +526,30 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   cancelButtonText: {
+    fontSize: 14,
     color: '#666',
-    fontSize: 16,
   },
   printButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#2196F3',
     paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  printButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-    marginLeft: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
   },
   disabledButton: {
-    backgroundColor: '#cccccc',
-    opacity: 0.7,
+    backgroundColor: '#B0BEC5',
+  },
+  printButtonText: {
+    fontSize: 14,
+    color: '#fff',
+    marginLeft: 8,
   },
   loadingContainer: {
     flexDirection: 'row',

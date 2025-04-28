@@ -1,7 +1,10 @@
-// src/utils/QRCodePrintUtils.tsx
+// src/utils/QRCodePrintUtils.ts
 // Utility to programmatically print a sample label without ViewShot or complex images
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
+
+// Break the require cycle by only importing specific types
+import type { BrotherPrinterStatus } from './BrotherPrinterService';
 
 // Import functions using dynamic imports to avoid require cycle
 const getBrotherService = async () => {
@@ -67,12 +70,12 @@ export async function printSampleQRCodeLabel(qrValue: string = 'TEST'): Promise<
     
     // Create test files - use both text and image approach for maximum compatibility
     const testImagePath = await createMinimalTestImage();
-console.log('[QRCodePrintUtils] Created test image at:', testImagePath);
+    console.log('[QRCodePrintUtils] Created test image at:', testImagePath);
 
-// Always use the PNG image for Brother test prints
-console.log(`[QRCodePrintUtils] Printing minimal PNG image...`);
-const printResult = await BrotherPrinterService.printLabel(testImagePath);
-return !!printResult;
+    // Always use the PNG image for Brother test prints
+    console.log(`[QRCodePrintUtils] Printing minimal PNG image...`);
+    const printResult = await BrotherPrinterService.printLabel(testImagePath);
+    return !!printResult;
   } catch (error) {
     console.error('[QRCodePrintUtils] Ultra simple test print failed:', error);
     return false;

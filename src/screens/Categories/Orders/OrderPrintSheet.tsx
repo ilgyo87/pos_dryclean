@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { generateQRCodeData } from '../../../utils/QRCodeGenerator';
-import BrotherPrinterService from '../../../utils/BrotherPrinterService';
+import SimpleBrotherPrinter from '../../../utils/SimpleBrotherPrinter';
 import { requestBluetoothPermissions } from '../../../utils/PermissionHandler';
 import { Product } from '../../../types';
 import * as Print from 'expo-print';
