@@ -45,9 +45,9 @@
       <true/>
     </dict>
     <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>This app uses Bluetooth to connect to the Phomemo M120 printer</string>
+    <string>This app uses Bluetooth to connect to Brother printers.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>This app uses Bluetooth to connect to the Phomemo M120 printer</string>
+    <string>This app uses Bluetooth to connect to Brother printers.</string>
     <key>NSCameraUsageDescription</key>
     <string>This app requires access to the camera for scanning and capturing images.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
@@ -80,14 +80,13 @@
     <string>Light</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
-    <key>NSBluetoothAlwaysUsageDescription</key>
-  <string>This app uses Bluetooth to connect to Brother printers.</string>
-  <key>NSLocalNetworkUsageDescription</key>
-  <string>This app needs access to the local network to discover and connect to printers.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+  <string>This app needs access to your local network to discover and connect to Brother printers.</string>
   <key>NSBonjourServices</key>
   <array>
     <string>_ipp._tcp</string>
     <string>_printer._tcp</string>
+    <string>_pdl-datastream._tcp</string>
   </array>
 </dict>
 </plist>

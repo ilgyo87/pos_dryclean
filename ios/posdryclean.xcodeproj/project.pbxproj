@@ -16,7 +16,7 @@
 		96905EF65AED1B983A6B3ABC /* libPods-POSDryclean.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-POSDryclean.a */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		DC63EAF12DBED15B00B25556 /* BRLMPrinterKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC63EAF02DBED15B00B25556 /* BRLMPrinterKit.xcframework */; };
+		DC7EE4F02DBF0B1A00DEE025 /* BRLMPrinterKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC1499432DBEE85C005F5BE1 /* BRLMPrinterKit.xcframework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,7 +34,11 @@
 		920409ED25BB66E8FBD7FB45 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = POSDryclean/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = POSDryclean/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		DC14993F2DBEE82C005F5BE1 /* BRLMPrinterKit */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = BRLMPrinterKit; path = "../../../Downloads/bpsdkiall4120/bpsdki4120/libs/Net/BRLMPrinterKit.xcframework/ios-arm64/BRLMPrinterKit.framework/BRLMPrinterKit"; sourceTree = "<group>"; };
+		DC1499412DBEE83D005F5BE1 /* BRLMPrinterKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = BRLMPrinterKit.framework; path = "../../../Downloads/bpsdkiall4120/bpsdki4120/libs/Net/BRLMPrinterKit.xcframework/ios-arm64/BRLMPrinterKit.framework"; sourceTree = "<group>"; };
+		DC1499432DBEE85C005F5BE1 /* BRLMPrinterKit.xcframework */ = {isa = PBXFileReference; expectedSignature = "AppleDeveloperProgram:5HCL85FLGW:Brother Industries, LTD."; lastKnownFileType = wrapper.xcframework; name = BRLMPrinterKit.xcframework; path = ../../../Downloads/bpsdkiall4120/bpsdki4120/libs/Net/BRLMPrinterKit.xcframework; sourceTree = "<group>"; };
 		DC63EAF02DBED15B00B25556 /* BRLMPrinterKit.xcframework */ = {isa = PBXFileReference; expectedSignature = "AppleDeveloperProgram:5HCL85FLGW:Brother Industries, LTD."; lastKnownFileType = wrapper.xcframework; name = BRLMPrinterKit.xcframework; path = "../node_modules/expo-brother-printer-sdk/ios/Frameworks/BRLMPrinterKit.xcframework"; sourceTree = "<group>"; };
+		DC7EE4ED2DBF096A00DEE025 /* BRLMPrinterKit.xcframework */ = {isa = PBXFileReference; expectedSignature = "AppleDeveloperProgram:5HCL85FLGW:Brother Industries, LTD."; lastKnownFileType = wrapper.xcframework; name = BRLMPrinterKit.xcframework; path = ../../../Downloads/bpsdkiall4120/bpsdki4120/libs/BT_Net/BRLMPrinterKit.xcframework; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-POSDryclean/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -44,7 +48,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DC63EAF12DBED15B00B25556 /* BRLMPrinterKit.xcframework in Frameworks */,
+				DC7EE4F02DBF0B1A00DEE025 /* BRLMPrinterKit.xcframework in Frameworks */,
 				96905EF65AED1B983A6B3ABC /* libPods-POSDryclean.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -72,6 +76,10 @@
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				DC1499432DBEE85C005F5BE1 /* BRLMPrinterKit.xcframework */,
+				DC7EE4ED2DBF096A00DEE025 /* BRLMPrinterKit.xcframework */,
+				DC1499412DBEE83D005F5BE1 /* BRLMPrinterKit.framework */,
+				DC14993F2DBEE82C005F5BE1 /* BRLMPrinterKit */,
 				DC63EAF02DBED15B00B25556 /* BRLMPrinterKit.xcframework */,
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				58EEBF8E8E6FB1BC6CAF49B5 /* libPods-POSDryclean.a */,
@@ -259,7 +267,6 @@
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-POSDryclean/Pods-POSDryclean-frameworks.sh",
 				"${PODS_ROOT}/BRLMPrinterKit/BRLMPrinterKit/BRLMPrinterKit.framework",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ExpoBrotherPrinterSdk/BRLMPrinterKit.framework/BRLMPrinterKit",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
 			);
 			name = "[CP] Embed Pods Frameworks";
@@ -515,10 +522,7 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -573,10 +577,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

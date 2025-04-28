@@ -19,6 +19,7 @@ import BrotherPrinterService, {
   DEFAULT_BROTHER_CONFIG,
   BrotherPrinterStatus
 } from '../../utils/BrotherPrinterService';
+import { useBrotherDiscoveryAutoConnect } from './useBrotherDiscoveryAutoConnect';
 import { requestBluetoothPermissions } from '../../utils/PermissionHandler';
 
 const BrotherPrinterSetupScreen: React.FC = () => {
@@ -32,12 +33,50 @@ const BrotherPrinterSetupScreen: React.FC = () => {
   const [manualSerialNumber, setManualSerialNumber] = useState('');
   const [printerStatus, setPrinterStatus] = useState<BrotherPrinterStatus>(BrotherPrinterStatus.DISCONNECTED);
   const [statusError, setStatusError] = useState<string | null>(null);
-  
+  const [isResetting, setIsResetting] = useState(false);
+
   // Paper size and type options
   const [selectedPaperSize, setSelectedPaperSize] = useState<BrotherPrinterConfig['paperSize']>('62mm');
   const [selectedLabelType, setSelectedLabelType] = useState<BrotherPrinterConfig['labelType']>('die-cut');
   const [highQuality, setHighQuality] = useState(true);
   const [orientation, setOrientation] = useState<BrotherPrinterConfig['orientation']>('portrait');
+
+  // Use auto-connect discovery hook
+  useBrotherDiscoveryAutoConnect({
+    setFoundPrinters,
+    setConfig,
+    setPrinterStatus,
+    selectedPaperSize,
+    selectedLabelType,
+    orientation,
+    highQuality,
+    config,
+    printerStatus,
+  });
+
+  // Handler for resetting printer config
+  const handleResetPrinterConfig = async () => {
+    try {
+      setIsResetting(true);
+      await BrotherPrinterService.resetConfig();
+      setConfig(null);
+      setFoundPrinters([]);
+      setManualAddress('');
+      setManualMacAddress('');
+      setManualSerialNumber('');
+      setSelectedPaperSize('62mm');
+      setSelectedLabelType('die-cut');
+      setHighQuality(true);
+      setOrientation('portrait');
+      setPrinterStatus(BrotherPrinterStatus.DISCONNECTED);
+      setStatusError(null);
+      Alert.alert('Reset Complete', 'Printer configuration has been reset. The app will now rediscover printers.');
+    } catch (error) {
+      Alert.alert('Reset Failed', 'Failed to reset printer configuration.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // Load initial configuration on mount
   useEffect(() => {
@@ -65,8 +104,9 @@ const BrotherPrinterSetupScreen: React.FC = () => {
         setSelectedLabelType(savedConfig.labelType);
         setHighQuality(savedConfig.highQuality);
         setOrientation(savedConfig.orientation);
+      } else {
+        setConfig(null);
       }
-      
       // Get current status
       const status = BrotherPrinterService.getStatus();
       setPrinterStatus(status.status);
@@ -149,38 +189,24 @@ const BrotherPrinterSetupScreen: React.FC = () => {
     }
   };
 
-  // Add a manual printer
+  // Add a manual printer (robust manual connect)
   const handleAddManualPrinter = async () => {
     if (!manualAddress) {
       Alert.alert('Input Required', 'Please enter an address for the printer');
       return;
     }
-    
     try {
       setIsLoading(true);
-      
-      // Create configuration from manual input
-      const newConfig: BrotherPrinterConfig = {
-        address: manualAddress,
-        macAddress: manualMacAddress || undefined,
-        serialNumber: manualSerialNumber || undefined,
-        model: 'QL-820NWB', // Default model
-        connectionType: manualAddress.includes(':') ? 'bluetooth' : 'wifi',
-        paperSize: selectedPaperSize,
-        labelType: selectedLabelType,
-        orientation,
-        highQuality,
-      };
-      
-      // Save configuration
-      await BrotherPrinterService.saveConfig(newConfig);
-      
-      // Always (re-)initialize to update status
-      await BrotherPrinterService.initialize();
+      // Use new robust connectToPrinter method
+      const connectionType = manualAddress.includes(':') ? 'bluetooth' : 'wifi';
+      const connected = await BrotherPrinterService.connectToPrinter(
+        manualAddress,
+        connectionType,
+        manualSerialNumber || undefined
+      );
       await loadConfig();
-      
       const status = BrotherPrinterService.getStatus();
-      if (status.status === BrotherPrinterStatus.CONNECTED) {
+      if (connected && status.status === BrotherPrinterStatus.CONNECTED) {
         Alert.alert('Connected', 'Successfully connected to printer');
         setManualAddress('');
         setManualMacAddress('');
@@ -196,22 +222,119 @@ const BrotherPrinterSetupScreen: React.FC = () => {
     }
   };
 
-  // Print a test label
+  // Show last error in the UI if present
+  const renderStatusError = () => {
+    if (statusError) {
+      return (
+        <View style={{ marginVertical: 8 }}>
+          <Text style={{ color: 'red', fontSize: 13 }}>Last error: {statusError}</Text>
+        </View>
+      );
+    }
+    return null;
+  };
+
+  // Print a test label with robust recovery approach
   const handlePrintTest = async () => {
     try {
       setIsLoading(true);
+      
+      // First - attempt to force reconnect to the printer
+      // This is a more aggressive approach for iOS connection issues
+      if (config && config.address) {
+        // Show reconnection feedback to the user
+        Alert.alert(
+          'Reconnecting to Printer',
+          'Attempting to refresh the printer connection before printing. This may take a moment...',
+          [{ text: 'OK' }]
+        );
+        
+        // Force disconnect
+        await BrotherPrinterService.disconnect();
+        
+        // Wait a bit longer
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Reconnect with fresh connection
+        const connectionType = config.connectionType || 'wifi';
+        const reconnected = await BrotherPrinterService.connectToPrinter(
+          config.address,
+          connectionType as 'wifi' | 'bluetooth',
+          config.serialNumber
+        );
+        
+        // Check if we're really reconnected 
+        await loadConfig();
+        const status = BrotherPrinterService.getStatus();
+        
+        if (!reconnected || status.status !== BrotherPrinterStatus.CONNECTED) {
+          throw new Error('Failed to reconnect to printer. Please check printer power and network connection.');
+        }
+        
+        // If reconnection worked, show printing feedback
+        Alert.alert(
+          'Printing Test Label',
+          'Reconnected successfully. Sending test label to printer with minimal settings.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Printing Test Label',
+          'Sending test label to printer. This may take a few moments.',
+          [{ text: 'OK' }]
+        );
+      }
+      
+      // Attempt to print with minimal settings (most reliable approach)
       const success = await BrotherPrinterService.printTestLabel();
       await loadConfig();
       
       if (success) {
-        Alert.alert('Success', 'Test label printed successfully');
+        Alert.alert('Success', 'Test label printed successfully. If you do not see the label, please check:' +
+          '\n\n1. Printer is powered on and has paper loaded' +
+          '\n2. Correct label type (die-cut vs continuous) is selected' +
+          '\n3. Printer is not showing any errors (paper jam, etc.)');
       } else {
         const status = BrotherPrinterService.getStatus();
         throw new Error(status.error || 'Failed to print test label');
       }
     } catch (error) {
       console.error('Error printing test label:', error);
-      Alert.alert('Print Error', `Failed to print test label: ${error}`);
+      
+      // Provide specific help for the connection reset issue
+      const errorMsg = (error as Error).toString().toLowerCase();
+      let helpfulMessage = 'Failed to print test label. ';
+      
+      if (errorMsg.includes('reset') || errorMsg.includes('connection reset by peer')) {
+        helpfulMessage = 'The iOS "Connection reset by peer" error occurred. This is a common iOS network issue with Brother printers.\n\n' +
+          'Please try these specific steps:\n\n' +
+          '1. Power cycle your printer (turn it off, wait 10 seconds, turn it on)\n' +
+          '2. Verify the printer is showing ONLINE/READY on its display\n' +
+          '3. Check that your device and printer are on the same WiFi network\n' +
+          '4. If using WiFi, try entering the printer\'s IP address manually\n' +
+          '5. If possible, try connecting via Bluetooth instead of WiFi\n' +
+          '6. As a last resort, try restarting this app and your device';
+      } else if (errorMsg.includes('connection')) {
+        helpfulMessage += 'There was a connection problem with the printer. Please try these steps:\n\n' +
+          '1. Ensure printer is powered on\n' +
+          '2. Confirm printer is in online mode (not showing any errors)\n' +
+          '3. For network printers, verify it is on the same network as your device\n' +
+          '4. Try disconnecting and reconnecting to the printer';
+      } else if (errorMsg.includes('timeout')) {
+        helpfulMessage += 'The print operation timed out. This could be due to:\n\n' +
+          '1. Poor network connection\n' +
+          '2. Printer being in sleep mode\n' +
+          '3. Printer having paper or other hardware issues';
+      } else if (errorMsg.includes('paper') || errorMsg.includes('media')) {
+        helpfulMessage += 'There seems to be an issue with the printer paper/media. Please check:\n\n' +
+          '1. Paper is loaded correctly\n' +
+          '2. The correct paper size is selected in settings\n' +
+          '3. Paper isn\'t jammed';
+      } else {
+        helpfulMessage += `Error details: ${error}`;
+      }
+      
+      Alert.alert('Print Error', helpfulMessage);
     } finally {
       setIsLoading(false);
     }
@@ -358,6 +481,22 @@ const BrotherPrinterSetupScreen: React.FC = () => {
             )}
           </View>
           
+          {/* Reset Printer Config Button */}
+          <TouchableOpacity
+            style={styles.resetButton}
+            onPress={handleResetPrinterConfig}
+            disabled={isResetting || isLoading}
+          >
+            {isResetting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <MaterialIcons name="restore" size={18} color="#fff" />
+                <Text style={styles.resetButtonText}>Reset Printer Config</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
           {config && printerStatus === BrotherPrinterStatus.CONNECTED && (
             <TouchableOpacity
               style={styles.testButton}
@@ -475,11 +614,31 @@ const BrotherPrinterSetupScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Brother QL-820NWB Setup Help</Text>
           <Text style={styles.instructionText}>
             1. Make sure your Brother QL-820NWB printer is powered on.{"\n"}
-            2. If connecting via Bluetooth, ensure the printer is in pairing mode.{"\n"}
+            2. If connecting via Bluetooth, ensure the printer is in pairing mode (press Wi-Fi/Bluetooth button until blue light flashes).{"\n"}
             3. If connecting via Wi-Fi, ensure the printer is connected to the same network as this device.{"\n"}
             4. Use the search function to discover nearby printers, or enter the printer's address manually.{"\n"}
             5. Configure the paper size and type to match the labels loaded in your printer.{"\n"}
             6. Print a test label to verify the connection and settings.
+          </Text>
+          
+          <Text style={styles.sectionTitle}>Troubleshooting</Text>
+          <Text style={styles.instructionText}>
+            • If the printer is not discovered, try restarting both the printer and this app.{"\n"}
+            • For Wi-Fi connection, you can manually enter the printer's IP address (found in printer network settings).{"\n"}
+            • For Bluetooth connection, make sure Bluetooth is enabled on your device and the printer is in pairing mode.{"\n"}
+            • If test labels don't print, check that the correct paper size is selected and paper is loaded properly.{"\n"}
+            • For connection errors, verify that the printer is on the same network or within Bluetooth range.{"\n"}
+            • If the printer was working before but stopped, try removing it and adding it again.
+          </Text>
+          
+          <Text style={styles.sectionTitle}>Label Printing Tips</Text>
+          <Text style={styles.instructionText}>
+            • Die-cut labels: These have pre-cut shapes and require precise alignment.{"\n"}
+            • Continuous labels: These allow custom length labels but require manual cutting.{"\n"}
+            • Paper size must match what's loaded in the printer (common sizes: 29mm, 62mm).{"\n"}
+            • High quality mode produces better text and QR codes but prints slower.{"\n"}
+            • If labels are printing too small or large, try changing the orientation setting.{"\n"}
+            • Make sure to keep the printer clean and free from dust or adhesive buildup.
           </Text>
         </View>
       </ScrollView>
@@ -566,6 +725,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F44336',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  resetButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    marginLeft: 8,
   },
   testButtonText: {
     color: 'white',

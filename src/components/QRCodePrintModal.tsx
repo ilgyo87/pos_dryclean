@@ -15,8 +15,6 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import QRCode from 'react-native-qrcode-svg';
 import { generateQRCodeData } from '../utils/QRCodeGenerator';
-import BrotherPrinterService, { BrotherPrinterStatus } from '../utils/BrotherPrinterService';
-import { requestBluetoothPermissions } from '../utils/PermissionHandler';
 import { Product } from '../types';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import Share from 'react-native-share';
@@ -119,30 +117,7 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
   onPrintComplete
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [printerStatus, setPrinterStatus] = useState<BrotherPrinterStatus | null>(null);
-  const [printerError, setPrinterError] = useState<string | null>(null);
   const navigation = useNavigation<any>();
-
-  // Check printer status when modal opens
-  useEffect(() => {
-    if (visible) {
-      checkPrinterStatus();
-    }
-  }, [visible]);
-
-  // Check printer status
-  const checkPrinterStatus = async () => {
-    try {
-      await BrotherPrinterService.initialize();
-      const status = BrotherPrinterService.getStatus();
-      setPrinterStatus(status.status);
-      setPrinterError(status.error);
-    } catch (error) {
-      console.error('Error checking printer status:', error);
-      setPrinterStatus(BrotherPrinterStatus.ERROR);
-      setPrinterError(String(error));
-    }
-  };
 
   // Refs for view-shot (one per item)
   const viewShotRefs = useRef<React.RefObject<ViewShot>[]>([]);
@@ -153,7 +128,7 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
     }
   }, [items]);
 
-  // Handle print action
+  // Handle print action using expo-print (AirPrint)
   const handlePrint = async () => {
     if (items.length === 0) {
       Alert.alert('Error', 'No items to print');
@@ -163,63 +138,145 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
     try {
       setIsLoading(true);
       
-      // Request permissions
-      const hasPermissions = await requestBluetoothPermissions();
-      if (!hasPermissions) {
-        Alert.alert(
-          'Permission Required',
-          'Bluetooth permissions are required to print QR codes'
-        );
-        setIsLoading(false);
-        return;
+      // Dynamically import expo modules
+      const Print = await import('expo-print');
+      const FileSystem = await import('expo-file-system');
+      
+      // Generate HTML for printing
+      let html = `
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+        <style>
+          body {
+            font-family: Helvetica, Arial, sans-serif;
+            padding: 10px;
+          }
+          .qr-label {
+            display: flex;
+            align-items: center;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            page-break-inside: avoid;
+          }
+          .qr-image {
+            margin-right: 15px;
+          }
+          .customer-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 4px;
+          }
+          .product-name {
+            font-size: 13px;
+            color: #0066cc;
+            margin-bottom: 4px;
+          }
+          .option-tag {
+            display: inline-block;
+            background-color: #E3F2FD;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-right: 4px;
+            margin-bottom: 4px;
+            color: #1976D2;
+          }
+          .press-only-tag {
+            background-color: #FFF3E0;
+          }
+          .notes {
+            font-style: italic;
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+          }
+          .order-id {
+            font-size: 11px;
+            color: #757575;
+          }
+        </style>
+      </head>
+      <body>
+        <h2>QR Code Labels</h2>
+      `;
+
+      // Process each item
+      for (const item of items) {
+        try {
+          // Generate QR code data
+          const qrData = generateQRCodeData('Product', {
+            id: item._id,
+            orderItemId: item.orderItemId || item._id,
+            orderId: orderId || '',
+            customerId: item.customerId || '',
+            businessId: item.businessId || '',
+          });
+          
+          // Get QR code image
+          const itemIndex = items.indexOf(item);
+          const ref = viewShotRefs.current[itemIndex];
+          if (!ref || !ref.current) {
+            console.error('ViewShot ref not available for item', itemIndex);
+            continue;
+          }
+          
+          // Capture QR code image
+          const imageUri = await captureRef(ref, { format: 'png', quality: 1 });
+          const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: FileSystem.EncodingType.Base64 });
+          
+          // Add item to HTML
+          html += `
+          <div class="qr-label">
+            <div class="qr-image">
+              <img src="data:image/png;base64,${base64}" width="90" height="90" />
+            </div>
+            <div>
+              <div class="customer-name">${customerName || 'Customer'}</div>
+              <div class="product-name">${item.name || 'No Product Name'}</div>
+              <div>
+                ${item.starch && item.starch !== 'none' ? 
+                  `<span class="option-tag">${formatStarch(item.starch)}</span>` : ''}
+                ${item.pressOnly ? 
+                  `<span class="option-tag press-only-tag">Press Only</span>` : ''}
+              </div>
+              ${item.notes && item.notes.length > 0 ? 
+                `<div class="notes">Notes: ${item.notes[0]}</div>` : ''}
+              <div class="order-id">Order: #${orderId.substring(0, 8)}</div>
+            </div>
+          </div>
+          `;
+        } catch (error) {
+          console.error('Error processing item for print:', error);
+        }
       }
-
-      // If printer is not connected, alert the user
-      if (printerStatus !== BrotherPrinterStatus.CONNECTED) {
-        Alert.alert(
-          'Printer Not Connected',
-          'Would you like to go to printer setup?',
-          [
-            { 
-              text: 'Cancel', 
-              style: 'cancel',
-              onPress: () => setIsLoading(false)
-            },
-            { 
-              text: 'Go to Setup', 
-              onPress: () => {
-                setIsLoading(false);
-                onClose();
-                navigation.navigate('BrotherPrinterSetup');
-              }
-            }
-          ]
-        );
-        return;
-      }
-
-      // Print QR codes using the Brother printer service
-      const success = await BrotherPrinterService.printQRCodeLabels(
-        items, 
-        customerName, 
-        orderId
-      );
-
-      if (success) {
-        if (onPrintSuccess) onPrintSuccess();
-        
-        // Show success message
-        Alert.alert('Success', 'QR codes printed successfully');
-      } else {
-        throw new Error(printerError || 'Printing failed');
-      }
-
+      
+      // Close HTML
+      html += `</body></html>`;
+      
+      // Print using AirPrint
+      await Print.printAsync({
+        html,
+        printerUrl: undefined, // Let the OS choose the printer
+      });
+      
+      // If we get here without error, printing was successful
+      if (onPrintSuccess) onPrintSuccess();
+      
+      // Show success message
+      Alert.alert('Success', 'QR labels printed successfully');
+      
       // Notify on completion
-      if (onPrintComplete) onPrintComplete(success);
+      if (onPrintComplete) onPrintComplete(true);
     } catch (error) {
       console.error('Print error:', error);
       if (onPrintError) onPrintError(error as Error);
       Alert.alert('Print Error', `Failed to print QR codes: ${error}`);
+      
+      // Notify on completion
+      if (onPrintComplete) onPrintComplete(false);
     } finally {
       setIsLoading(false);
     }
@@ -319,39 +376,10 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
               </View>
             ) : (
               <>
-                {/* Printer status */}
+                {/* Title section */}
                 <View style={styles.printerStatusContainer}>
-                  <Text style={styles.printerStatusLabel}>Printer Status:</Text>
-                  <Text style={[
-                    styles.printerStatusValue,
-                    printerStatus === BrotherPrinterStatus.CONNECTED ? styles.statusConnected : 
-                    printerStatus === BrotherPrinterStatus.ERROR ? styles.statusError :
-                    styles.statusDisconnected
-                  ]}>
-                    {printerStatus === BrotherPrinterStatus.CONNECTED ? 'Connected' :
-                     printerStatus === BrotherPrinterStatus.CONNECTING ? 'Connecting...' :
-                     printerStatus === BrotherPrinterStatus.ERROR ? 'Error' : 'Not Connected'}
-                  </Text>
-                  
-                  {printerStatus !== BrotherPrinterStatus.CONNECTED && (
-                    <TouchableOpacity 
-                      style={styles.setupButton}
-                      onPress={() => {
-                        onClose();
-                        navigation.navigate('BrotherPrinterSetup');
-                      }}
-                    >
-                      <Text style={styles.setupButtonText}>Setup</Text>
-                    </TouchableOpacity>
-                  )}
+                  <Text style={styles.printerStatusLabel}>QR Code Labels</Text>
                 </View>
-                
-                {/* Error message if any */}
-                {printerError && (
-                  <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{printerError}</Text>
-                  </View>
-                )}
                 
                 <Text style={styles.sectionTitle}>
                   Labels to Print ({items.length})
@@ -403,11 +431,10 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
             <TouchableOpacity
               style={[
                 styles.printButton, 
-                (isLoading || items.length === 0 || printerStatus !== BrotherPrinterStatus.CONNECTED) && 
-                styles.disabledButton
+                (isLoading || items.length === 0) && styles.disabledButton
               ]}
               onPress={handlePrint}
-              disabled={isLoading || items.length === 0 || printerStatus !== BrotherPrinterStatus.CONNECTED}
+              disabled={isLoading || items.length === 0}
             >
               {isLoading ? (
                 <View style={styles.loadingContainer}>
@@ -473,42 +500,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#666',
-    marginRight: 8,
-  },
-  printerStatusValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    flex: 1,
-  },
-  statusConnected: {
-    color: '#4CAF50',
-  },
-  statusDisconnected: {
-    color: '#757575',
-  },
-  statusError: {
-    color: '#F44336',
-  },
-  setupButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  setupButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  errorContainer: {
-    backgroundColor: '#FFEBEE',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#D32F2F',
-    fontSize: 14,
   },
   sectionTitle: {
     fontSize: 16,
