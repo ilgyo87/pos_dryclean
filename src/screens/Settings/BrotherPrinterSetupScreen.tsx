@@ -222,6 +222,37 @@ const BrotherPrinterSetupScreen: React.FC = () => {
     }
   };
 
+  // Function to handle paper size changes directly from the status card
+  const handlePaperSizeChange = async (newSize: BrotherPrinterConfig['paperSize']) => {
+    if (!config) return;
+    
+    try {
+      setIsLoading(true);
+      
+      // Create updated config
+      const updatedConfig: BrotherPrinterConfig = {
+        ...config,
+        paperSize: newSize,
+      };
+      
+      // Save the updated config
+      await BrotherPrinterService.saveConfig(updatedConfig);
+      
+      // Reload config to reflect changes
+      await loadConfig();
+      
+      // Show confirmation
+      Alert.alert('Paper Size Updated', 
+        `Paper size has been changed to ${newSize}. This will be used for all future print jobs.`
+      );
+    } catch (error) {
+      console.error('Error updating paper size:', error);
+      Alert.alert('Error', 'Failed to update paper size configuration');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // Show last error in the UI if present
   const renderStatusError = () => {
     if (statusError) {
@@ -465,11 +496,34 @@ const BrotherPrinterSetupScreen: React.FC = () => {
                   <Text style={styles.statusLabel}>Connection:</Text>
                   <Text style={styles.statusValue}>{config.connectionType}</Text>
                 </View>
+                {/* Paper size dropdown in status section when connected */}
                 <View style={styles.statusRow}>
                   <Text style={styles.statusLabel}>Paper:</Text>
-                  <Text style={styles.statusValue}>
-                    {config.paperSize} {config.labelType} ({config.orientation})
-                  </Text>
+                  <View style={styles.paperSizePickerContainer}>
+                    <TouchableOpacity 
+                      style={styles.paperSizePicker}
+                      onPress={() => {
+                        // Create alert with paper size options
+                        Alert.alert(
+                          'Select Paper Size',
+                          'Choose the paper size loaded in your printer:',
+                          [
+                            { text: '29mm', onPress: () => handlePaperSizeChange('29mm') },
+                            { text: '38mm', onPress: () => handlePaperSizeChange('38mm') },
+                            { text: '50mm', onPress: () => handlePaperSizeChange('50mm') },
+                            { text: '54mm', onPress: () => handlePaperSizeChange('54mm') },
+                            { text: '62mm', onPress: () => handlePaperSizeChange('62mm') },
+                            { text: 'Cancel', style: 'cancel' }
+                          ]
+                        );
+                      }}
+                    >
+                      <Text style={styles.paperSizeText}>
+                        {config.paperSize} {config.labelType} ({config.orientation})
+                      </Text>
+                      <MaterialIcons name="arrow-drop-down" size={24} color="#555" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </>
             )}
