@@ -1,4 +1,4 @@
-// src/components/QRCodePrintModal.tsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
@@ -63,6 +63,12 @@ const QRCodePrintModal: React.FC<QRCodePrintModalProps> = ({
       isMounted.current = false;
     };
   }, [items]);
+
+  useEffect(() => {
+    if (visible) {
+      handlePrint();
+    }
+  }, [visible]);
 
   // Handle print action with progress tracking
   const handlePrint = async () => {

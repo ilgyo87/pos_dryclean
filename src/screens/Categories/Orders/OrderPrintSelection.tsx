@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import IndividualLabelPrintService from '../../../utils/IndividualLabelPrintService';
+import { QRCodeCapture } from '../../../utils/QRCodeLabelHelper';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Product } from '../../../types';
-import QRCodePrintModal from '../../../components/QRCodePrintModal';
+
 import { requestBluetoothPermissions } from '../../../utils/PermissionHandler';
 
 interface OrderPrintSelectionProps {
@@ -21,20 +23,26 @@ const OrderPrintSelection: React.FC<OrderPrintSelectionProps> = ({
   orderId,
   onPrintComplete
 }) => {
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  
   const [isPrinting, setIsPrinting] = useState(false);
 
   // Only show selected items
   const selectedItems = items.filter(item => selectedItemIds.has(item._id));
 
-  // Handle preview button click
-  const handlePreview = async () => {
+  // Refs for each selected item (persist across renders)
+  const qrRefs = useRef(selectedItems.map(() => React.createRef<any>()));
+
+  // Update refs if selectedItems length changes
+  if (qrRefs.current.length !== selectedItems.length) {
+    qrRefs.current = selectedItems.map(() => React.createRef<any>());
+  }
+
+  // Handle print button click
+  const handlePrint = async () => {
     if (selectedItemIds.size === 0) {
       Alert.alert('No Items Selected', 'Please select at least one item to print.');
       return;
     }
-    
-    // Check permissions before showing the modal
     try {
       const hasPermissions = await requestBluetoothPermissions();
       if (!hasPermissions) {
@@ -44,12 +52,26 @@ const OrderPrintSelection: React.FC<OrderPrintSelectionProps> = ({
         );
         return;
       }
-      
-      // Show preview modal
-      setShowPreviewModal(true);
+      setIsPrinting(true);
+      // Print labels using the service
+      const printResult = await IndividualLabelPrintService.printIndividualLabels(
+        selectedItems,
+        customerName,
+        orderId,
+        qrRefs.current
+      );
+      if (!printResult) {
+        Alert.alert('Print Failed', 'Could not print one or more barcodes.');
+        if (onPrintComplete) onPrintComplete(false);
+        return;
+      }
+      if (onPrintComplete) onPrintComplete(true);
     } catch (error) {
-      console.error('Error checking permissions:', error);
-      Alert.alert('Error', 'Failed to check Bluetooth permissions.');
+      console.error('Print error:', error);
+      Alert.alert('Error', 'Failed to print barcodes.');
+      if (onPrintComplete) onPrintComplete(false);
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -96,31 +118,26 @@ const OrderPrintSelection: React.FC<OrderPrintSelectionProps> = ({
             styles.previewButton,
             selectedItemIds.size === 0 && styles.disabledButton
           ]}
-          onPress={handlePreview}
+          onPress={handlePrint}
           disabled={selectedItemIds.size === 0 || isPrinting}
         >
           <Text style={styles.buttonText}>
-            Preview QR Codes
+            Print Barcodes
           </Text>
         </TouchableOpacity>
       </View>
-      
-      {/* QR Code Preview Modal */}
-      <QRCodePrintModal
-        visible={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        items={selectedItems}
-        customerName={customerName}
-        orderId={orderId}
-        onPrintSuccess={() => {
-          setShowPreviewModal(false);
-          if (onPrintComplete) onPrintComplete(true);
-        }}
-        onPrintError={(error: any) => {
-          console.error('Print error:', error);
-          if (onPrintComplete) onPrintComplete(false);
-        }}
-      />
+
+      {/* Hidden QR codes for printing */}
+      <View style={{ position: 'absolute', left: -9999, top: -9999, width: 1, height: 1 }}>
+        {selectedItems.map((item, idx) => (
+          <QRCodeCapture
+            key={item._id}
+            ref={qrRefs.current[idx]}
+            value={item._id} // Replace with actual barcode/QR data as needed
+            size={200}
+          />
+        ))}
+      </View>
     </View>
   );
 };

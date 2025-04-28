@@ -147,10 +147,9 @@ class IndividualLabelPrintService {
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=29mm, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
   <style>
     @page {
-      /* No specific size - let printer determine */
       margin: 0;
       padding: 0;
     }
@@ -159,30 +158,57 @@ class IndividualLabelPrintService {
       padding: 0;
       width: 100%;
       height: 100%;
+      background: white;
+    }
+    .label-page {
+      width: 100%;
+      height: 100%;
       display: flex;
-      flex-direction: column; /* Change to column to stack items vertically */
       justify-content: center;
       align-items: center;
+      page-break-after: always;
+      break-after: page;
       overflow: hidden;
     }
-    .label-container {
-      width: 100vw;
-      height: 100vh;
+    .label-content {
+      width: 100%;
+      height: 100%;
       display: flex;
-      flex-direction: column; /* Change to column to stack items vertically */
       justify-content: center;
       align-items: center;
-      overflow: hidden;
-      page-break-after: always; /* Force page break after each item */
+      padding: 0;
     }
-    .label-container:last-child {
-      page-break-after: auto;
+    .qr-wrapper {
+      width: 25%;
+      margin: 0;
     }
-    img {
-      width: 100vw; /* Full viewport width */
-      height: 100vh; /* Full viewport height */
-      object-fit: contain;
-      transform: scale(2); /* Double the size */
+    .barcode-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+    }
+    .barcode {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .qr {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    .icon {
+      font-size: 3em;
+      margin: 0;
+    }
+    .product-name, .customer-name {
+      font-size: 1.3em;
+      font-weight: bold;
+      margin: 0;
+      text-align: center;
+      line-height: 1.1;
     }
   </style>
 </head>
@@ -190,21 +216,21 @@ class IndividualLabelPrintService {
       `;
       
       // Process each captured image to base64
-      for (let i = 0; i < capturedImages.length; i++) {
-        if (onProgress) {
-          onProgress(items.length + i + 1, items.length * 2); // Second half is printing
-        }
-        
-        const base64 = await FileSystem.readAsStringAsync(capturedImages[i], { 
-          encoding: FileSystem.EncodingType.Base64 
-        });
-        
-        htmlContent += `
-        <div class="label-container">
-          <img src="data:image/png;base64,${base64}" />
-        </div>
+      const htmlParts: string[] = [];
+      for (let idx = 0; idx < capturedImages.length; idx++) {
+        let page = '<div class="label-page">';
+        page += `
+          <div class="label-content">
+            <div class="barcode-wrapper">
+              <img class="barcode" src="https://bwipjs-api.metafloor.com/?bcid=code128&text=${items[idx]?.id || ''}&scale=12&height=60&includetext" alt="Barcode" />
+            </div>
+          </div>
         `;
+        page += '</div>';
+        htmlParts.push(page);
       }
+      
+      htmlContent += htmlParts.join('');
       
       // Close the HTML document
       htmlContent += `
@@ -300,50 +326,67 @@ class IndividualLabelPrintService {
           });
           
           // Create HTML for a single label with VERTICAL LAYOUT
-          const html = `
+           const html = `
           <!DOCTYPE html>
           <html>
           <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+            <meta name="viewport" content="width=29mm, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
             <style>
               @page {
-                /* No specific size - let printer determine */
                 margin: 0;
                 padding: 0;
-                border: 1px solid black;
               }
               html, body {
                 margin: 0;
                 padding: 0;
                 width: 100%;
                 height: 100%;
+                background: white;
+              }
+              .label-page {
+                width: 29mm;
+                height: 45mm;
                 display: flex;
-                flex-direction: column; /* Change to column to stack items vertically */
-                justify-content: center;
+                flex-direction: column;
                 align-items: center;
+                justify-content: center;
+                page-break-after: always;
+                break-after: page;
                 overflow: hidden;
               }
-              .qr-container {
-                width: 100vw;
-                height: 100vh;
+              .qr-wrapper {
+                width: 28mm;
+                height: 28mm;
                 display: flex;
-                flex-direction: column; /* Change to column to stack items vertically */
-                justify-content: center;
                 align-items: center;
-                margin: 1;
-                overflow: hidden;
+                justify-content: center;
+                margin: 2mm 0;
               }
-              img {
-                width: 100vw; /* Full viewport width */
-                height: 100vh; /* Full viewport height */
-                object-fit: contain;
-                transform: scale(2); /* Double the size */
+              .qr {
+                max-width: 100%;
+                max-height: 100%;
+              }
+              .icon {
+                font-size: 10mm;
+                margin-bottom: 2mm;
+              }
+              .product-name, .customer-name {
+                font-size: 6mm;
+                font-weight: bold;
+                margin: 1mm 0;
+                line-height: 1.1;
+                text-align: center;
               }
             </style>
           </head>
           <body>
-            <div class="qr-container">
-              <img src="data:image/png;base64,${base64}" />
+            <div class="label-page">
+              <div class="icon">👕</div>
+              <div class="product-name">${item?.name || 'No Product Name'}</div>
+              <div class="qr-wrapper">
+                <img class="qr" src="data:image/png;base64,${base64}" />
+              </div>
+              <div class="customer-name">${customerName}</div>
             </div>
           </body>
           </html>
@@ -466,9 +509,14 @@ class IndividualLabelPrintService {
           height: ${this.config.labelLength}mm;
           background-color: white;
         }
+        .label-page {
+          page-break-after: always;
+          break-after: page;
+        }
       </style>
     </head>
-    <body></body>
+    <body>
+    </body>
     </html>
     `;
     
