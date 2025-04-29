@@ -78,6 +78,7 @@ const schema = a.schema({
       orderIdHistory: a.string().array(),
       starch: a.enum(['none', 'light', 'medium', 'heavy']),
       pressOnly: a.boolean(),
+      notes: a.string().array(), // <-- Added this line for notes
       order: a.belongsTo('Order', 'orderId'),
     })
     .authorization((allow) => [

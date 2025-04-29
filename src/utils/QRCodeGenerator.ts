@@ -1,24 +1,33 @@
-import { uploadData } from 'aws-amplify/storage';
-import { Alert } from 'react-native';
-
 // src/utils/QRCodeGenerator.ts
+// Utility for generating QR code data for various entity types
+
+// Entity types for QR codes
 export type EntityType = 'Business' | 'Employee' | 'Customer' | 'Order' | 'Product' | 'Garment' | 'Rack' | 'Unknown';
 
+// Base entity data interface
 export interface BaseEntityData {
     id: string;
     [key: string]: any;
 }
 
+/**
+ * Generate standardized QR code data for different entity types
+ * @param entityType Type of entity the QR code represents
+ * @param data Entity data to encode
+ * @returns JSON string with standardized QR code data
+ */
 export const generateQRCodeData = <T extends BaseEntityData>(
     entityType: EntityType,
     data: T
 ): string => {
+    // Base data structure included in all QR codes
     const baseData = {
         type: entityType,
         id: data.id,
         timestamp: new Date().toISOString(),
     };
 
+    // Add entity-specific data based on type
     switch (entityType) {
         case 'Business':
             return JSON.stringify({
@@ -77,6 +86,7 @@ export const generateQRCodeData = <T extends BaseEntityData>(
             });
 
         default:
+            // Generic format for other entity types
             return JSON.stringify({
                 ...baseData,
                 ...data,
@@ -84,48 +94,27 @@ export const generateQRCodeData = <T extends BaseEntityData>(
     }
 };
 
-// Used when scanning QR Codes
-export const parseQRCode = (qrValue: string): { type: EntityType, data: any } | null => {
+/**
+ * Parse QR code data back into structured format
+ * @param qrValue String data from QR code
+ * @returns Object with type and parsed data, or null if invalid
+ */
+export const parseQRCode = (qrValue: string): { type: EntityType; data: any } | null => {
     try {
         const parsedData = JSON.parse(qrValue);
-        if (parsedData && parsedData.type && ['Business', 'Employee', 'Customer', 'Order', 'Product', 'Garment'].includes(parsedData.type)) {
+        
+        // Validate that the QR code contains a valid entity type
+        if (parsedData && parsedData.type && 
+            ['Business', 'Employee', 'Customer', 'Order', 'Product', 'Garment', 'Rack'].includes(parsedData.type)) {
             return {
                 type: parsedData.type as EntityType,
                 data: parsedData
             };
         }
+        
         return null;
     } catch (error) {
         console.error('Error parsing QR code data:', error);
-        return null;
-    }
-};
-
-// Handle QR code capture
-export const uploadQRCapture = async (uri: string, type: EntityType, title: string) => {
-    // Convert data URI to blob
-    const response = await fetch(uri);
-    const blob = await response.blob();
-
-    // Create unique filename with datetime for S3
-    const now = new Date();
-    const timestamp = now.toISOString().replace(/[:.]/g, '-');
-    const filename = `qrcodes/${type}/${title}_${timestamp}.png`;
-
-    // Upload to S3
-    try {
-        const result = await uploadData({
-            path: filename,
-            data: blob,
-            options: {
-                contentType: 'image/png'
-            }
-        }).result;
-        console.log('Successfully uploaded QR code:', result);
-        return result;
-    } catch (error) {
-        console.error('Upload error:', error);
-        Alert.alert('Error', `Failed to save QR code: ${error}`);
         return null;
     }
 };

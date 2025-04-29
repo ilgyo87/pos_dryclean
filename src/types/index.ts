@@ -118,6 +118,7 @@ export interface Order {
 }
 
 export interface OrderItem {
+  productName?: string;
   _id: string;
   name: string;
   description?: string;
@@ -136,6 +137,7 @@ export interface OrderItem {
   quantity?: number;
   type?: 'service' | 'product';
   serviceId?: string;
+  notes?: string[]; // <-- Added to match Realm schema
   options?: {
     starch?: 'none' | 'light' | 'medium' | 'heavy';
     pressOnly?: boolean;

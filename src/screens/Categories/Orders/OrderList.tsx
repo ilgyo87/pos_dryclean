@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import OrderCard from './OrderCard';
 import { Order } from '../../../types';
-import { OrderStatus } from './StatusHeaderBar';
+import type { OrderStatus } from './StatusHeaderBar';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 interface OrderListProps {

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Order } from '../../../types';
-import { OrderStatus } from './StatusHeaderBar';
+import type { OrderStatus } from './StatusHeaderBar';
 
 interface OrderCardProps {
   order: Order;

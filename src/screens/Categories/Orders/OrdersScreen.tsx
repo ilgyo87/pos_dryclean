@@ -12,12 +12,16 @@ import {
 } from 'react-native';
 import OrderSearchBar from './OrderSearchBar';
 import OrderList from './OrderList';
-import StatusHeaderBar, { OrderStatus } from './StatusHeaderBar';
+import { OrderStatus } from './StatusHeaderBar';
 import { useOrders } from '../../../hooks/useOrders';
 import { Order } from '../../../types';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import OrderPrintSelection from './OrderPrintSelection';
 import printerService from '../../../utils/PrinterService';
+import BarcodeTicketingScreen from './BarcodeTicketingScreen';
+import { updateOrderAfterTicketing } from '../../../utils/OrderBarcodeUtils';
+import type { Product } from '../../../types';
+import { styles } from './OrderScreenStyles';
 
 interface OrdersScreenProps {
   employeeId?: string;
@@ -31,6 +35,8 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
   const [showOrderDetailModal, setShowOrderDetailModal] = useState(false);
   const [selectedPrintItemIds, setSelectedPrintItemIds] = useState<Set<string>>(new Set());
   const [isPrinting, setIsPrinting] = useState(false);
+  // Barcode Ticketing state
+  const [showBarcodeTicketing, setShowBarcodeTicketing] = useState(false);
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +54,60 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
       setSelectedPrintItemIds(new Set(selectedOrder.items.map(item => item._id)));
     }
   }, [selectedOrder]);
+
+  // Handle starting barcode ticketing
+  const handleStartBarcodeTicketing = () => {
+    if (!selectedOrder) {
+      Alert.alert('No Order Selected', 'Please select an order first.');
+      return;
+    }
+    if (selectedOrder.status !== 'CREATED') {
+      Alert.alert(
+        'Invalid Status',
+        'Only orders with "CREATED" status can be processed for barcode ticketing.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    setShowBarcodeTicketing(true);
+    setShowOrderDetailModal(false);
+  };
+
+  // Handle completion of barcode ticketing
+  const handleBarcodeTicketingComplete = async (updatedItems: Product[]) => {
+    if (!selectedOrder) return;
+    try {
+      const success = await updateOrderAfterTicketing(
+        selectedOrder._id,
+        updatedItems,
+        'PROCESSING',
+        firstName && lastName ? `${firstName} ${lastName}` : undefined
+      );
+      if (success) {
+        Alert.alert(
+          'Success',
+          'Order has been processed and status updated to PROCESSING.',
+          [{ text: 'OK' }]
+        );
+        refetch();
+      } else {
+        Alert.alert(
+          'Error',
+          'Failed to update order status. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error updating order after ticketing:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred while updating the order.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setShowBarcodeTicketing(false);
+    }
+  };
 
   // Handle order status change
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
@@ -160,12 +220,6 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
         placeholder="Search by order #, customer name, or item..."
       />
       
-      <StatusHeaderBar 
-        selectedStatus={selectedStatus}
-        onSelectStatus={setSelectedStatus}
-        counts={statusCounts}
-      />
-      
       <OrderList 
         orders={filteredOrders}
         isLoading={isLoading}
@@ -242,57 +296,21 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
                 
                 {/* Print QR Codes Section */}
                 {selectedOrder.status === 'CREATED' && (
-                  <OrderPrintSelection
-                    items={selectedOrder.items}
-                    selectedItemIds={selectedPrintItemIds}
-                    onToggleItem={handleTogglePrintItem}
-                    customerName={selectedOrder.customerName || 'Customer'}
-                    orderId={selectedOrder._id}
-                    onPrintComplete={handlePrintComplete}
-                  />
-                )}
+  <OrderPrintSelection
+    items={selectedOrder.items.map(item => ({
+      ...item,
+      starch: ['none', 'light', 'medium', 'heavy'].includes(item.starch as string)
+        ? (item.starch as 'none' | 'light' | 'medium' | 'heavy' | undefined)
+        : undefined,
+    }))}
+    selectedItemIds={selectedPrintItemIds}
+    onToggleItem={handleTogglePrintItem}
+    customerName={selectedOrder.customerName || 'Customer'}
+    orderId={selectedOrder._id}
+    onPrintComplete={handlePrintComplete}
+  />
+)}
                 
-                {/* Status Change Section */}
-                <View style={styles.statusButtonsContainer}>
-                  <Text style={styles.sectionTitle}>Change Status</Text>
-                  <View style={styles.statusButtons}>
-                    {selectedOrder.status !== 'PROCESSING' && (
-                      <TouchableOpacity
-                        style={[styles.statusButton, { backgroundColor: '#FFF9C4', borderColor: '#FFC107' }]}
-                        onPress={() => handleStatusChange(selectedOrder._id, 'PROCESSING')}
-                      >
-                        <Text style={[styles.statusButtonText, { color: '#F57F17' }]}>Processing</Text>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {selectedOrder.status !== 'READY' && (
-                      <TouchableOpacity
-                        style={[styles.statusButton, { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' }]}
-                        onPress={() => handleStatusChange(selectedOrder._id, 'READY')}
-                      >
-                        <Text style={[styles.statusButtonText, { color: '#2E7D32' }]}>Ready</Text>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {selectedOrder.status !== 'COMPLETED' && (
-                      <TouchableOpacity
-                        style={[styles.statusButton, { backgroundColor: '#F5F5F5', borderColor: '#9E9E9E' }]}
-                        onPress={() => handleStatusChange(selectedOrder._id, 'COMPLETED')}
-                      >
-                        <Text style={[styles.statusButtonText, { color: '#616161' }]}>Completed</Text>
-                      </TouchableOpacity>
-                    )}
-                    
-                    {selectedOrder.status !== 'CANCELLED' && (
-                      <TouchableOpacity
-                        style={[styles.statusButton, { backgroundColor: '#FFEBEE', borderColor: '#F44336' }]}
-                        onPress={() => handleStatusChange(selectedOrder._id, 'CANCELLED')}
-                      >
-                        <Text style={[styles.statusButtonText, { color: '#C62828' }]}>Cancelled</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
                 
                 {/* Notes Section */}
                 {selectedOrder.notes && selectedOrder.notes.length > 0 && (
@@ -311,6 +329,22 @@ const OrdersScreen: React.FC<OrdersScreenProps> = ({ employeeId, firstName, last
           </View>
         </Modal>
       )}
+    {/* Barcode Ticketing Modal */}
+    {selectedOrder && showBarcodeTicketing && (
+  <BarcodeTicketingScreen
+    orderId={selectedOrder._id}
+    items={selectedOrder.items.map(item => ({
+      ...item,
+      starch: ['none', 'light', 'medium', 'heavy'].includes(item.starch as string)
+        ? (item.starch as 'none' | 'light' | 'medium' | 'heavy' | undefined)
+        : undefined,
+    }))}
+    customerName={selectedOrder.customerName || 'Customer'}
+    customerId={selectedOrder.customerId}
+    onComplete={handleBarcodeTicketingComplete}
+    onCancel={() => setShowBarcodeTicketing(false)}
+  />
+)}
     </SafeAreaView>
   );
 };
@@ -332,113 +366,5 @@ const getStatusColor = (status: OrderStatus) => {
       return { color: '#333' }; // Default black
   }
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f7f9fa',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '90%',
-    maxWidth: 400,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    maxHeight: '80%',
-  },
-  modalScroll: {
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  orderDetailRow: {
-    flexDirection: 'row',
-    marginBottom: 12,
-  },
-  orderDetailLabel: {
-    width: 80,
-    fontWeight: '600',
-    color: '#555',
-  },
-  orderDetailValue: {
-    flex: 1,
-    color: '#333',
-  },
-  statusText: {
-    fontWeight: '600',
-  },
-  statusButtonsContainer: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  statusButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  statusButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    minWidth: '48%',
-    alignItems: 'center',
-  },
-  statusButtonText: {
-    fontWeight: '500',
-  },
-  notesSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  noteItem: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  noteIcon: {
-    marginRight: 8,
-    marginTop: 2,
-  },
-  noteText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#555',
-  },
-});
 
 export default OrdersScreen;

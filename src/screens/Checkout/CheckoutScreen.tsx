@@ -170,7 +170,7 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
         // Add new line for this unique product+options combo
         return [
           ...prevItems,
-          { ...product, quantity: 1, options: orderOptions }
+          { ...product, productName: product.name, quantity: 1, options: orderOptions }
         ];
       }
     });
@@ -288,16 +288,14 @@ const CheckoutScreen: React.FC<CheckoutScreenProps> = ({ employeeId, firstName, 
           
           // Print the receipt
           await printerService.printReceipt({
-            id: createdOrder._id,
-            customerId: createdOrder.customerId,
+            businessName: business?.businessName || 'Your Business',
+            orderNumber: createdOrder._id, // or use a formatted order number if available
+            customerName: createdOrder.customerName || `${customer.firstName} ${customer.lastName}`,
             items: createdOrder.items,
             total: createdOrder.total,
-            status: createdOrder.status as any,
-            createdAt: createdOrder.createdAt,
-            pickupDate: createdOrder.pickupDate as any,
-            employeeId: createdOrder.employeeId,
+            date: createdOrder.createdAt?.toLocaleString(),
             notes: createdOrder.notes?.join('\n')
-          }, business?.businessName || 'Your Business');
+          });
         } catch (printError) {
           console.error('[Checkout] Error printing receipt:', printError);
           // Show error but continue with checkout
